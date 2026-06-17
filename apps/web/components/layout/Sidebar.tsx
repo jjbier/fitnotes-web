@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/progress", label: "Progress", icon: "📈" },
   { href: "/routines", label: "Routines", icon: "📋" },
   { href: "/body-tracker", label: "Body Tracker", icon: "⚖️" },
+  { href: "/tools", label: "Tools", icon: "🔧" },
   { href: "/settings", label: "Settings", icon: "⚙️" },
 ] as const;
 
@@ -67,6 +68,7 @@ export default function Sidebar() {
             onClick={handleSignOut}
             className="text-xs text-muted-foreground hover:text-foreground"
             title="Sign out"
+            aria-label="Sign out"
           >
             ↩
           </button>

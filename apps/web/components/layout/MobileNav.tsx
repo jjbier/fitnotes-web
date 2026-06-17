@@ -6,8 +6,9 @@ import { usePathname } from "next/navigation";
 const TAB_ITEMS = [
   { href: "/dashboard", label: "Today", icon: "🏠" },
   { href: "/calendar", label: "Calendar", icon: "📅" },
-  { href: "/exercise", label: "Exercises", icon: "💪" },
   { href: "/progress", label: "Progress", icon: "📈" },
+  { href: "/tools", label: "Tools", icon: "🔧" },
+  { href: "/settings", label: "Settings", icon: "⚙️" },
 ] as const;
 
 export default function MobileNav() {
@@ -21,6 +22,7 @@ export default function MobileNav() {
           <Link
             key={href}
             href={href}
+            aria-label={label}
             className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
               active ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}

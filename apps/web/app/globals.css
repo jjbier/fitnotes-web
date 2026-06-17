@@ -15,10 +15,32 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 238.7 83.5% 66.7%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
     --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --primary: 238.7 83.5% 66.7%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 238.7 83.5% 66.7%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
   }
 }
 
 body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: var(--font-geist-sans, system-ui, sans-serif);
 }
