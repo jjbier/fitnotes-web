@@ -1,12 +1,32 @@
-/**
- * Login page
- *
- * Components: LoginForm (local), shadcn Card, Input, Button, Label
- * Stores: none (uses Supabase auth directly)
- * Actions: signInWithPassword, signInWithOtp (magic link)
- */
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createBrowserClient } from "@fitnotes/database";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const supabase = createBrowserClient();
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+      return;
+    }
+    router.push("/dashboard");
+    router.refresh();
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
@@ -15,55 +35,53 @@ export default function LoginPage() {
           <p className="text-muted-foreground mt-2">Sign in to FitNotes App</p>
         </div>
 
-        <div className="rounded-lg border bg-card p-8 shadow-sm space-y-4">
-          {/* TODO: replace with shadcn Form + react-hook-form + zod validation */}
+        <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-8 shadow-sm space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="email">
-              Email
-            </label>
+            <label className="text-sm font-medium" htmlFor="email">Email</label>
             <input
               id="email"
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              required
+              autoComplete="email"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="password">
-              Password
-            </label>
+            <label className="text-sm font-medium" htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              required
+              autoComplete="current-password"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          <button className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Sign in
-          </button>
+          {error && (
+            <p className="text-sm text-destructive rounded-md bg-destructive/10 px-3 py-2">{error}</p>
+          )}
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
-
-          <button className="w-full rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary">
-            Send magic link
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {loading ? "Signing in…" : "Sign in"}
           </button>
-        </div>
+        </form>
 
         <p className="text-center text-sm text-muted-foreground">
           No account?{" "}
-          <a href="/register" className="font-medium text-primary hover:underline">
+          <Link href="/register" className="font-medium text-primary hover:underline">
             Create one
-          </a>
+          </Link>
         </p>
       </div>
     </div>

@@ -1,9 +1,8 @@
-/**
- * Desktop navigation sidebar
- *
- * TODO: mark active link based on current pathname (usePathname)
- * TODO: load user avatar/name from Supabase auth session
- */
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { createBrowserClient } from "@fitnotes/database";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Today", icon: "🏠" },
@@ -16,6 +15,16 @@ const NAV_ITEMS = [
 ] as const;
 
 export default function Sidebar() {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = createBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
+
   return (
     <aside className="hidden md:flex w-60 flex-col border-r bg-card min-h-screen">
       {/* Brand */}
@@ -26,29 +35,41 @@ export default function Sidebar() {
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map(({ href, label, icon }) => (
-          <a
-            key={href}
-            href={href}
-            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-          >
-            <span>{icon}</span>
-            {label}
-          </a>
-        ))}
+        {NAV_ITEMS.map(({ href, label, icon }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-secondary"
+              }`}
+            >
+              <span>{icon}</span>
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User section */}
       <div className="border-t px-4 py-4">
-        {/* TODO: show user avatar + email from Supabase session */}
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
             U
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">User</p>
-            <p className="text-xs text-muted-foreground truncate">user@example.com</p>
+            <p className="text-sm font-medium truncate">Account</p>
           </div>
+          <button
+            onClick={handleSignOut}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            title="Sign out"
+          >
+            ↩
+          </button>
         </div>
       </div>
     </aside>
