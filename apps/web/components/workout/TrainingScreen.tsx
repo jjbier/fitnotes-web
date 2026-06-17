@@ -1,75 +1,106 @@
-/**
- * TrainingScreen
- *
- * TODO:
- *  - Render active exercise name + category
- *  - Show set history for this session (SetList)
- *  - Provide quick-add set form (SetForm)
- *  - Navigation arrows between exercises (NavigationPanel)
- *  - Finish workout button that calls useWorkoutStore.finishWorkout()
- */
+"use client";
 
-import type { WorkoutExercise, Set, Exercise } from "@fitnotes/core";
+import { useState } from "react";
+import { useWorkoutStore, useExerciseStore } from "@fitnotes/core";
+import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
+import SetRow from "./SetRow";
+import type { ExerciseType, Set as FitSet } from "@fitnotes/core";
 
-interface TrainingScreenProps {
-  workoutExercise: WorkoutExercise;
-  exercise: Exercise;
-  sets: Set[];
-  onAddSet: (partial: Partial<Set>) => void;
-  onUpdateSet: (setId: string, patch: Partial<Set>) => void;
-  onDeleteSet: (setId: string) => void;
-  onFinish: () => void;
+interface Props {
+  workoutExerciseId: string;
+  userId: string;
 }
 
-export default function TrainingScreen({
-  exercise,
-  sets,
-  onAddSet,
-  onFinish,
-}: TrainingScreenProps) {
+export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
+  const workoutExercises = useWorkoutStore((s) => s.exercises);
+  const sets = useWorkoutStore((s) => s.sets);
+  const createSet = useWorkoutStore((s) => s.createSet);
+  const updateSet = useWorkoutStore((s) => s.updateSet);
+  const deleteSet = useWorkoutStore((s) => s.deleteSet);
+  const markSetComplete = useWorkoutStore((s) => s.markSetComplete);
+  const exercises = useExerciseStore((s) => s.exercises);
+  const [saving, setSaving] = useState(false);
+
+  const client = createBrowserClient();
+  const repo = createWorkoutRepository(client);
+
+  const workoutExercise = workoutExercises.find((we) => we.id === workoutExerciseId);
+  const exercise = exercises.find((e) => e.id === workoutExercise?.exercise_id);
+  const exerciseSets = (workoutExercise ? sets[workoutExercise.id] ?? [] : []).slice().sort((a, b) => a.order_index - b.order_index);
+
+  if (!workoutExercise || !exercise) return null;
+
+  const exerciseType = exercise.type as ExerciseType;
+
+  async function handleCreateSet() {
+    if (!workoutExercise) return;
+    setSaving(true);
+    const { data, error } = await repo.createSet({
+      workout_exercise_id: workoutExercise.id,
+      order_index: exerciseSets.length,
+    }, userId);
+    if (!error && data) {
+      createSet(workoutExercise.id, {
+        id: data.id, workout_exercise_id: data.workout_exercise_id,
+        is_complete: data.is_complete, order_index: data.order_index,
+      });
+    }
+    setSaving(false);
+  }
+
+  async function handleUpdateSet(setId: string, patch: Partial<FitSet>) {
+    if (!workoutExercise) return;
+    await repo.updateSet(setId, patch);
+    updateSet(workoutExercise.id, setId, patch);
+  }
+
+  async function handleDeleteSet(setId: string) {
+    if (!workoutExercise) return;
+    await repo.deleteSet(setId);
+    deleteSet(workoutExercise.id, setId);
+  }
+
+  async function handleToggleComplete(setId: string, current: boolean) {
+    if (!workoutExercise) return;
+    await repo.updateSet(setId, { is_complete: !current });
+    markSetComplete(workoutExercise.id, setId, !current);
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">{exercise.name}</h2>
-        <button
-          onClick={onFinish}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Finish
-        </button>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h2 className="font-semibold text-base">{exercise.name}</h2>
+        <span className="text-xs text-muted-foreground rounded-full border px-2 py-0.5">
+          {exerciseType.replace(/_/g, " ").toLowerCase()}
+        </span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {exerciseSets.filter((s) => s.is_complete).length}/{exerciseSets.length} complete
+        </span>
       </div>
 
-      {/* TODO: render SetList */}
-      <div className="rounded-md border divide-y">
-        {sets.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground text-center">
-            No sets yet. Add your first set below.
-          </p>
-        ) : (
-          sets.map((set, idx) => (
-            <div key={set.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-              <span className="w-6 text-muted-foreground">{idx + 1}</span>
-              <span>{set.weight ?? "—"} kg</span>
-              <span>×</span>
-              <span>{set.reps ?? "—"} reps</span>
-              <span
-                className={`ml-auto text-xs font-medium ${
-                  set.is_complete ? "text-green-600" : "text-muted-foreground"
-                }`}
-              >
-                {set.is_complete ? "✓" : "○"}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+      {exerciseSets.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No sets yet.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {exerciseSets.map((s) => (
+            <SetRow
+              key={s.id}
+              set={s}
+              exerciseType={exerciseType}
+              onUpdate={handleUpdateSet}
+              onDelete={handleDeleteSet}
+              onToggleComplete={handleToggleComplete}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* TODO: replace with SetForm component */}
       <button
-        onClick={() => onAddSet({ weight: undefined, reps: undefined })}
-        className="w-full rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground hover:bg-secondary"
+        onClick={handleCreateSet}
+        disabled={saving}
+        className="w-full rounded-lg border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50 disabled:opacity-50"
       >
-        + Add Set
+        {saving ? "Adding…" : "+ Add Set"}
       </button>
     </div>
   );
