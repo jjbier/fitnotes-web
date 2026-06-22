@@ -19,11 +19,11 @@ export default function ToolsPage() {
 
   return (
     <div className="space-y-5 max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight">Training Tools</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Herramientas de entrenamiento</h1>
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-lg border p-1 w-fit">
-        {([["1rm", "1RM Calculator"], ["set", "Set Calculator"], ["plates", "Plate Calculator"]] as [Tab, string][]).map(
+        {([["1rm", "Calculadora 1RM"], ["set", "Calculadora de series"], ["plates", "Calculadora de discos"]] as [Tab, string][]).map(
           ([key, label]) => (
             <button
               key={key}
@@ -56,30 +56,30 @@ function OneRMCalculator() {
   return (
     <div className="rounded-lg border bg-card p-6 space-y-5">
       <div>
-        <h2 className="font-semibold mb-1">1RM Calculator</h2>
-        <p className="text-xs text-muted-foreground">Uses the Brzycki formula. Most accurate for 1–10 reps.</p>
+        <h2 className="font-semibold mb-1">Calculadora 1RM</h2>
+        <p className="text-xs text-muted-foreground">Usa la fórmula de Brzycki. Más precisa para 1–10 repeticiones.</p>
       </div>
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Weight (kg)</label>
+          <label className="text-xs font-medium text-muted-foreground">Peso (kg)</label>
           <input
             type="number"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            placeholder="e.g. 100"
+            placeholder="ej. 100"
             min="0"
             step="0.5"
             className="w-36 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Reps</label>
+          <label className="text-xs font-medium text-muted-foreground">Repeticiones</label>
           <input
             type="number"
             value={reps}
             onChange={(e) => setReps(e.target.value)}
-            placeholder="e.g. 5"
+            placeholder="ej. 5"
             min="1"
             max="36"
             step="1"
@@ -91,12 +91,12 @@ function OneRMCalculator() {
       {oneRM !== null && (
         <>
           <div className="rounded-lg bg-primary/10 px-5 py-4">
-            <p className="text-xs text-muted-foreground mb-0.5">Estimated 1RM</p>
+            <p className="text-xs text-muted-foreground mb-0.5">1RM estimado</p>
             <p className="text-4xl font-bold text-primary">{oneRM.toFixed(1)} <span className="text-lg font-normal">kg</span></p>
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Rep Max Table</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Tabla de máximos por repeticiones</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {Array.from({ length: 15 }, (_, i) => i + 1).map((n) => {
                 const est = n === 1 ? oneRM : estimateRepMax(oneRM, n);
@@ -128,25 +128,25 @@ function SetCalculator() {
   return (
     <div className="rounded-lg border bg-card p-6 space-y-5">
       <div>
-        <h2 className="font-semibold mb-1">Set Calculator</h2>
-        <p className="text-xs text-muted-foreground">Calculate training weights as percentages of your working weight.</p>
+        <h2 className="font-semibold mb-1">Calculadora de series</h2>
+        <p className="text-xs text-muted-foreground">Calcula los pesos de entrenamiento como porcentajes de tu peso de trabajo.</p>
       </div>
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Base weight (kg)</label>
+          <label className="text-xs font-medium text-muted-foreground">Peso base (kg)</label>
           <input
             type="number"
             value={baseWeight}
             onChange={(e) => setBaseWeight(e.target.value)}
-            placeholder="e.g. 100"
+            placeholder="ej. 100"
             min="0"
             step="0.5"
             className="w-36 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Round to (kg)</label>
+          <label className="text-xs font-medium text-muted-foreground">Redondear a (kg)</label>
           <select
             value={increment}
             onChange={(e) => setIncrement(e.target.value)}
@@ -171,7 +171,7 @@ function SetCalculator() {
                 <span className="flex-1 text-sm font-semibold">{setW.toFixed(1)} kg</span>
                 {Math.abs(diff) > 0.01 && (
                   <span className="text-xs text-muted-foreground">
-                    exact: {exact.toFixed(1)}
+                    exacto: {exact.toFixed(1)}
                   </span>
                 )}
               </div>
@@ -201,25 +201,25 @@ function PlateCalculatorPanel() {
   return (
     <div className="rounded-lg border bg-card p-6 space-y-5">
       <div>
-        <h2 className="font-semibold mb-1">Plate Calculator</h2>
-        <p className="text-xs text-muted-foreground">Shows which plates to load per side to reach the target weight.</p>
+        <h2 className="font-semibold mb-1">Calculadora de discos</h2>
+        <p className="text-xs text-muted-foreground">Muestra qué discos cargar por lado para alcanzar el peso objetivo.</p>
       </div>
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Target weight (kg)</label>
+          <label className="text-xs font-medium text-muted-foreground">Peso objetivo (kg)</label>
           <input
             type="number"
             value={targetWeight}
             onChange={(e) => setTargetWeight(e.target.value)}
-            placeholder="e.g. 140"
+            placeholder="ej. 140"
             min="0"
             step="0.5"
             className="w-36 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Bar weight (kg)</label>
+          <label className="text-xs font-medium text-muted-foreground">Peso de la barra (kg)</label>
           <select
             value={barWeight}
             onChange={(e) => setBarWeight(e.target.value)}
@@ -233,7 +233,7 @@ function PlateCalculatorPanel() {
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">Available plates (kg, comma separated)</label>
+        <label className="text-xs font-medium text-muted-foreground">Discos disponibles (kg, separados por coma)</label>
         <input
           type="text"
           value={customPlates}
@@ -246,17 +246,17 @@ function PlateCalculatorPanel() {
         <div className="space-y-3">
           {perSide.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {target <= bar ? "Target weight is at or below bar weight." : "Cannot reach target with available plates."}
+              {target <= bar ? "El peso objetivo es igual o inferior al peso de la barra." : "No se puede alcanzar el objetivo con los discos disponibles."}
             </p>
           ) : (
             <>
               <div className="rounded-lg bg-primary/10 px-5 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Plates per side</p>
+                  <p className="text-xs text-muted-foreground">Discos por lado</p>
                   <p className="text-sm font-semibold mt-0.5">{perSide.join(" + ")} kg</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total loaded</p>
+                  <p className="text-xs text-muted-foreground">Total cargado</p>
                   <p className="text-2xl font-bold text-primary">{achieved.toFixed(1)} <span className="text-sm font-normal">kg</span></p>
                 </div>
               </div>
@@ -285,7 +285,7 @@ function PlateCalculatorPanel() {
 
               {Math.abs(achieved - target) > 0.01 && (
                 <p className="text-xs text-amber-600">
-                  Closest achievable: {achieved.toFixed(1)} kg (off by {Math.abs(achieved - target).toFixed(2)} kg)
+                  Más cercano alcanzable: {achieved.toFixed(1)} kg (diferencia de {Math.abs(achieved - target).toFixed(2)} kg)
                 </p>
               )}
             </>

@@ -67,23 +67,23 @@ export default function DaySection({
             {day.name}
           </span>
         )}
-        <span className="text-xs text-muted-foreground">{exercises.length} exercises</span>
+        <span className="text-xs text-muted-foreground">{exercises.length} ejercicios</span>
         {!editMode && (
           <button
             onClick={() => onLogAll(day.id)}
             className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Log All
+            Registrar todo
           </button>
         )}
         {editMode && (
           <>
-            <button onClick={() => setRenaming(true)} className="rounded border px-2 py-0.5 text-xs hover:bg-secondary">Rename</button>
+            <button onClick={() => setRenaming(true)} className="rounded border px-2 py-0.5 text-xs hover:bg-secondary">Renombrar</button>
             <button
               onClick={() => onDeleteDay(day.id)}
               className="rounded border px-2 py-0.5 text-xs text-destructive hover:bg-destructive/10"
             >
-              Delete
+              Eliminar
             </button>
           </>
         )}
@@ -92,7 +92,7 @@ export default function DaySection({
       {!collapsed && (
         <div className="p-3 space-y-2">
           {exercises.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">No exercises. Add some below.</p>
+            <p className="text-xs text-muted-foreground text-center py-4">Sin ejercicios. Añade algunos abajo.</p>
           ) : (
             exercises.map((rde) => {
               const ex = exerciseMap[rde.exercise_id];
@@ -125,20 +125,20 @@ export default function DaySection({
                     onChange={(e) => setSelectedExId(e.target.value)}
                     className="flex-1 rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   >
-                    <option value="">Select exercise…</option>
+                    <option value="">Seleccionar ejercicio…</option>
                     {allExercises.map((ex) => (
                       <option key={ex.id} value={ex.id}>{ex.name}</option>
                     ))}
                   </select>
-                  <button onClick={handleAddExercise} className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">Add</button>
-                  <button onClick={() => setShowAddEx(false)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Cancel</button>
+                  <button onClick={handleAddExercise} className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
+                  <button onClick={() => setShowAddEx(false)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Cancelar</button>
                 </div>
               ) : (
                 <button
                   onClick={() => setShowAddEx(true)}
                   className="w-full rounded-md border border-dashed py-2 text-xs text-muted-foreground hover:bg-secondary/50"
                 >
-                  + Add exercise
+                  + Añadir ejercicio
                 </button>
               )}
             </div>

@@ -33,6 +33,30 @@ export default function DashboardPage() {
   const repo = createWorkoutRepository(client);
   const exRepo = createExerciseRepository(client);
 
+  const loadWorkoutForDate = useCallback(async (date: string, uid: string) => {
+    const { data: workout } = await repo.getWorkoutByDate(date);
+    if (!workout) { return; }
+    const { data: wExercises } = await repo.getWorkoutExercises(workout.id);
+    const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
+    for (const we of wExercises ?? []) {
+      const { data: wSets } = await repo.getSets(we.id);
+      setsMap[we.id] = (wSets ?? []).map((s) => ({
+        id: s.id, workout_exercise_id: s.workout_exercise_id,
+        weight: s.weight ?? undefined, reps: s.reps ?? undefined,
+        distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
+        is_complete: s.is_complete, comment: s.comment ?? undefined,
+        order_index: s.order_index,
+      }));
+    }
+    loadWorkout(
+      { id: workout.id, date: workout.date, comment: workout.comment ?? undefined, start_time: workout.start_time ?? undefined, end_time: workout.end_time ?? undefined, duration_minutes: workout.duration_minutes ?? undefined },
+      (wExercises ?? []).map((we) => ({ id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id, order_index: we.order_index, group_id: we.group_id ?? undefined })),
+      setsMap
+    );
+    if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -67,30 +91,6 @@ export default function DashboardPage() {
       setLoading(false);
     }
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadWorkoutForDate = useCallback(async (date: string, uid: string) => {
-    const { data: workout } = await repo.getWorkoutByDate(date);
-    if (!workout) { return; }
-    const { data: wExercises } = await repo.getWorkoutExercises(workout.id);
-    const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
-    for (const we of wExercises ?? []) {
-      const { data: wSets } = await repo.getSets(we.id);
-      setsMap[we.id] = (wSets ?? []).map((s) => ({
-        id: s.id, workout_exercise_id: s.workout_exercise_id,
-        weight: s.weight ?? undefined, reps: s.reps ?? undefined,
-        distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
-        is_complete: s.is_complete, comment: s.comment ?? undefined,
-        order_index: s.order_index,
-      }));
-    }
-    loadWorkout(
-      { id: workout.id, date: workout.date, comment: workout.comment ?? undefined, start_time: workout.start_time ?? undefined, end_time: workout.end_time ?? undefined, duration_minutes: workout.duration_minutes ?? undefined },
-      (wExercises ?? []).map((we) => ({ id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id, order_index: we.order_index, group_id: we.group_id ?? undefined })),
-      setsMap
-    );
-    if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -137,7 +137,7 @@ export default function DashboardPage() {
         <button onClick={() => handleDateChange(-1)} className="rounded-md border px-2 py-1 text-sm hover:bg-secondary">←</button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            {currentDate === today ? "Today's Workout" : "Workout"}
+            {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
           </h1>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(currentDate)}</p>
         </div>
@@ -150,9 +150,9 @@ export default function DashboardPage() {
         </div>
       ) : !activeWorkout ? (
         <div className="rounded-lg border bg-card p-10 text-center space-y-4">
-          <p className="text-muted-foreground text-sm">No workout yet for this day.</p>
+          <p className="text-muted-foreground text-sm">Sin entrenamiento para este día.</p>
           <button onClick={handleStartWorkout} className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Start Workout
+            Iniciar entrenamiento
           </button>
         </div>
       ) : (
@@ -175,7 +175,7 @@ export default function DashboardPage() {
               onClick={() => setShowExPicker(true)}
               className="rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground hover:bg-secondary"
             >
-              + Exercise
+              + Ejercicio
             </button>
           </div>
 
@@ -187,11 +187,11 @@ export default function DashboardPage() {
                 onChange={(e) => setSelectedExId(e.target.value)}
                 className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
-                <option value="">Select exercise…</option>
+                <option value="">Seleccionar ejercicio…</option>
                 {exercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
               </select>
-              <button onClick={handleAddExercise} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Add</button>
-              <button onClick={() => setShowExPicker(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancel</button>
+              <button onClick={handleAddExercise} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
+              <button onClick={() => setShowExPicker(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
             </div>
           )}
 
@@ -207,7 +207,7 @@ export default function DashboardPage() {
             onClick={handleFinish}
             className="w-full rounded-lg border border-destructive py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
           >
-            Finish Workout
+            Finalizar entrenamiento
           </button>
         </div>
       )}
@@ -215,7 +215,7 @@ export default function DashboardPage() {
       {/* Recent workouts */}
       {workouts.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3">Recent Workouts</h2>
+          <h2 className="text-lg font-semibold mb-3">Entrenamientos recientes</h2>
           <div className="space-y-2">
             {workouts.slice(0, 5).map((w) => (
               <Link

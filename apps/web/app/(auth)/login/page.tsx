@@ -31,13 +31,13 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-          <p className="text-muted-foreground mt-2">Sign in to FitNotes App</p>
+          <h1 className="text-3xl font-bold tracking-tight">Bienvenido de nuevo</h1>
+          <p className="text-muted-foreground mt-2">Inicia sesión en FitNotes App</p>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-8 shadow-sm space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="email">Email</label>
+            <label className="text-sm font-medium" htmlFor="email">Correo electrónico</label>
             <input
               id="email"
               type="email"
@@ -51,7 +51,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="password">Password</label>
+            <label className="text-sm font-medium" htmlFor="password">Contraseña</label>
             <input
               id="password"
               type="password"
@@ -73,14 +73,14 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Iniciando sesión…" : "Iniciar sesión"}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          No account?{" "}
+          ¿No tienes cuenta?{" "}
           <Link href="/register" className="font-medium text-primary hover:underline">
-            Create one
+            Crear una
           </Link>
         </p>
       </div>

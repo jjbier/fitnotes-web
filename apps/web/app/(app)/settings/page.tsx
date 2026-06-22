@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const client = createBrowserClient();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     client.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
@@ -76,7 +77,7 @@ export default function SettingsPage() {
     setExportingWorkouts(true);
     try {
       const { data: workouts } = await client.from("workouts").select("*").order("date");
-      if (!workouts?.length) { alert("No workouts to export."); return; }
+      if (!workouts?.length) { alert("No hay entrenamientos para exportar."); return; }
 
       const weIds: string[] = [];
       const weByWorkout: Record<string, { id: string; exercise_id: string; order_index: number }[]> = {};
@@ -160,35 +161,42 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleDeleteAccount() {
+    const { error } = await client.rpc("delete_user");
+    if (error) { alert(`Error al eliminar la cuenta: ${error.message}`); return; }
+    await client.auth.signOut();
+    window.location.href = "/login";
+  }
+
   async function handleDeleteHistory() {
     const { data: { user } } = await client.auth.getUser();
     if (!user) return;
     await client.from("workouts").delete().eq("user_id", user.id);
     setDeleteHistoryConfirm(false);
-    alert("Workout history deleted.");
+    alert("Historial de entrenamientos eliminado.");
   }
 
   const themeOptions = [
-    { value: "light", label: "Light" },
-    { value: "system", label: "System" },
-    { value: "dark", label: "Dark" },
+    { value: "light", label: "Claro" },
+    { value: "system", label: "Sistema" },
+    { value: "dark", label: "Oscuro" },
   ] as const;
 
   return (
     <div className="space-y-8 max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
 
       {/* Profile */}
       <section className="rounded-lg border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Profile</h2>
+        <h2 className="font-semibold">Perfil</h2>
         {email && <p className="text-sm text-muted-foreground">{email}</p>}
         <form onSubmit={handleSaveProfile} className="space-y-3">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Display name</label>
+            <label className="text-xs font-medium text-muted-foreground">Nombre de usuario</label>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
+              placeholder="Tu nombre"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
             />
           </div>
@@ -197,20 +205,20 @@ export default function SettingsPage() {
             disabled={saveStatus === "saving"}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved!" : saveStatus === "error" ? "Error — try again" : "Save changes"}
+            {saveStatus === "saving" ? "Guardando…" : saveStatus === "saved" ? "¡Guardado!" : saveStatus === "error" ? "Error — intentar de nuevo" : "Guardar cambios"}
           </button>
         </form>
       </section>
 
       {/* Preferences */}
       <section className="rounded-lg border bg-card p-6 space-y-5">
-        <h2 className="font-semibold">Preferences</h2>
+        <h2 className="font-semibold">Preferencias</h2>
 
         {/* Weight unit */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Default weight unit</p>
-            <p className="text-xs text-muted-foreground">Used across the app for weight display</p>
+            <p className="text-sm font-medium">Unidad de peso predeterminada</p>
+            <p className="text-xs text-muted-foreground">Usada en toda la app para mostrar el peso</p>
           </div>
           <div className="flex rounded-md border overflow-hidden">
             <button
@@ -231,8 +239,8 @@ export default function SettingsPage() {
         {/* Theme */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Theme</p>
-            <p className="text-xs text-muted-foreground">Light, dark, or follow system preference</p>
+            <p className="text-sm font-medium">Tema</p>
+            <p className="text-xs text-muted-foreground">Claro, oscuro o seguir preferencia del sistema</p>
           </div>
           {mounted && (
             <div className="flex rounded-md border overflow-hidden">
@@ -252,87 +260,87 @@ export default function SettingsPage() {
 
       {/* Data */}
       <section className="rounded-lg border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Data</h2>
+        <h2 className="font-semibold">Datos</h2>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Export workouts</p>
-            <p className="text-xs text-muted-foreground">Download all workouts as CSV</p>
+            <p className="text-sm font-medium">Exportar entrenamientos</p>
+            <p className="text-xs text-muted-foreground">Descargar todos los entrenamientos en CSV</p>
           </div>
           <button
             onClick={handleExportWorkouts}
             disabled={exportingWorkouts}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {exportingWorkouts ? "Exporting…" : "Export CSV"}
+            {exportingWorkouts ? "Exportando…" : "Exportar CSV"}
           </button>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Export body tracker</p>
-            <p className="text-xs text-muted-foreground">Download all measurements as CSV</p>
+            <p className="text-sm font-medium">Exportar medidas corporales</p>
+            <p className="text-xs text-muted-foreground">Descargar todas las medidas en CSV</p>
           </div>
           <button
             onClick={handleExportBodyTracker}
             disabled={exportingBody}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {exportingBody ? "Exporting…" : "Export CSV"}
+            {exportingBody ? "Exportando…" : "Exportar CSV"}
           </button>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Sign out from all devices</p>
-            <p className="text-xs text-muted-foreground">Invalidates all active sessions</p>
+            <p className="text-sm font-medium">Cerrar sesión en todos los dispositivos</p>
+            <p className="text-xs text-muted-foreground">Invalida todas las sesiones activas</p>
           </div>
           <button
             onClick={handleSignOutAll}
             disabled={signOutLoading}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            Sign out all
+            Cerrar todas las sesiones
           </button>
         </div>
       </section>
 
       {/* Account */}
       <section className="rounded-lg border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Account</h2>
+        <h2 className="font-semibold">Cuenta</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Sign out</p>
-            <p className="text-xs text-muted-foreground">Sign out of your account on this device</p>
+            <p className="text-sm font-medium">Cerrar sesión</p>
+            <p className="text-xs text-muted-foreground">Cerrar sesión en este dispositivo</p>
           </div>
           <button
             onClick={handleSignOut}
             disabled={signOutLoading}
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {signOutLoading ? "Signing out…" : "Sign out"}
+            {signOutLoading ? "Cerrando sesión…" : "Cerrar sesión"}
           </button>
         </div>
       </section>
 
       {/* Danger Zone */}
       <section className="rounded-lg border border-destructive/50 bg-card p-6 space-y-4">
-        <h2 className="font-semibold text-destructive">Danger Zone</h2>
+        <h2 className="font-semibold text-destructive">Zona de peligro</h2>
 
         {/* Delete workout history */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Delete workout history</p>
-            <p className="text-xs text-muted-foreground">Permanently removes all workout data. Cannot be undone.</p>
+            <p className="text-sm font-medium">Eliminar historial de entrenamientos</p>
+            <p className="text-xs text-muted-foreground">Elimina permanentemente todos los datos de entrenamiento. No se puede deshacer.</p>
           </div>
           {deleteHistoryConfirm ? (
             <div className="flex gap-2">
-              <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancel</button>
-              <button onClick={handleDeleteHistory} className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirm</button>
+              <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
+              <button onClick={handleDeleteHistory} className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirmar</button>
             </div>
           ) : (
             <button onClick={() => setDeleteHistoryConfirm(true)} className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
-              Delete history
+              Eliminar historial
             </button>
           )}
         </div>
@@ -340,17 +348,17 @@ export default function SettingsPage() {
         {/* Delete account */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Delete account</p>
-            <p className="text-xs text-muted-foreground">Permanently removes all your data. Cannot be undone.</p>
+            <p className="text-sm font-medium">Eliminar cuenta</p>
+            <p className="text-xs text-muted-foreground">Elimina permanentemente todos tus datos. No se puede deshacer.</p>
           </div>
           {deleteAccountConfirm ? (
             <div className="flex gap-2">
-              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancel</button>
-              <button className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirm delete</button>
+              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
+              <button onClick={handleDeleteAccount} className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirmar eliminación</button>
             </div>
           ) : (
             <button onClick={() => setDeleteAccountConfirm(true)} className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
-              Delete account
+              Eliminar cuenta
             </button>
           )}
         </div>

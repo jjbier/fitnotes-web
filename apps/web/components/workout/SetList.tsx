@@ -27,7 +27,7 @@ export default function SetList({
   if (sets.length === 0) {
     return (
       <p className="py-4 text-sm text-center text-muted-foreground">
-        No sets logged yet.
+        Sin series registradas todavía.
       </p>
     );
   }

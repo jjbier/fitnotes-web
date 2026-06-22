@@ -68,7 +68,7 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
                 type="number"
                 value={set.time_seconds ?? ""}
                 onChange={(e) => onUpdate(set.id, { time_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
-                placeholder="sec"
+                placeholder="seg"
                 min="0"
                 className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
               />
@@ -82,7 +82,7 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
               type="number"
               value={set.time_seconds ?? ""}
               onChange={(e) => onUpdate(set.id, { time_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
-              placeholder="sec"
+              placeholder="seg"
               min="0"
               className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
             />
@@ -91,7 +91,7 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
         )}
       </div>
 
-      {isPR && <span title="Personal Record" className="text-amber-500 shrink-0">🏆</span>}
+      {isPR && <span title="Récord personal" className="text-amber-500 shrink-0">🏆</span>}
       {set.comment && <span title={set.comment} className="text-blue-500 text-xs shrink-0">💬</span>}
 
       <button onClick={() => onDelete(set.id)} className="text-muted-foreground hover:text-destructive text-xs shrink-0">✕</button>

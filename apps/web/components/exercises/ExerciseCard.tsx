@@ -5,11 +5,11 @@ import type { Exercise } from "@fitnotes/core";
 import { useState } from "react";
 
 const TYPE_BADGE: Record<ExerciseType, string> = {
-  [ExerciseType.WEIGHT_REPS]: "Wt × Reps",
-  [ExerciseType.DISTANCE_TIME]: "Dist / Time",
+  [ExerciseType.WEIGHT_REPS]: "Peso × Reps",
+  [ExerciseType.DISTANCE_TIME]: "Dist / Tiempo",
   [ExerciseType.REPS_ONLY]: "Reps",
-  [ExerciseType.WEIGHT_ONLY]: "Weight",
-  [ExerciseType.TIME_ONLY]: "Time",
+  [ExerciseType.WEIGHT_ONLY]: "Peso",
+  [ExerciseType.TIME_ONLY]: "Tiempo",
 };
 
 interface Props {
@@ -41,7 +41,7 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onToggleFavor
         <button
           onClick={() => onToggleFavorite(exercise.id, exercise.is_favorite)}
           className="p-1.5 rounded-md hover:bg-secondary transition-colors"
-          aria-label={exercise.is_favorite ? "Remove from favorites" : "Add to favorites"}
+          aria-label={exercise.is_favorite ? "Quitar de favoritos" : "Añadir a favoritos"}
         >
           {exercise.is_favorite ? (
             <span className="text-primary text-base">★</span>
@@ -55,7 +55,7 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onToggleFavor
           <button
             onClick={() => setMenuOpen((o) => !o)}
             className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground"
-            aria-label="Options"
+            aria-label="Opciones"
           >
             ⋯
           </button>
@@ -71,13 +71,13 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onToggleFavor
                   onClick={() => { onEdit(exercise); setMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-secondary"
                 >
-                  Edit
+                  Editar
                 </button>
                 <button
                   onClick={() => { onDelete(exercise.id); setMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary"
                 >
-                  Delete
+                  Eliminar
                 </button>
               </div>
             </>

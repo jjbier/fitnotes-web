@@ -32,7 +32,7 @@ export default function NavigationPanel({
   return (
     <div className="flex flex-col gap-1">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-1 mb-2">
-        Exercises
+        Ejercicios
       </h3>
 
       {workoutExercises.map((we) => {
@@ -51,7 +51,7 @@ export default function NavigationPanel({
                 : "hover:bg-secondary"
             }`}
           >
-            <span className="truncate">{exercise?.name ?? "Unknown"}</span>
+            <span className="truncate">{exercise?.name ?? "Desconocido"}</span>
             <span
               className={`ml-2 text-xs shrink-0 ${
                 isActive ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -68,7 +68,7 @@ export default function NavigationPanel({
         className="mt-2 flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-secondary"
       >
         <span>+</span>
-        Add exercise
+        Agregar ejercicio
       </button>
     </div>
   );

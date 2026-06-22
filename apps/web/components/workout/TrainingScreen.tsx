@@ -74,12 +74,12 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
           {exerciseType.replace(/_/g, " ").toLowerCase()}
         </span>
         <span className="ml-auto text-xs text-muted-foreground">
-          {exerciseSets.filter((s) => s.is_complete).length}/{exerciseSets.length} complete
+          {exerciseSets.filter((s) => s.is_complete).length}/{exerciseSets.length} completadas
         </span>
       </div>
 
       {exerciseSets.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No sets yet.</p>
+        <p className="text-xs text-muted-foreground">Sin series todavía.</p>
       ) : (
         <div className="space-y-1.5">
           {exerciseSets.map((s) => (
@@ -100,7 +100,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
         disabled={saving}
         className="w-full rounded-lg border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50 disabled:opacity-50"
       >
-        {saving ? "Adding…" : "+ Add Set"}
+        {saving ? "Agregando…" : "+ Agregar serie"}
       </button>
     </div>
   );

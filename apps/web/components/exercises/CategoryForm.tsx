@@ -23,12 +23,12 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError("Name is required"); return; }
+    if (!name.trim()) { setError("El nombre es obligatorio"); return; }
     setLoading(true);
     try {
       await onSubmit({ name: name.trim(), color });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Algo ha salido mal");
     } finally {
       setLoading(false);
     }
@@ -37,12 +37,12 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <label className="text-sm font-medium" htmlFor="cat-name">Name</label>
+        <label className="text-sm font-medium" htmlFor="cat-name">Nombre</label>
         <input
           id="cat-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Chest"
+          placeholder="p.ej. Pecho"
           className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />
@@ -84,14 +84,14 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
           onClick={onCancel}
           className="flex-1 rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
         >
-          Cancel
+          Cancelar
         </button>
         <button
           type="submit"
           disabled={loading}
           className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {loading ? "Saving…" : initial?.id ? "Update" : "Create"}
+          {loading ? "Guardando…" : initial?.id ? "Actualizar" : "Crear"}
         </button>
       </div>
     </form>

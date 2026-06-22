@@ -57,7 +57,7 @@ export default function SetForm({
     <form onSubmit={handleSubmit} className="flex items-end gap-3 rounded-md border bg-secondary/30 px-4 py-3">
       {showWeight && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Weight (kg)</label>
+          <label className="text-xs text-muted-foreground">Peso (kg)</label>
           <input
             type="number"
             inputMode="decimal"
@@ -71,7 +71,7 @@ export default function SetForm({
 
       {showReps && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Reps</label>
+          <label className="text-xs text-muted-foreground">Repeticiones</label>
           <input
             type="number"
             inputMode="numeric"
@@ -85,7 +85,7 @@ export default function SetForm({
 
       {showDistance && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Distance (km)</label>
+          <label className="text-xs text-muted-foreground">Distancia (km)</label>
           <input
             type="number"
             inputMode="decimal"
@@ -99,7 +99,7 @@ export default function SetForm({
 
       {showTime && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Time (s)</label>
+          <label className="text-xs text-muted-foreground">Tiempo (s)</label>
           <input
             type="number"
             inputMode="numeric"
@@ -118,14 +118,14 @@ export default function SetForm({
             onClick={onCancel}
             className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"
           >
-            Cancel
+            Cancelar
           </button>
         )}
         <button
           type="submit"
           className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Log Set
+          Registrar serie
         </button>
       </div>
     </form>

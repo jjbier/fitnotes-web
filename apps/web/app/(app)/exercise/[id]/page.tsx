@@ -7,7 +7,7 @@ import { useExerciseStore, filterExercises, ExerciseType } from "@fitnotes/core"
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 import ExerciseCard from "@/components/exercises/ExerciseCard";
 import ExerciseForm from "@/components/exercises/ExerciseForm";
-import type { Exercise } from "@fitnotes/core";
+import type { Exercise, Category } from "@fitnotes/core";
 
 function useDebounce<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
@@ -26,6 +26,7 @@ export default function ExerciseCategoryPage() {
   const isLoading = useExerciseStore((s) => s.isLoading);
   const loadExercises = useExerciseStore((s) => s.loadExercises);
   const addExercise = useExerciseStore((s) => s.addExercise);
+  const addCategory = useExerciseStore((s) => s.addCategory);
   const updateExercise = useExerciseStore((s) => s.updateExercise);
   const deleteExercise = useExerciseStore((s) => s.deleteExercise);
   const toggleFavorite = useExerciseStore((s) => s.toggleFavorite);
@@ -102,6 +103,15 @@ export default function ExerciseCategoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const handleCreateCategory = useCallback(async (data: { name: string; color: string }): Promise<Category> => {
+    const { data: created, error } = await repo.createCategory(data, userId);
+    if (error) throw new Error(error.message);
+    const cat: Category = { id: created.id, name: created.name, color: created.color, order_index: created.order_index };
+    addCategory(cat);
+    return cat;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   const handleUpdate = useCallback(async (data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
   }) => {
@@ -120,7 +130,7 @@ export default function ExerciseCategoryPage() {
   }, [editing]);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this exercise and all its history?")) return;
+    if (!confirm("¿Eliminar este ejercicio y todo su historial?")) return;
     const { error } = await repo.deleteExercise(id);
     if (error) return;
     deleteExercise(id);
@@ -131,13 +141,13 @@ export default function ExerciseCategoryPage() {
     toggleFavorite(id);
   }
 
-  const pageTitle = isFavoritesView ? "★ Favorites" : (category?.name ?? "Exercises");
+  const pageTitle = isFavoritesView ? "★ Favoritos" : (category?.name ?? "Ejercicios");
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/exercise" className="text-muted-foreground hover:text-foreground text-sm">← Categories</Link>
+        <Link href="/exercise" className="text-muted-foreground hover:text-foreground text-sm">← Categorías</Link>
         <span className="text-muted-foreground">/</span>
         <div className="flex items-center gap-2 flex-1">
           {category?.color && (
@@ -150,7 +160,7 @@ export default function ExerciseCategoryPage() {
             onClick={() => setShowForm(true)}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            + New Exercise
+            + Nuevo ejercicio
           </button>
         )}
       </div>
@@ -160,19 +170,20 @@ export default function ExerciseCategoryPage() {
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search exercises… (e.g. &quot;dum press&quot;)"
+        placeholder="Buscar ejercicios… (p. ej. &quot;press manc&quot;)"
         className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
       {/* New form */}
       {showForm && (
         <div className="rounded-lg border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">New Exercise</h2>
+          <h2 className="text-sm font-semibold mb-4">Nuevo ejercicio</h2>
           <ExerciseForm
             categories={categories}
             initial={{ category_id: isFavoritesView ? undefined : categoryId }}
             onSubmit={handleCreate}
             onCancel={() => setShowForm(false)}
+            onCreateCategory={handleCreateCategory}
           />
         </div>
       )}
@@ -180,12 +191,13 @@ export default function ExerciseCategoryPage() {
       {/* Edit form */}
       {editing && (
         <div className="rounded-lg border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">Edit Exercise</h2>
+          <h2 className="text-sm font-semibold mb-4">Editar ejercicio</h2>
           <ExerciseForm
             categories={categories}
             initial={editing}
             onSubmit={handleUpdate}
             onCancel={() => setEditing(null)}
+            onCreateCategory={handleCreateCategory}
           />
         </div>
       )}
@@ -199,7 +211,7 @@ export default function ExerciseCategoryPage() {
         </div>
       ) : sorted.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-          {search ? `No exercises matching "${search}"` : "No exercises yet. Add your first one!"}
+          {search ? `Sin ejercicios que coincidan con "${search}"` : "Sin ejercicios aún. ¡Añade el primero!"}
         </div>
       ) : (
         <div className="space-y-2">

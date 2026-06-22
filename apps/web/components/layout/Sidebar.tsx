@@ -5,14 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { createBrowserClient } from "@fitnotes/database";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Today", icon: "🏠" },
-  { href: "/calendar", label: "Calendar", icon: "📅" },
-  { href: "/exercise", label: "Exercises", icon: "💪" },
-  { href: "/progress", label: "Progress", icon: "📈" },
-  { href: "/routines", label: "Routines", icon: "📋" },
-  { href: "/body-tracker", label: "Body Tracker", icon: "⚖️" },
-  { href: "/tools", label: "Tools", icon: "🔧" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },
+  { href: "/dashboard", label: "Hoy", icon: "🏠" },
+  { href: "/calendar", label: "Calendario", icon: "📅" },
+  { href: "/exercise", label: "Ejercicios", icon: "💪" },
+  { href: "/progress", label: "Progreso", icon: "📈" },
+  { href: "/routines", label: "Rutinas", icon: "📋" },
+  { href: "/body-tracker", label: "Medidas corporales", icon: "⚖️" },
+  { href: "/tools", label: "Herramientas", icon: "🔧" },
+  { href: "/settings", label: "Configuración", icon: "⚙️" },
 ] as const;
 
 export default function Sidebar() {
@@ -29,10 +29,10 @@ export default function Sidebar() {
   return (
     <aside className="hidden md:flex w-60 flex-col border-r bg-card min-h-screen">
       {/* Brand */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b">
+      <Link href="/dashboard" className="flex items-center gap-2 px-6 py-5 border-b hover:bg-secondary/50 transition-colors">
         <span className="text-2xl">🏋️</span>
         <span className="font-bold text-lg">FitNotes</span>
-      </div>
+      </Link>
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1">
@@ -62,13 +62,13 @@ export default function Sidebar() {
             U
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Account</p>
+            <p className="text-sm font-medium truncate">Cuenta</p>
           </div>
           <button
             onClick={handleSignOut}
             className="text-xs text-muted-foreground hover:text-foreground"
-            title="Sign out"
-            aria-label="Sign out"
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
           >
             ↩
           </button>

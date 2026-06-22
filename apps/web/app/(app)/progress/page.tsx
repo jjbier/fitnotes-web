@@ -75,24 +75,24 @@ export default function ProgressPage() {
   const selectedExercise = exercises.find((e) => e.id === selectedExId);
 
   const metricLabel: Record<ChartMetric, string> = {
-    maxWeight: "Max Weight (kg)",
-    totalVolume: "Total Volume (kg)",
-    maxReps: "Max Reps",
+    maxWeight: "Peso máx. (kg)",
+    totalVolume: "Volumen total (kg)",
+    maxReps: "Reps máx.",
   };
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Progreso</h1>
 
       {/* Exercise selector */}
       <div>
-        <label className="block text-xs font-medium mb-1 text-muted-foreground">Exercise</label>
+        <label className="block text-xs font-medium mb-1 text-muted-foreground">Ejercicio</label>
         <select
           value={selectedExId}
           onChange={(e) => handleExerciseChange(e.target.value)}
           className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">Select an exercise…</option>
+          <option value="">Seleccionar un ejercicio…</option>
           {exercises.map((ex) => (
             <option key={ex.id} value={ex.id}>{ex.name}</option>
           ))}
@@ -102,13 +102,13 @@ export default function ProgressPage() {
       {!selectedExId ? (
         /* All-exercise PR summary */
         <div className="rounded-lg border bg-card p-5">
-          <h2 className="font-semibold mb-4">All Personal Records</h2>
+          <h2 className="font-semibold mb-4">Todos los récords personales</h2>
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => <div key={i} className="h-10 rounded bg-secondary/30 animate-pulse" />)}
             </div>
           ) : Object.keys(personalRecords).length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No personal records yet. Complete sets to automatically track your bests.</p>
+            <p className="text-sm text-muted-foreground text-center py-6">Sin récords personales aún. Completa series para que se registren automáticamente.</p>
           ) : (
             <div className="space-y-2">
               {Object.entries(personalRecords).map(([exId, prs]) => {
@@ -134,7 +134,7 @@ export default function ProgressPage() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-lg">{selectedExercise?.name}</h2>
-            {isLoading && <span className="text-xs text-muted-foreground animate-pulse">Loading…</span>}
+            {isLoading && <span className="text-xs text-muted-foreground animate-pulse">Cargando…</span>}
           </div>
 
           {/* Tabs */}
@@ -143,9 +143,9 @@ export default function ProgressPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize ${activeTab === tab ? "bg-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium ${activeTab === tab ? "bg-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
               >
-                {tab}
+                {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : "Historial"}
               </button>
             ))}
           </div>
@@ -154,16 +154,16 @@ export default function ProgressPage() {
           {activeTab === "records" && (
             <div className="space-y-2">
               {exPRs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No records for this exercise yet.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">Sin récords para este ejercicio aún.</p>
               ) : (
                 exPRs.map((pr) => (
                   <div key={pr.id} className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
                     <div>
-                      <span className="font-medium">{pr.reps} Rep Max</span>
+                      <span className="font-medium">Máx. {pr.reps} rep</span>
                       <span className="ml-2 text-muted-foreground">{pr.weight} kg</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs text-muted-foreground">Est. 1RM </span>
+                      <span className="text-xs text-muted-foreground">1RM est. </span>
                       <span className="font-semibold text-primary">{calculate1RM(pr.weight, pr.reps).toFixed(1)} kg</span>
                     </div>
                   </div>
@@ -189,7 +189,7 @@ export default function ProgressPage() {
 
               {exChartData.length === 0 ? (
                 <div className="rounded-lg border border-dashed h-48 flex items-center justify-center text-sm text-muted-foreground">
-                  No data yet. Complete sets to see your progress.
+                  Sin datos aún. Completa series para ver tu progreso.
                 </div>
               ) : (
                 <div className="rounded-lg border bg-card p-4">
@@ -220,15 +220,15 @@ export default function ProgressPage() {
           {activeTab === "history" && (
             <div className="space-y-2">
               {exChartData.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No workout history for this exercise.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">Sin historial de entrenamientos para este ejercicio.</p>
               ) : (
                 exChartData.slice().reverse().map((point) => (
                   <div key={point.date} className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
                     <span className="font-medium">{point.date}</span>
                     <div className="flex gap-4 text-muted-foreground text-xs">
-                      <span>{point.maxWeight} kg max</span>
-                      <span>{point.totalVolume.toFixed(0)} kg vol</span>
-                      <span>{point.maxReps} reps max</span>
+                      <span>{point.maxWeight} kg máx.</span>
+                      <span>{point.totalVolume.toFixed(0)} kg vol.</span>
+                      <span>{point.maxReps} reps máx.</span>
                     </div>
                   </div>
                 ))

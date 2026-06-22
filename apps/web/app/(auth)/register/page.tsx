@@ -15,8 +15,8 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (password !== confirm) { setError("Passwords do not match"); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    if (password !== confirm) { setError("Las contraseñas no coinciden"); return; }
+    if (password.length < 8) { setError("La contraseña debe tener al menos 8 caracteres"); return; }
     setLoading(true);
     const supabase = createBrowserClient();
     const { error: err } = await supabase.auth.signUp({ email, password });
@@ -33,13 +33,13 @@ export default function RegisterPage() {
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="w-full max-w-md text-center space-y-4">
           <div className="text-5xl">📬</div>
-          <h1 className="text-2xl font-bold">Check your email</h1>
+          <h1 className="text-2xl font-bold">Revisa tu correo</h1>
           <p className="text-muted-foreground">
-            We sent a confirmation link to <strong>{email}</strong>.
-            Click it to activate your account, then sign in.
+            Hemos enviado un enlace de confirmación a <strong>{email}</strong>.
+            Haz clic en él para activar tu cuenta e iniciar sesión.
           </p>
           <Link href="/login" className="inline-block mt-2 text-primary font-medium hover:underline">
-            Go to sign in →
+            Ir a iniciar sesión →
           </Link>
         </div>
       </div>
@@ -50,13 +50,13 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Create account</h1>
-          <p className="text-muted-foreground mt-2">Start tracking your fitness journey</p>
+          <h1 className="text-3xl font-bold tracking-tight">Crear cuenta</h1>
+          <p className="text-muted-foreground mt-2">Empieza a registrar tu progreso fitness</p>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-8 shadow-sm space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="email">Email</label>
+            <label className="text-sm font-medium" htmlFor="email">Correo electrónico</label>
             <input
               id="email"
               type="email"
@@ -70,13 +70,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="password">Password</label>
+            <label className="text-sm font-medium" htmlFor="password">Contraseña</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 8 characters"
+              placeholder="Mínimo 8 caracteres"
               required
               autoComplete="new-password"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -84,13 +84,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="confirm">Confirm password</label>
+            <label className="text-sm font-medium" htmlFor="confirm">Confirmar contraseña</label>
             <input
               id="confirm"
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Repeat password"
+              placeholder="Repite la contraseña"
               required
               autoComplete="new-password"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -106,14 +106,14 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? "Creando cuenta…" : "Crear cuenta"}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          ¿Ya tienes cuenta?{" "}
           <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in
+            Iniciar sesión
           </Link>
         </p>
       </div>

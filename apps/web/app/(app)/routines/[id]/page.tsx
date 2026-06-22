@@ -106,7 +106,7 @@ export default function RoutineDetailPage({ params }: Props) {
   }
 
   async function handleDeleteDay(dayId: string) {
-    if (!confirm("Delete this day and all its exercises?")) return;
+    if (!confirm("¿Eliminar este día y todos sus ejercicios?")) return;
     const { error } = await repo.deleteDay(dayId);
     if (error) return;
     deleteRoutineDay(routineId, dayId);
@@ -131,30 +131,30 @@ export default function RoutineDetailPage({ params }: Props) {
   }
 
   function handleLogAll(dayId: string) {
-    alert(`Log All for day ${dayId} — will be wired in Phase 3 (workout logging)`);
+    alert(`Registrar todo para el día ${dayId} — se conectará en la Fase 3 (registro de entrenamiento)`);
   }
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/routines" className="text-muted-foreground hover:text-foreground text-sm">← Routines</Link>
+        <Link href="/routines" className="text-muted-foreground hover:text-foreground text-sm">← Rutinas</Link>
         <span className="text-muted-foreground">/</span>
         <h1 className="text-2xl font-bold tracking-tight flex-1">
-          {routine?.name ?? "Routine"}
+          {routine?.name ?? "Rutina"}
         </h1>
         <button
           onClick={() => setEditMode((v) => !v)}
           className={`rounded-md border px-4 py-2 text-sm font-medium ${editMode ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
         >
-          {editMode ? "Done" : "Edit"}
+          {editMode ? "Hecho" : "Editar"}
         </button>
         {editMode && (
           <button
             onClick={() => setShowNewDay(true)}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            + Add Day
+            + Añadir día
           </button>
         )}
       </div>
@@ -172,11 +172,11 @@ export default function RoutineDetailPage({ params }: Props) {
             value={newDayName}
             onChange={(e) => setNewDayName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddDay()}
-            placeholder="Day name (e.g. Push, Pull, Legs)"
+            placeholder="Nombre del día (p. ej. Empuje, Tirón, Piernas)"
             className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <button onClick={handleAddDay} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Add</button>
-          <button onClick={() => setShowNewDay(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancel</button>
+          <button onClick={handleAddDay} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
+          <button onClick={() => setShowNewDay(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
         </div>
       )}
 
@@ -187,7 +187,7 @@ export default function RoutineDetailPage({ params }: Props) {
         </div>
       ) : days.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-          No days yet. Toggle Edit and add your first day.
+          Sin días aún. Activa Editar y añade tu primer día.
         </div>
       ) : (
         <div className="space-y-3">

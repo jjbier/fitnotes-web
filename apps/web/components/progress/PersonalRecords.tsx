@@ -21,9 +21,9 @@ export default function PersonalRecords({ records, exercises }: PersonalRecordsP
   if (records.length === 0) {
     return (
       <div className="rounded-md border border-dashed p-8 text-center">
-        <p className="text-sm text-muted-foreground">No personal records yet.</p>
+        <p className="text-sm text-muted-foreground">Sin récords personales aún.</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Complete sets to automatically track your PRs.
+          Completa series para registrar tus récords automáticamente.
         </p>
       </div>
     );
@@ -34,11 +34,11 @@ export default function PersonalRecords({ records, exercises }: PersonalRecordsP
       <table className="w-full text-sm">
         <thead className="bg-secondary/50">
           <tr>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Exercise</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Reps</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Weight</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Est. 1RM</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Date</th>
+            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ejercicio</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Repeticiones</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Peso</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">1RM est.</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Fecha</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -48,7 +48,7 @@ export default function PersonalRecords({ records, exercises }: PersonalRecordsP
             return (
               <tr key={pr.id} className="hover:bg-secondary/30">
                 <td className="px-4 py-3 font-medium">
-                  {exercise?.name ?? "Unknown"}
+                  {exercise?.name ?? "Desconocido"}
                 </td>
                 <td className="px-4 py-3 text-right">{pr.reps}</td>
                 <td className="px-4 py-3 text-right">

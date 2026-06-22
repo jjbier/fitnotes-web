@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TAB_ITEMS = [
-  { href: "/dashboard", label: "Today", icon: "🏠" },
-  { href: "/calendar", label: "Calendar", icon: "📅" },
-  { href: "/progress", label: "Progress", icon: "📈" },
-  { href: "/tools", label: "Tools", icon: "🔧" },
-  { href: "/settings", label: "Settings", icon: "⚙️" },
+  { href: "/dashboard", label: "Hoy", icon: "🏠" },
+  { href: "/calendar", label: "Calendario", icon: "📅" },
+  { href: "/progress", label: "Progreso", icon: "📈" },
+  { href: "/tools", label: "Herramientas", icon: "🔧" },
+  { href: "/settings", label: "Configuración", icon: "⚙️" },
 ] as const;
 
 export default function MobileNav() {

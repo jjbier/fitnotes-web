@@ -54,14 +54,14 @@ export default function RoutinesPage() {
   }, [editing]);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this routine and all its days?")) return;
+    if (!confirm("¿Eliminar esta rutina y todos sus días?")) return;
     const { error } = await repo.deleteRoutine(id);
     if (error) return;
     deleteRoutine(id);
   }
 
   async function handleCopy(routine: Routine) {
-    const { data, error } = await repo.copyRoutine(routine.id, `Copy of ${routine.name}`, userId);
+    const { data, error } = await repo.copyRoutine(routine.id, `Copia de ${routine.name}`, userId);
     if (error || !data) return;
     createRoutine({ id: data.id, name: data.name, notes: data.notes ?? undefined });
   }
@@ -69,25 +69,25 @@ export default function RoutinesPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Routines</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Rutinas</h1>
         <button
           onClick={() => setShowForm(true)}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          + New Routine
+          + Nueva rutina
         </button>
       </div>
 
       {showForm && (
         <div className="rounded-lg border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">New Routine</h2>
+          <h2 className="text-sm font-semibold mb-4">Nueva rutina</h2>
           <RoutineForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
         </div>
       )}
 
       {editing && (
         <div className="rounded-lg border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">Edit Routine</h2>
+          <h2 className="text-sm font-semibold mb-4">Editar rutina</h2>
           <RoutineForm initial={editing} onSubmit={handleUpdate} onCancel={() => setEditing(null)} />
         </div>
       )}
@@ -98,7 +98,7 @@ export default function RoutinesPage() {
         </div>
       ) : routines.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-          No routines yet. Create one to save your favourite workout templates.
+          Sin rutinas aún. Crea una para guardar tus plantillas de entrenamiento favoritas.
         </div>
       ) : (
         <div className="space-y-2">
@@ -109,16 +109,16 @@ export default function RoutinesPage() {
                 {r.notes && <p className="text-xs text-muted-foreground truncate">{r.notes}</p>}
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={() => handleCopy(r)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Copy</button>
-                <button onClick={() => setEditing(r)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Edit</button>
+                <button onClick={() => handleCopy(r)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Copiar</button>
+                <button onClick={() => setEditing(r)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Editar</button>
                 <Link href={`/routines/${r.id}`} className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-                  Open
+                  Abrir
                 </Link>
                 <button
                   onClick={() => handleDelete(r.id)}
                   className="rounded-md border px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
                 >
-                  Delete
+                  Eliminar
                 </button>
               </div>
             </div>

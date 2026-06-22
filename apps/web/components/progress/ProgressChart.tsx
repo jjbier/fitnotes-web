@@ -30,9 +30,9 @@ export default function ProgressChart({
   height = 220,
 }: ProgressChartProps) {
   const metricLabels = {
-    "1rm": "Estimated 1RM",
-    volume: "Total Volume",
-    best_weight: "Best Weight",
+    "1rm": "1RM estimado",
+    volume: "Volumen total",
+    best_weight: "Mejor peso",
   };
 
   if (data.length === 0) {
@@ -41,10 +41,10 @@ export default function ProgressChart({
         style={{ height }}
         className="flex flex-col items-center justify-center rounded-md border border-dashed gap-2"
       >
-        <p className="text-sm text-muted-foreground">No data yet</p>
+        <p className="text-sm text-muted-foreground">Sin datos aún</p>
         {exerciseName && (
           <p className="text-xs text-muted-foreground">
-            Log sets for {exerciseName} to see progress
+            Registra series de {exerciseName} para ver el progreso
           </p>
         )}
       </div>
@@ -61,7 +61,7 @@ export default function ProgressChart({
         )}
       </div>
       <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground">
-        Recharts LineChart — {data.length} data points
+        Recharts LineChart — {data.length} puntos de datos
         {/*
           TODO: implement with:
           import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"

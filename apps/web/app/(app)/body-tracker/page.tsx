@@ -85,7 +85,7 @@ export default function BodyTrackerPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Body Tracker</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Medidas corporales</h1>
         <div className="flex gap-1 rounded-lg border p-1">
           {(["track", "history"] as const).map((t) => (
             <button
@@ -93,7 +93,7 @@ export default function BodyTrackerPage() {
               onClick={() => { setTab(t); if (t === "history") loadHistory(); }}
               className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${tab === t ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
-              {t}
+              {t === "track" ? "Registrar" : "Historial"}
             </button>
           ))}
         </div>
@@ -107,7 +107,7 @@ export default function BodyTrackerPage() {
             </div>
           ) : enabledMeasurements.length === 0 ? (
             <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-              No measurements enabled. Add some in settings.
+              No hay medidas activas. Añade algunas en la configuración.
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
@@ -129,7 +129,7 @@ export default function BodyTrackerPage() {
                       onClick={() => setLogMeasurementId(m.id)}
                       className="mt-3 rounded-md border px-3 py-1 text-xs hover:bg-secondary"
                     >
-                      Log
+                      Registrar
                     </button>
                   </div>
                 );
@@ -141,7 +141,7 @@ export default function BodyTrackerPage() {
           {logMeasurementId && (
             <div className="rounded-lg border bg-card p-5">
               <h2 className="text-sm font-semibold mb-4">
-                Log {measurements.find((m) => m.id === logMeasurementId)?.name}
+                Registrar {measurements.find((m) => m.id === logMeasurementId)?.name}
               </h2>
               <form onSubmit={handleLog} className="space-y-3">
                 <div className="flex gap-2">
@@ -149,7 +149,7 @@ export default function BodyTrackerPage() {
                     type="number"
                     value={logValue}
                     onChange={(e) => setLogValue(e.target.value)}
-                    placeholder={measurements.find((m) => m.id === logMeasurementId)?.unit ?? "Value"}
+                    placeholder={measurements.find((m) => m.id === logMeasurementId)?.unit ?? "Valor"}
                     step="0.1"
                     autoFocus
                     className="w-32 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -158,14 +158,14 @@ export default function BodyTrackerPage() {
                     type="text"
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}
-                    placeholder="Comment (optional)"
+                    placeholder="Comentario (opcional)"
                     className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setLogMeasurementId("")} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancel</button>
+                  <button type="button" onClick={() => setLogMeasurementId("")} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
                   <button type="submit" disabled={saving} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                    {saving ? "Saving…" : "Save"}
+                    {saving ? "Guardando…" : "Guardar"}
                   </button>
                 </div>
               </form>
@@ -175,7 +175,7 @@ export default function BodyTrackerPage() {
       ) : (
         <div className="space-y-2">
           {historyEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No entries yet.</p>
+            <p className="text-sm text-muted-foreground text-center py-8">Sin registros aún.</p>
           ) : (
             historyEntries.map((entry) => {
               const m = measurements.find((m) => m.id === entry.measurement_id);
