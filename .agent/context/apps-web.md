@@ -1,60 +1,35 @@
 # apps/web — Next.js 15
 
+_Last updated: 2026-06-22_
+
 ## Config
 - `next.config.ts` → `transpilePackages: ["@fitnotes/core", "@fitnotes/database", "@fitnotes/ui"]`
-- Tailwind v4 via `@tailwindcss/postcss` (no `tailwind.config.js` — config en CSS)
-- CSS vars en `app/globals.css` con tokens de shadcn/ui
-- `lib/utils.ts` → `cn()` con clsx + tailwind-merge
+- Tailwind v4 via `@tailwindcss/postcss` (no `tailwind.config.js`)
+- `middleware.ts` → guard server-side, redirige a `/login` si no hay sesión
+- ESLint v9 flat config en `eslint.config.mjs`
 
 ## Estructura App Router
 
 ```
 app/
-├── layout.tsx              RootLayout — TODO: SessionContextProvider
-├── page.tsx                redirect → /dashboard
-├── (auth)/
-│   ├── login/page.tsx      form email+password + magic link
-│   └── register/page.tsx   form registro
+├── page.tsx                → redirect /dashboard
+├── (auth)/login/           email + password
+├── (auth)/register/
 └── (app)/
     ├── layout.tsx          AppLayout — Sidebar + MobileNav
-    ├── dashboard/          today's workout
-    ├── workout/[date]/     workout por fecha ISO
-    ├── exercise/           catálogo
-    ├── exercise/[id]/      detalle + stats
-    ├── progress/           PRs + gráficas
-    ├── calendar/           mes + lista
+    ├── dashboard/          workout del día, picker ejercicios, sets CRUD
+    ├── exercise/           catálogo — "+ Nuevo ejercicio" directo, categoría inline con color
+    ├── exercise/[id]/      detalle + historial sets
+    ├── progress/           PRs + Recharts LineChart
+    ├── calendar/           mes + lista + popup día
     ├── routines/           lista rutinas
-    ├── routines/[id]/      editor rutina
-    ├── body-tracker/       medidas corporales
-    └── settings/           ajustes + danger zone
+    ├── routines/[id]/      editor: días, ejercicios, sets predefinidos
+    ├── body-tracker/       medidas, log inline, historial
+    ├── tools/              1RM / Set% / Plate calculators
+    └── settings/           perfil, unidad, export CSV, sign-out, delete account
 ```
 
-## Componentes
-
-### `components/workout/`
-| Componente | Estado |
-|---|---|
-| `TrainingScreen.tsx` | Stub funcional — muestra sets, botón Add Set y Finish |
-| `SetList.tsx` | Stub funcional — renderiza sets con complete toggle y delete |
-| `SetForm.tsx` | **Lógica real** — inputs dinámicos según `ExerciseType`, `"use client"` |
-| `NavigationPanel.tsx` | Stub funcional — lista ejercicios del workout, active highlight |
-
-### `components/progress/`
-| Componente | Estado |
-|---|---|
-| `ProgressChart.tsx` | Stub — estructura Recharts comentada, necesita implementación |
-| `PersonalRecords.tsx` | Funcional — tabla con `calculate1RM` real |
-
-### `components/layout/`
-| Componente | Estado |
-|---|---|
-| `Sidebar.tsx` | Funcional pero sin `usePathname` — active state no funciona |
-| `MobileNav.tsx` | Funcional pero sin `usePathname` — active state no funciona |
-
-## Pendiente crítico
-
-1. Auth middleware server-side (`middleware.ts` en raíz del app)
-2. Supabase queries en cada page (actualmente datos placeholder)
-3. `shadcn/ui` no inicializado — no existe `components.json`; los componentes usan clases Tailwind directamente
-4. `Sidebar` y `MobileNav` necesitan `"use client"` + `usePathname()`
-5. `ProgressChart` necesita implementación Recharts
+## Notas
+- Sidebar logo → `<Link href="/dashboard">`, active state via `usePathname`
+- `shadcn/ui` NO inicializado — incompatible con ESLint v9 flat config
+- Todo en español
