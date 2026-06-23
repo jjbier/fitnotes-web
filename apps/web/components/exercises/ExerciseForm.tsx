@@ -10,6 +10,11 @@ const TYPE_LABELS: Record<ExerciseType, string> = {
   [ExerciseType.REPS_ONLY]: "Solo repeticiones",
   [ExerciseType.WEIGHT_ONLY]: "Solo peso",
   [ExerciseType.TIME_ONLY]: "Solo tiempo",
+  [ExerciseType.WEIGHT_DISTANCE]: "Peso + Distancia",
+  [ExerciseType.WEIGHT_TIME]: "Peso + Tiempo",
+  [ExerciseType.REPS_DISTANCE]: "Reps + Distancia",
+  [ExerciseType.REPS_TIME]: "Reps + Tiempo",
+  [ExerciseType.DISTANCE_ONLY]: "Solo distancia",
 };
 
 const PRESET_COLORS = [
@@ -30,11 +35,12 @@ interface Props {
   categories: Category[];
   initial?: Partial<Exercise>;
   onSubmit: (data: FormData) => Promise<void>;
+  onSaveAndNew?: (data: FormData) => Promise<void>;
   onCancel: () => void;
   onCreateCategory?: (data: { name: string; color: string }) => Promise<Category>;
 }
 
-export default function ExerciseForm({ categories, initial, onSubmit, onCancel, onCreateCategory }: Props) {
+export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndNew, onCancel, onCreateCategory }: Props) {
   const [form, setForm] = useState<FormData>({
     name: initial?.name ?? "",
     category_id: initial?.category_id ?? (categories[0]?.id ?? ""),
@@ -72,18 +78,46 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function performSave(andNew: boolean) {
     if (!form.name.trim()) { setError("El nombre es obligatorio"); return; }
     if (!form.category_id) { setError("Selecciona o crea una categoría"); return; }
+
+    // Warn if type changed when editing
+    if (initial?.id && form.type !== initial.type) {
+      const ok = window.confirm(
+        "Cambiar el tipo eliminará los campos que no existen en el nuevo tipo del historial de este ejercicio. ¿Continuar?"
+      );
+      if (!ok) return;
+    }
+
+    // Warn if weight unit changed when editing
+    const isWeightType = [ExerciseType.WEIGHT_REPS, ExerciseType.WEIGHT_ONLY, ExerciseType.WEIGHT_DISTANCE, ExerciseType.WEIGHT_TIME].includes(form.type);
+    if (initial?.id && isWeightType && initial.weight_unit && form.weight_unit !== initial.weight_unit) {
+      const ok = window.confirm(
+        `¿Cambiar la unidad a ${form.weight_unit}? Los valores del historial no se convertirán automáticamente.`
+      );
+      if (!ok) return;
+    }
+
     setLoading(true);
+    setError("");
     try {
-      await onSubmit({ ...form, name: form.name.trim() });
+      if (andNew && onSaveAndNew) {
+        await onSaveAndNew({ ...form, name: form.name.trim() });
+        setForm((prev) => ({ ...prev, name: "", notes: "" }));
+      } else {
+        await onSubmit({ ...form, name: form.name.trim() });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Algo salió mal");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    performSave(false);
   }
 
   return (
@@ -186,7 +220,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
       </div>
 
       {/* Weight unit */}
-      {(form.type === ExerciseType.WEIGHT_REPS || form.type === ExerciseType.WEIGHT_ONLY) && (
+      {[ExerciseType.WEIGHT_REPS, ExerciseType.WEIGHT_ONLY, ExerciseType.WEIGHT_DISTANCE, ExerciseType.WEIGHT_TIME].includes(form.type) && (
         <div className="space-y-1.5">
           <label className="text-sm font-medium">Unidad de peso</label>
           <div className="flex gap-2">
@@ -225,7 +259,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-2 flex-wrap">
         <button
           type="button"
           onClick={onCancel}
@@ -233,6 +267,16 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
         >
           Cancelar
         </button>
+        {!initial?.id && onSaveAndNew && (
+          <button
+            type="button"
+            onClick={() => performSave(true)}
+            disabled={loading}
+            className="flex-1 rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+          >
+            Guardar y nuevo
+          </button>
+        )}
         <button
           type="submit"
           disabled={loading}

@@ -2,28 +2,36 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useExerciseStore, ExerciseType } from "@fitnotes/core";
+import { useExerciseStore, ExerciseType, filterExercises } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 import ExerciseForm from "@/components/exercises/ExerciseForm";
 import CategoryForm from "@/components/exercises/CategoryForm";
+import ExerciseCard from "@/components/exercises/ExerciseCard";
 import type { Category } from "@fitnotes/core";
 
 export default function ExercisePage() {
   const categories = useExerciseStore((s) => s.categories);
+  const exercises = useExerciseStore((s) => s.exercises);
   const isLoading = useExerciseStore((s) => s.isLoading);
-  const loadCategories = useExerciseStore((s) => s.loadCategories);
+  const loadExercises = useExerciseStore((s) => s.loadExercises);
   const addCategory = useExerciseStore((s) => s.addCategory);
   const addExercise = useExerciseStore((s) => s.addExercise);
+  const deleteExercise = useExerciseStore((s) => s.deleteExercise);
+  const toggleFavorite = useExerciseStore((s) => s.toggleFavorite);
   const updateCategory = useExerciseStore((s) => s.updateCategory);
   const deleteCategory = useExerciseStore((s) => s.deleteCategory);
+  const reorderCategories = useExerciseStore((s) => s.reorderCategories);
   const setLoading = useExerciseStore((s) => s.setLoading);
   const setError = useExerciseStore((s) => s.setError);
-  const exercises = useExerciseStore((s) => s.exercises);
 
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [userId, setUserId] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [exerciseStats, setExerciseStats] = useState<Record<string, { workout_count: number; last_used: string | null }>>({});
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const client = createBrowserClient();
   const repo = createExerciseRepository(client);
@@ -33,16 +41,33 @@ export default function ExercisePage() {
       setLoading(true);
       const { data: { user } } = await client.auth.getUser();
       if (user) setUserId(user.id);
-      const { data, error } = await repo.getCategories();
-      if (error) { setError(error.message); return; }
-      loadCategories(data ?? []);
+      const [catRes, exRes, statsRes] = await Promise.all([
+        repo.getCategories(),
+        repo.getExercises(),
+        repo.getExerciseStats(),
+      ]);
+      if (catRes.error) { setError(catRes.error.message); return; }
+      loadExercises(
+        catRes.data ?? [],
+        (exRes.data ?? []).map((ex) => ({
+          id: ex.id,
+          name: ex.name,
+          category_id: ex.category_id ?? "",
+          type: ex.type as ExerciseType,
+          weight_unit: ex.weight_unit as "kg" | "lb",
+          notes: ex.notes ?? undefined,
+          is_favorite: ex.is_favorite,
+          created_at: ex.created_at,
+        }))
+      );
+      if (statsRes.data) setExerciseStats(statsRes.data);
       setLoading(false);
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleCreateExercise(data: {
+  async function doCreateExercise(data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
   }) {
     const { data: created, error } = await repo.createExercise(data, userId);
@@ -57,7 +82,20 @@ export default function ExercisePage() {
       is_favorite: created.is_favorite,
       created_at: created.created_at,
     });
+  }
+
+  async function handleCreateExercise(data: {
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+  }) {
+    await doCreateExercise(data);
     setShowExerciseForm(false);
+  }
+
+  async function handleCreateExerciseAndNew(data: {
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+  }) {
+    await doCreateExercise(data);
+    // form stays open — ExerciseForm resets itself
   }
 
   async function handleCreateCategory(data: { name: string; color: string }): Promise<Category> {
@@ -93,7 +131,40 @@ export default function ExercisePage() {
     deleteCategory(id);
   }
 
+  async function handleToggleFavorite(id: string, current: boolean) {
+    await repo.toggleFavorite(id, !current);
+    toggleFavorite(id);
+  }
+
+  async function handleDeleteExercise(id: string) {
+    if (!confirm("¿Eliminar este ejercicio y todo su historial?")) return;
+    const { error } = await repo.deleteExercise(id);
+    if (error) return;
+    deleteExercise(id);
+  }
+
+  async function handleCategoryDrop(toId: string) {
+    if (!draggedId || draggedId === toId) { setDraggedId(null); setDragOverId(null); return; }
+    const fromIdx = categories.findIndex((c) => c.id === draggedId);
+    const toIdx = categories.findIndex((c) => c.id === toId);
+    if (fromIdx === -1 || toIdx === -1) { setDraggedId(null); setDragOverId(null); return; }
+
+    const reordered = [...categories];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved!);
+    const orderedIds = reordered.map((c) => c.id);
+
+    reorderCategories(orderedIds);
+    setDraggedId(null);
+    setDragOverId(null);
+
+    await repo.reorderCategories(reordered.map((c, i) => ({ id: c.id, order_index: i })));
+  }
+
   const favoritesCount = exercises.filter((e) => e.is_favorite).length;
+  const searchResults = search.trim()
+    ? filterExercises(exercises, search.trim())
+    : [];
 
   return (
     <div className="space-y-6">
@@ -108,13 +179,48 @@ export default function ExercisePage() {
         </button>
       </div>
 
+      {/* Global search */}
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder='Buscar en todos los ejercicios… (p. ej. "press manc")'
+        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+
+      {/* Search results */}
+      {search.trim() && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""}
+          </p>
+          {searchResults.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground text-sm">
+              Sin ejercicios que coincidan con &ldquo;{search}&rdquo;
+            </div>
+          ) : (
+            searchResults.map((ex) => (
+              <ExerciseCard
+                key={ex.id}
+                exercise={ex}
+                stats={exerciseStats[ex.id]}
+                onEdit={() => {}}
+                onDelete={handleDeleteExercise}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            ))
+          )}
+        </div>
+      )}
+
       {/* New exercise form */}
-      {showExerciseForm && (
+      {!search.trim() && showExerciseForm && (
         <div className="rounded-lg border bg-card p-5">
           <h2 className="text-sm font-semibold mb-4">Nuevo ejercicio</h2>
           <ExerciseForm
             categories={categories}
             onSubmit={handleCreateExercise}
+            onSaveAndNew={handleCreateExerciseAndNew}
             onCancel={() => setShowExerciseForm(false)}
             onCreateCategory={handleCreateCategory}
           />
@@ -122,7 +228,7 @@ export default function ExercisePage() {
       )}
 
       {/* Edit category form */}
-      {editingCategory && (
+      {!search.trim() && editingCategory && (
         <div className="rounded-lg border bg-card p-5">
           <h2 className="text-sm font-semibold mb-4">Editar categoría</h2>
           <CategoryForm
@@ -133,8 +239,8 @@ export default function ExercisePage() {
         </div>
       )}
 
-      {/* Favorites shortcut */}
-      {favoritesCount > 0 && (
+      {/* Favorites shortcut + category list — hidden during search */}
+      {!search.trim() && favoritesCount > 0 && (
         <Link
           href="/exercise/favorites"
           className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 hover:bg-secondary/50 transition-colors"
@@ -148,8 +254,8 @@ export default function ExercisePage() {
         </Link>
       )}
 
-      {/* Category list */}
-      <div className="space-y-2">
+      {/* Category list — hidden during search */}
+      {!search.trim() && <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categorías</p>
           <button
@@ -189,13 +295,26 @@ export default function ExercisePage() {
         ) : (
           categories.map((cat) => {
             const count = exercises.filter((e) => e.category_id === cat.id).length;
+            const isDragging = draggedId === cat.id;
+            const isDragOver = dragOverId === cat.id && draggedId !== cat.id;
             return (
               <div
                 key={cat.id}
-                className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 group"
+                draggable
+                onDragStart={() => setDraggedId(cat.id)}
+                onDragOver={(e) => { e.preventDefault(); setDragOverId(cat.id); }}
+                onDragLeave={() => setDragOverId(null)}
+                onDrop={() => handleCategoryDrop(cat.id)}
+                onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
+                className={[
+                  "flex items-center gap-3 rounded-lg border bg-card px-4 py-3 group cursor-grab active:cursor-grabbing transition-colors",
+                  isDragging ? "opacity-40" : "",
+                  isDragOver ? "border-primary bg-primary/5" : "",
+                ].join(" ")}
               >
+                <span className="text-muted-foreground select-none opacity-30 group-hover:opacity-70 transition-opacity" title="Arrastrar para reordenar">⠿</span>
                 <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                <Link href={`/exercise/${cat.id}`} className="flex-1 hover:underline">
+                <Link href={`/exercise/${cat.id}`} className="flex-1 hover:underline" onClick={(e) => draggedId && e.preventDefault()}>
                   <p className="font-medium text-sm">{cat.name}</p>
                   {count > 0 && (
                     <p className="text-xs text-muted-foreground">{count} ejercicio{count !== 1 ? "s" : ""}</p>
@@ -215,12 +334,12 @@ export default function ExercisePage() {
                     Eliminar
                   </button>
                 </div>
-                <Link href={`/exercise/${cat.id}`} className="text-muted-foreground ml-1">›</Link>
+                <Link href={`/exercise/${cat.id}`} className="text-muted-foreground ml-1" onClick={(e) => draggedId && e.preventDefault()}>›</Link>
               </div>
             );
           })
         )}
-      </div>
+      </div>}
     </div>
   );
 }

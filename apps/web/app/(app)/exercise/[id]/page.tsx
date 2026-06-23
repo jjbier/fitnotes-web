@@ -36,6 +36,7 @@ export default function ExerciseCategoryPage() {
   const [editing, setEditing] = useState<Exercise | null>(null);
   const [search, setSearch] = useState("");
   const [userId, setUserId] = useState("");
+  const [exerciseStats, setExerciseStats] = useState<Record<string, { workout_count: number; last_used: string | null }>>({});
   const debouncedSearch = useDebounce(search);
 
   const client = createBrowserClient();
@@ -49,9 +50,10 @@ export default function ExerciseCategoryPage() {
       setLoading(true);
       const { data: { user } } = await client.auth.getUser();
       if (user) setUserId(user.id);
-      const [catRes, exRes] = await Promise.all([
+      const [catRes, exRes, statsRes] = await Promise.all([
         repo.getCategories(),
         repo.getExercises(),
+        repo.getExerciseStats(),
       ]);
       if (catRes.data && exRes.data) {
         loadExercises(
@@ -68,6 +70,7 @@ export default function ExerciseCategoryPage() {
           }))
         );
       }
+      if (statsRes.data) setExerciseStats(statsRes.data);
       setLoading(false);
     }
     load();
@@ -84,7 +87,7 @@ export default function ExerciseCategoryPage() {
     ...filtered.filter((e) => !e.is_favorite),
   ];
 
-  const handleCreate = useCallback(async (data: {
+  const doCreate = useCallback(async (data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
   }) => {
     const { data: created, error } = await repo.createExercise(data, userId);
@@ -99,9 +102,24 @@ export default function ExerciseCategoryPage() {
       is_favorite: created.is_favorite,
       created_at: created.created_at,
     });
-    setShowForm(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  const handleCreate = useCallback(async (data: {
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+  }) => {
+    await doCreate(data);
+    setShowForm(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doCreate]);
+
+  const handleCreateAndNew = useCallback(async (data: {
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+  }) => {
+    await doCreate(data);
+    // form stays open — ExerciseForm resets itself
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doCreate]);
 
   const handleCreateCategory = useCallback(async (data: { name: string; color: string }): Promise<Category> => {
     const { data: created, error } = await repo.createCategory(data, userId);
@@ -182,6 +200,7 @@ export default function ExerciseCategoryPage() {
             categories={categories}
             initial={{ category_id: isFavoritesView ? undefined : categoryId }}
             onSubmit={handleCreate}
+            onSaveAndNew={handleCreateAndNew}
             onCancel={() => setShowForm(false)}
             onCreateCategory={handleCreateCategory}
           />
@@ -219,6 +238,7 @@ export default function ExerciseCategoryPage() {
             <ExerciseCard
               key={ex.id}
               exercise={ex}
+              stats={exerciseStats[ex.id]}
               onEdit={setEditing}
               onDelete={handleDelete}
               onToggleFavorite={handleToggleFavorite}

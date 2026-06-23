@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ExerciseType } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
 import { useState } from "react";
@@ -10,16 +11,33 @@ const TYPE_BADGE: Record<ExerciseType, string> = {
   [ExerciseType.REPS_ONLY]: "Reps",
   [ExerciseType.WEIGHT_ONLY]: "Peso",
   [ExerciseType.TIME_ONLY]: "Tiempo",
+  [ExerciseType.WEIGHT_DISTANCE]: "Peso + Dist",
+  [ExerciseType.WEIGHT_TIME]: "Peso + Tiempo",
+  [ExerciseType.REPS_DISTANCE]: "Reps + Dist",
+  [ExerciseType.REPS_TIME]: "Reps + Tiempo",
+  [ExerciseType.DISTANCE_ONLY]: "Distancia",
 };
+
+function formatLastUsed(dateStr: string): string {
+  const date = new Date(dateStr + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Hoy";
+  if (diffDays === 1) return "Ayer";
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  return date.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 interface Props {
   exercise: Exercise;
+  stats?: { workout_count: number; last_used: string | null };
   onEdit: (exercise: Exercise) => void;
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string, current: boolean) => void;
 }
 
-export default function ExerciseCard({ exercise, onEdit, onDelete, onToggleFavorite }: Props) {
+export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onToggleFavorite }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -32,6 +50,12 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onToggleFavor
         </span>
         {exercise.notes && (
           <p className="text-xs text-muted-foreground mt-1 truncate">{exercise.notes}</p>
+        )}
+        {stats && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {stats.workout_count} {stats.workout_count === 1 ? "sesión" : "sesiones"}
+            {stats.last_used ? ` · ${formatLastUsed(stats.last_used)}` : ""}
+          </p>
         )}
       </div>
 
@@ -66,7 +90,14 @@ export default function ExerciseCard({ exercise, onEdit, onDelete, onToggleFavor
                 className="fixed inset-0 z-10"
                 onClick={() => setMenuOpen(false)}
               />
-              <div className="absolute right-0 top-full mt-1 z-20 w-36 rounded-md border bg-card shadow-lg py-1">
+              <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-md border bg-card shadow-lg py-1">
+                <Link
+                  href={`/exercise/history/${exercise.id}`}
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-secondary"
+                >
+                  Historial
+                </Link>
                 <button
                   onClick={() => { onEdit(exercise); setMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 text-sm hover:bg-secondary"
