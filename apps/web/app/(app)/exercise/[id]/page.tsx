@@ -147,6 +147,12 @@ export default function ExerciseCategoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
 
+  const handleConvertWeights = useCallback(async (factor: number) => {
+    if (!editing) return;
+    await repo.convertExerciseWeights(editing.id, factor);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este ejercicio y todo su historial?")) return;
     const { error } = await repo.deleteExercise(id);
@@ -217,6 +223,7 @@ export default function ExerciseCategoryPage() {
             onSubmit={handleUpdate}
             onCancel={() => setEditing(null)}
             onCreateCategory={handleCreateCategory}
+            onConvertWeights={handleConvertWeights}
           />
         </div>
       )}

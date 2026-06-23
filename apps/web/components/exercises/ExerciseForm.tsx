@@ -38,9 +38,10 @@ interface Props {
   onSaveAndNew?: (data: FormData) => Promise<void>;
   onCancel: () => void;
   onCreateCategory?: (data: { name: string; color: string }) => Promise<Category>;
+  onConvertWeights?: (factor: number) => Promise<void>;
 }
 
-export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndNew, onCancel, onCreateCategory }: Props) {
+export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndNew, onCancel, onCreateCategory, onConvertWeights }: Props) {
   const [form, setForm] = useState<FormData>({
     name: initial?.name ?? "",
     category_id: initial?.category_id ?? (categories[0]?.id ?? ""),
@@ -90,13 +91,18 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
       if (!ok) return;
     }
 
-    // Warn if weight unit changed when editing
+    // Warn if weight unit changed when editing — offer convert vs. substitute
     const isWeightType = [ExerciseType.WEIGHT_REPS, ExerciseType.WEIGHT_ONLY, ExerciseType.WEIGHT_DISTANCE, ExerciseType.WEIGHT_TIME].includes(form.type);
-    if (initial?.id && isWeightType && initial.weight_unit && form.weight_unit !== initial.weight_unit) {
-      const ok = window.confirm(
-        `¿Cambiar la unidad a ${form.weight_unit}? Los valores del historial no se convertirán automáticamente.`
-      );
+    const unitChanged = initial?.id && isWeightType && initial.weight_unit && form.weight_unit !== initial.weight_unit;
+    let shouldConvert = false;
+    if (unitChanged) {
+      const ok = window.confirm(`¿Cambiar la unidad de peso a ${form.weight_unit}?`);
       if (!ok) return;
+      shouldConvert = window.confirm(
+        `¿Convertir los valores históricos automáticamente?\n\n` +
+        `Ejemplo: 100 ${initial.weight_unit} → ${Math.round(100 * (initial.weight_unit === "kg" ? 2.20462 : 0.453592) * 10) / 10} ${form.weight_unit}\n\n` +
+        `Acepta para convertir. Cancela para solo cambiar la etiqueta.`
+      );
     }
 
     setLoading(true);
@@ -107,6 +113,10 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
         setForm((prev) => ({ ...prev, name: "", notes: "" }));
       } else {
         await onSubmit({ ...form, name: form.name.trim() });
+      }
+      if (shouldConvert && onConvertWeights && initial?.weight_unit) {
+        const factor = initial.weight_unit === "kg" ? 2.20462 : 0.453592;
+        await onConvertWeights(factor);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Algo salió mal");
