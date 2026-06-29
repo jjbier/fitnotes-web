@@ -8,10 +8,11 @@ interface Props {
   onUpdate: (setId: string, patch: Partial<Set>) => void;
   onDelete: (setId: string) => void;
   onToggleComplete: (setId: string, current: boolean) => void;
+  onComment: (setId: string) => void;
   isPR?: boolean;
 }
 
-export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggleComplete, isPR }: Props) {
+export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggleComplete, onComment, isPR }: Props) {
   return (
     <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${set.is_complete ? "bg-primary/5 border-primary/20" : ""}`}>
       <button
@@ -99,7 +100,15 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
       </div>
 
       {isPR && <span title="Récord personal" className="text-amber-500 shrink-0" aria-label="Récord personal">🏆</span>}
-      {set.comment && <span title={set.comment} className="text-blue-500 text-xs shrink-0" aria-label={`Comentario: ${set.comment}`}>💬</span>}
+
+      <button
+        onClick={() => onComment(set.id)}
+        aria-label={set.comment ? `Comentario: ${set.comment}` : "Añadir comentario"}
+        title={set.comment || "Añadir comentario"}
+        className={`shrink-0 text-sm leading-none ${set.comment ? "text-blue-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+      >
+        💬
+      </button>
 
       <button
         onClick={() => onDelete(set.id)}

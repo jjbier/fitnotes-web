@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useWorkoutStore, useExerciseStore } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
 import SetRow from "./SetRow";
+import SetCommentModal from "./SetCommentModal";
 import type { ExerciseType, Set as FitSet } from "@fitnotes/core";
 
 interface Props {
@@ -20,6 +21,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   const markSetComplete = useWorkoutStore((s) => s.markSetComplete);
   const exercises = useExerciseStore((s) => s.exercises);
   const [saving, setSaving] = useState(false);
+  const [commentSetId, setCommentSetId] = useState<string | null>(null);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -60,6 +62,12 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
     deleteSet(workoutExercise.id, setId);
   }
 
+  async function handleSaveComment(setId: string, comment: string) {
+    if (!workoutExercise) return;
+    await repo.updateSet(setId, { comment: comment || undefined });
+    updateSet(workoutExercise.id, setId, { comment: comment || undefined });
+  }
+
   async function handleToggleComplete(setId: string, current: boolean) {
     if (!workoutExercise) return;
     await repo.updateSet(setId, { is_complete: !current });
@@ -90,6 +98,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
               onUpdate={handleUpdateSet}
               onDelete={handleDeleteSet}
               onToggleComplete={handleToggleComplete}
+              onComment={setCommentSetId}
             />
           ))}
         </div>
@@ -102,6 +111,14 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
       >
         {saving ? "Agregando…" : "+ Agregar serie"}
       </button>
+
+      {commentSetId && (
+        <SetCommentModal
+          initialComment={exerciseSets.find((s) => s.id === commentSetId)?.comment ?? ""}
+          onSave={(comment) => handleSaveComment(commentSetId, comment)}
+          onClose={() => setCommentSetId(null)}
+        />
+      )}
     </div>
   );
 }
