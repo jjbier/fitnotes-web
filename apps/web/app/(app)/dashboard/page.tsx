@@ -7,6 +7,7 @@ import { createBrowserClient, createWorkoutRepository, createExerciseRepository 
 import TrainingScreen from "@/components/workout/TrainingScreen";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
+import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 
 export default function DashboardPage() {
   const today = todayISO();
@@ -30,6 +31,7 @@ export default function DashboardPage() {
   const [activeWEId, setActiveWEId] = useState<string | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showCopy, setShowCopy] = useState(false);
   const [selectedExId, setSelectedExId] = useState("");
   const [currentDate, setCurrentDate] = useState(today);
 
@@ -209,13 +211,19 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Share + Finish */}
+          {/* Share + Copy + Finish */}
           <div className="flex gap-2">
             <button
               onClick={() => setShowShare(true)}
               className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
             >
               Compartir
+            </button>
+            <button
+              onClick={() => setShowCopy(true)}
+              className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
+            >
+              Copiar de…
             </button>
             <button
               onClick={handleFinish}
@@ -234,6 +242,16 @@ export default function DashboardPage() {
           exercises={exercises}
           sets={sets}
           onClose={() => setShowShare(false)}
+        />
+      )}
+
+      {showCopy && activeWorkout && (
+        <CopyWorkoutModal
+          currentWorkout={activeWorkout}
+          currentExercises={workoutExercises}
+          userId={userId}
+          onCopied={() => loadWorkoutForDate(currentDate, userId)}
+          onClose={() => setShowCopy(false)}
         />
       )}
 

@@ -8,6 +8,7 @@ import TrainingScreen from "@/components/workout/TrainingScreen";
 import NavigationPanel from "@/components/workout/NavigationPanel";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
+import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -34,6 +35,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const [showExPicker, setShowExPicker] = useState(false);
   const [selectedExId, setSelectedExId] = useState("");
   const [showShare, setShowShare] = useState(false);
+  const [showCopy, setShowCopy] = useState(false);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -157,6 +159,12 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
               Compartir
             </button>
             <button
+              onClick={() => setShowCopy(true)}
+              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              Copiar de…
+            </button>
+            <button
               onClick={handleFinish}
               className="rounded-md border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
             >
@@ -276,6 +284,37 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           exercises={exercises}
           sets={sets}
           onClose={() => setShowShare(false)}
+        />
+      )}
+
+      {showCopy && activeWorkout && (
+        <CopyWorkoutModal
+          currentWorkout={activeWorkout}
+          currentExercises={workoutExercises}
+          userId={userId}
+          onCopied={async () => {
+            const { data: workout } = await repo.getWorkoutByDate(date);
+            if (!workout) return;
+            const { data: wExercises } = await repo.getWorkoutExercises(workout.id);
+            const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
+            for (const we of wExercises ?? []) {
+              const { data: wSets } = await repo.getSets(we.id);
+              setsMap[we.id] = (wSets ?? []).map((s) => ({
+                id: s.id, workout_exercise_id: s.workout_exercise_id,
+                weight: s.weight ?? undefined, reps: s.reps ?? undefined,
+                distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
+                is_complete: s.is_complete, is_warmup: s.is_warmup ?? false,
+                comment: s.comment ?? undefined, order_index: s.order_index,
+              }));
+            }
+            loadWorkout(
+              { id: workout.id, date: workout.date, comment: workout.comment ?? undefined, start_time: workout.start_time ?? undefined, end_time: workout.end_time ?? undefined, duration_minutes: workout.duration_minutes ?? undefined },
+              (wExercises ?? []).map((we) => ({ id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id, order_index: we.order_index, group_id: we.group_id ?? undefined })),
+              setsMap
+            );
+            if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
+          }}
+          onClose={() => setShowCopy(false)}
         />
       )}
     </div>
