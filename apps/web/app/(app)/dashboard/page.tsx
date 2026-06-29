@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, todayISO, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
+import WorkoutTimer from "@/components/workout/WorkoutTimer";
 
 export default function DashboardPage() {
   const today = todayISO();
@@ -136,9 +137,12 @@ export default function DashboardPage() {
       <div className="flex items-center gap-3">
         <button onClick={() => handleDateChange(-1)} aria-label="Día anterior" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary"><span aria-hidden="true">←</span></button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
-          </h1>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
+            </h1>
+            {activeWorkout && <WorkoutTimer startTime={activeWorkout.start_time} />}
+          </div>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(currentDate)}</p>
         </div>
         <button onClick={() => handleDateChange(1)} disabled={currentDate >= today} aria-label="Día siguiente" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">→</span></button>

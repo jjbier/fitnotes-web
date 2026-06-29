@@ -6,6 +6,7 @@ import { useWorkoutStore, useExerciseStore, formatWorkoutDate, ExerciseType } fr
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
 import NavigationPanel from "@/components/workout/NavigationPanel";
+import WorkoutTimer from "@/components/workout/WorkoutTimer";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -139,7 +140,10 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           <span aria-hidden="true">←</span>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Entrenamiento</h1>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">Entrenamiento</h1>
+            {activeWorkout && <WorkoutTimer startTime={activeWorkout.start_time} />}
+          </div>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(date)}</p>
         </div>
         {activeWorkout && (
