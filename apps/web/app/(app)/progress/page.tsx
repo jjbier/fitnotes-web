@@ -5,6 +5,7 @@ import { useProgressStore, useExerciseStore, calculate1RM, estimateRepMax } from
 import {
   createBrowserClient, createProgressRepository,
   createExerciseRepository, createGoalsRepository,
+  createWorkoutRepository,
 } from "@fitnotes/database";
 import type { ExerciseGoalRow } from "@fitnotes/database";
 import {
@@ -45,6 +46,16 @@ export default function ProgressPage() {
   const [showTrend, setShowTrend] = useState(false);
   const [prSubTab, setPrSubTab] = useState<"real" | "estimado">("real");
 
+  type HistorySet = {
+    id: string; order_index: number; is_complete: boolean; is_warmup: boolean | null;
+    weight: number | null; reps: number | null; distance: number | null; time_seconds: number | null;
+  };
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [historySets, setHistorySets] = useState<Record<string, HistorySet[]>>({});
+  const [historyLoading, setHistoryLoading] = useState<string | null>(null);
+  const [editingSetId, setEditingSetId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ weight: "", reps: "", distance: "", time_seconds: "" });
+
   const [goals, setGoals] = useState<ExerciseGoalRow[]>([]);
   const [goalSaving, setGoalSaving] = useState(false);
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -55,6 +66,7 @@ export default function ProgressPage() {
   const progressRepo = createProgressRepository(client);
   const exRepo = createExerciseRepository(client);
   const goalsRepo = createGoalsRepository(client);
+  const workoutRepo = createWorkoutRepository(client);
 
   useEffect(() => {
     async function init() {
@@ -143,6 +155,61 @@ export default function ProgressPage() {
     setGoals((prev) => prev.map((g) =>
       g.exercise_id === exerciseId ? { ...g, achieved_at: new Date().toISOString() } : g
     ));
+  }
+
+  async function handleExpandDate(date: string) {
+    if (expandedDate === date) { setExpandedDate(null); return; }
+    setExpandedDate(date);
+    if (historySets[date]) return;
+    setHistoryLoading(date);
+    const { data: workout } = await workoutRepo.getWorkoutByDate(date);
+    if (workout) {
+      const { data: wes } = await workoutRepo.getWorkoutExercises(workout.id);
+      const we = (wes ?? []).find((w) => w.exercise_id === selectedExId);
+      if (we) {
+        const { data: sets } = await workoutRepo.getSets(we.id);
+        setHistorySets((prev) => ({
+          ...prev,
+          [date]: (sets ?? []).map((s) => ({
+            id: s.id, order_index: s.order_index, is_complete: s.is_complete,
+            is_warmup: s.is_warmup ?? null,
+            weight: s.weight ?? null, reps: s.reps ?? null,
+            distance: s.distance ?? null, time_seconds: s.time_seconds ?? null,
+          })),
+        }));
+      } else {
+        setHistorySets((prev) => ({ ...prev, [date]: [] }));
+      }
+    }
+    setHistoryLoading(null);
+  }
+
+  function startEditSet(s: { id: string; weight: number | null; reps: number | null; distance: number | null; time_seconds: number | null }) {
+    setEditingSetId(s.id);
+    setEditDraft({
+      weight: s.weight?.toString() ?? "",
+      reps: s.reps?.toString() ?? "",
+      distance: s.distance?.toString() ?? "",
+      time_seconds: s.time_seconds?.toString() ?? "",
+    });
+  }
+
+  async function saveEditSet(setId: string, date: string) {
+    const patch: Record<string, number | undefined> = {};
+    if (editDraft.weight !== "") patch.weight = parseFloat(editDraft.weight);
+    if (editDraft.reps !== "") patch.reps = parseInt(editDraft.reps, 10);
+    if (editDraft.distance !== "") patch.distance = parseFloat(editDraft.distance);
+    if (editDraft.time_seconds !== "") patch.time_seconds = parseInt(editDraft.time_seconds, 10);
+    await workoutRepo.updateSet(setId, patch);
+    setHistorySets((prev) => ({
+      ...prev,
+      [date]: (prev[date] ?? []).map((s) =>
+        s.id === setId
+          ? { ...s, weight: patch.weight ?? s.weight, reps: patch.reps ?? s.reps, distance: patch.distance ?? s.distance, time_seconds: patch.time_seconds ?? s.time_seconds }
+          : s
+      ),
+    }));
+    setEditingSetId(null);
   }
 
   function openGoalForm(existing?: ExerciseGoalRow) {
@@ -382,16 +449,127 @@ export default function ProgressPage() {
               {exChartData.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Sin historial para este ejercicio.</p>
               ) : (
-                exChartData.slice().reverse().map((point) => (
-                  <div key={point.date} className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
-                    <span className="font-medium">{point.date}</span>
-                    <div className="flex gap-4 text-muted-foreground text-xs">
-                      <span>{point.maxWeight} kg máx.</span>
-                      <span>{point.totalVolume.toFixed(0)} kg vol.</span>
-                      <span>{point.maxReps} reps máx.</span>
+                exChartData.slice().reverse().map((point) => {
+                  const isExpanded = expandedDate === point.date;
+                  const isLoadingThis = historyLoading === point.date;
+                  const sets = historySets[point.date] ?? [];
+                  const exType = selectedExercise?.type;
+                  return (
+                    <div key={point.date} className="rounded-md border text-sm overflow-hidden">
+                      {/* Summary row — click to expand */}
+                      <button
+                        onClick={() => handleExpandDate(point.date)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 text-left"
+                      >
+                        <span className="font-medium flex-1">{point.date}</span>
+                        <div className="flex gap-3 text-muted-foreground text-xs">
+                          {point.maxWeight > 0 && <span>{point.maxWeight} kg máx.</span>}
+                          {point.totalVolume > 0 && <span>{point.totalVolume.toFixed(0)} kg vol.</span>}
+                          {point.maxReps > 0 && <span>{point.maxReps} reps</span>}
+                        </div>
+                        <span className="text-muted-foreground text-xs ml-1">{isExpanded ? "▲" : "▼"}</span>
+                      </button>
+
+                      {/* Expanded sets */}
+                      {isExpanded && (
+                        <div className="border-t px-4 pb-3 pt-2 space-y-1.5 bg-secondary/10">
+                          {isLoadingThis ? (
+                            <div className="space-y-1 py-1">
+                              {[1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-secondary/40 animate-pulse" />)}
+                            </div>
+                          ) : sets.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-2">Sin series registradas.</p>
+                          ) : (
+                            sets.map((s, idx) => {
+                              const isEditing = editingSetId === s.id;
+                              return (
+                                <div key={s.id} className={`flex items-center gap-2 rounded-md px-3 py-2 ${s.is_complete ? "bg-primary/5" : "bg-secondary/30"}`}>
+                                  <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}</span>
+                                  {isEditing ? (
+                                    <>
+                                      <div className="flex-1 flex items-center gap-2 flex-wrap">
+                                        {(exType === "WEIGHT_REPS" || exType === "WEIGHT_ONLY") && (
+                                          <div className="flex items-center gap-1">
+                                            <input
+                                              type="number" value={editDraft.weight} min="0" step="0.5"
+                                              onChange={(e) => setEditDraft((d) => ({ ...d, weight: e.target.value }))}
+                                              className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                                              aria-label="Peso"
+                                            />
+                                            <span className="text-xs text-muted-foreground">kg</span>
+                                          </div>
+                                        )}
+                                        {(exType === "WEIGHT_REPS" || exType === "REPS_ONLY") && (
+                                          <div className="flex items-center gap-1">
+                                            <input
+                                              type="number" value={editDraft.reps} min="0"
+                                              onChange={(e) => setEditDraft((d) => ({ ...d, reps: e.target.value }))}
+                                              className="w-14 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                                              aria-label="Reps"
+                                            />
+                                            <span className="text-xs text-muted-foreground">reps</span>
+                                          </div>
+                                        )}
+                                        {exType === "DISTANCE_TIME" && (
+                                          <>
+                                            <div className="flex items-center gap-1">
+                                              <input type="number" value={editDraft.distance} min="0" step="0.1"
+                                                onChange={(e) => setEditDraft((d) => ({ ...d, distance: e.target.value }))}
+                                                className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                                                aria-label="Distancia" />
+                                              <span className="text-xs text-muted-foreground">km</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <input type="number" value={editDraft.time_seconds} min="0"
+                                                onChange={(e) => setEditDraft((d) => ({ ...d, time_seconds: e.target.value }))}
+                                                className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                                                aria-label="Tiempo" />
+                                              <span className="text-xs text-muted-foreground">s</span>
+                                            </div>
+                                          </>
+                                        )}
+                                        {exType === "TIME_ONLY" && (
+                                          <div className="flex items-center gap-1">
+                                            <input type="number" value={editDraft.time_seconds} min="0"
+                                              onChange={(e) => setEditDraft((d) => ({ ...d, time_seconds: e.target.value }))}
+                                              className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                                              aria-label="Tiempo" />
+                                            <span className="text-xs text-muted-foreground">s</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <button onClick={() => saveEditSet(s.id, point.date)} className="text-xs font-medium text-primary hover:underline shrink-0">Guardar</button>
+                                      <button onClick={() => setEditingSetId(null)} className="text-xs text-muted-foreground hover:text-foreground shrink-0">✕</button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="flex-1 text-xs">
+                                        {s.weight != null && s.reps != null && `${s.weight} kg × ${s.reps}`}
+                                        {s.weight != null && s.reps == null && `${s.weight} kg`}
+                                        {s.weight == null && s.reps != null && `${s.reps} reps`}
+                                        {s.distance != null && `${s.distance} km`}
+                                        {s.time_seconds != null && ` · ${s.time_seconds} s`}
+                                        {s.is_warmup && <span className="ml-1 text-muted-foreground">(calent.)</span>}
+                                      </span>
+                                      {s.is_complete && <span className="text-xs text-primary shrink-0">✓</span>}
+                                      <button
+                                        onClick={() => startEditSet(s)}
+                                        aria-label="Editar serie"
+                                        className="text-muted-foreground hover:text-foreground text-xs shrink-0"
+                                      >
+                                        ✎
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
