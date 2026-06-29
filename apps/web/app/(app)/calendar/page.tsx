@@ -100,10 +100,10 @@ export default function CalendarPage() {
         <>
           {/* Month nav */}
           <div className="flex items-center gap-3">
-            <button onClick={prevMonth} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">←</button>
+            <button onClick={prevMonth} aria-label="Mes anterior" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"><span aria-hidden="true">←</span></button>
             <h2 className="flex-1 text-center font-semibold">{monthName}</h2>
             <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Today</button>
-            <button onClick={nextMonth} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">→</button>
+            <button onClick={nextMonth} aria-label="Mes siguiente" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"><span aria-hidden="true">→</span></button>
           </div>
 
           {/* Day-of-week headers */}

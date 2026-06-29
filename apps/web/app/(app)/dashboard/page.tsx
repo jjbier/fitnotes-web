@@ -134,14 +134,14 @@ export default function DashboardPage() {
     <div className="space-y-5">
       {/* Header with date nav */}
       <div className="flex items-center gap-3">
-        <button onClick={() => handleDateChange(-1)} className="rounded-md border px-2 py-1 text-sm hover:bg-secondary">←</button>
+        <button onClick={() => handleDateChange(-1)} aria-label="Día anterior" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary"><span aria-hidden="true">←</span></button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">
             {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
           </h1>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(currentDate)}</p>
         </div>
-        <button onClick={() => handleDateChange(1)} disabled={currentDate >= today} className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40">→</button>
+        <button onClick={() => handleDateChange(1)} disabled={currentDate >= today} aria-label="Día siguiente" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">→</span></button>
       </div>
 
       {isLoading ? (
