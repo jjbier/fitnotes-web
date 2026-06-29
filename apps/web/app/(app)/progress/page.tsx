@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useProgressStore, useExerciseStore, calculate1RM, estimateRepMax } from "@fitnotes/core";
 import {
   createBrowserClient, createProgressRepository,
@@ -45,6 +45,8 @@ export default function ProgressPage() {
   const [metric, setMetric] = useState<ChartMetric>("maxWeight");
   const [showTrend, setShowTrend] = useState(false);
   const [prSubTab, setPrSubTab] = useState<"real" | "estimado">("real");
+  const [exporting, setExporting] = useState(false);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   type HistorySet = {
     id: string; order_index: number; is_complete: boolean; is_warmup: boolean | null;
@@ -220,6 +222,67 @@ export default function ProgressPage() {
       notes: existing?.notes ?? "",
     });
     setShowGoalForm(true);
+  }
+
+  async function exportChart() {
+    const container = chartContainerRef.current;
+    if (!container) return;
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+    setExporting(true);
+
+    const { width, height } = svg.getBoundingClientRect();
+    const svgClone = svg.cloneNode(true) as SVGSVGElement;
+    svgClone.setAttribute("width", String(width));
+    svgClone.setAttribute("height", String(height + 28));
+    svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+    // White background
+    const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bg.setAttribute("width", "100%"); bg.setAttribute("height", "100%"); bg.setAttribute("fill", "white");
+    svgClone.insertBefore(bg, svgClone.firstChild);
+
+    // Shift existing content down to make room for title
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("transform", "translate(0, 24)");
+    while (svgClone.children.length > 1) g.appendChild(svgClone.children[1]!);
+    svgClone.appendChild(g);
+
+    // Title: exercise name + metric
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    title.setAttribute("x", "10"); title.setAttribute("y", "16");
+    title.setAttribute("font-size", "12"); title.setAttribute("font-family", "system-ui, sans-serif");
+    title.setAttribute("font-weight", "600"); title.setAttribute("fill", "#111");
+    title.textContent = `${selectedExercise?.name ?? ""} — ${metricLabel[metric]}`;
+    svgClone.insertBefore(title, g);
+
+    const svgString = new XMLSerializer().serializeToString(svgClone);
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const img = new window.Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale; canvas.height = (height + 28) * scale;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "white"; ctx.fillRect(0, 0, width, height + 28);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((png) => {
+        if (!png) { setExporting(false); return; }
+        const pngUrl = URL.createObjectURL(png);
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = `${(selectedExercise?.name ?? "progreso").replace(/\s+/g, "_")}-${metric}.png`;
+        a.click();
+        URL.revokeObjectURL(pngUrl);
+        setExporting(false);
+      }, "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); setExporting(false); };
+    img.src = url;
   }
 
   const exPRs = selectedExId ? (personalRecords[selectedExId] ?? []).slice().sort((a, b) => a.reps - b.reps) : [];
@@ -401,12 +464,22 @@ export default function ProgressPage() {
                     {metricLabel[m]}
                   </button>
                 ))}
-                <button
-                  onClick={() => setShowTrend((v) => !v)}
-                  className={`ml-auto rounded-full border px-3 py-1 text-xs font-medium ${showTrend ? "bg-orange-500 text-white border-orange-500" : "hover:bg-secondary text-muted-foreground"}`}
-                >
-                  Tendencia
-                </button>
+                <div className="ml-auto flex gap-2">
+                  <button
+                    onClick={() => setShowTrend((v) => !v)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${showTrend ? "bg-orange-500 text-white border-orange-500" : "hover:bg-secondary text-muted-foreground"}`}
+                  >
+                    Tendencia
+                  </button>
+                  <button
+                    onClick={exportChart}
+                    disabled={exporting || exChartData.length === 0}
+                    className="rounded-full border px-3 py-1 text-xs font-medium hover:bg-secondary text-muted-foreground disabled:opacity-40"
+                    aria-label="Exportar gráfica como imagen PNG"
+                  >
+                    {exporting ? "…" : "Exportar"}
+                  </button>
+                </div>
               </div>
               {exChartData.length === 0 ? (
                 <div className="rounded-lg border border-dashed h-48 flex items-center justify-center text-sm text-muted-foreground">
@@ -420,7 +493,7 @@ export default function ProgressPage() {
                   ? exChartData.map((p, i) => ({ ...p, trend: trendValues[i] }))
                   : exChartData;
                 return (
-                  <div className="rounded-lg border bg-card p-4">
+                  <div ref={chartContainerRef} className="rounded-lg border bg-card p-4">
                     <ResponsiveContainer width="100%" height={220}>
                       <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
                         <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d: string) => d.slice(5)} />
