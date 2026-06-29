@@ -11,6 +11,7 @@ import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { readBool, SETTING_KEYS } from "@/lib/settings";
+import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
 
 export default function DashboardPage() {
   const today = todayISO();
@@ -133,6 +134,7 @@ export default function DashboardPage() {
     await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString() });
     finishWorkout();
     setActiveWEId(null);
+    autoBackupToDriveIfEnabled();
   }
 
   async function handleDateChange(delta: number) {

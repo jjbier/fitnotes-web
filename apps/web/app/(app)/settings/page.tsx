@@ -54,6 +54,14 @@ export default function SettingsPage() {
   const [exportingBody, setExportingBody] = useState(false);
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
+  // Google Drive
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [driveLastBackup, setDriveLastBackup] = useState<string | null>(null);
+  const [driveLastBackupUrl, setDriveLastBackupUrl] = useState<string | null>(null);
+  const [driveBacking, setDriveBacking] = useState(false);
+  const [driveDisconnecting, setDriveDisconnecting] = useState(false);
+  const [autoBackupDrive, setAutoBackupDrive] = useState(false);
+
   const [backingUp, setBackingUp] = useState(false);
   const [restoreData, setRestoreData] = useState<BackupData | null>(null);
   const [restoring, setRestoring] = useState(false);
@@ -78,7 +86,23 @@ export default function SettingsPage() {
       if (!user) return;
       setEmail(user.email ?? "");
       setDisplayName((user.user_metadata?.display_name as string | undefined) ?? "");
+      const meta = user.user_metadata ?? {};
+      setDriveConnected(!!meta.google_drive_refresh_token);
+      setDriveLastBackup((meta.google_drive_last_backup as string | undefined) ?? null);
+      setDriveLastBackupUrl((meta.google_drive_last_backup_url as string | undefined) ?? null);
     });
+    setAutoBackupDrive(readBool(SETTING_KEYS.AUTO_BACKUP_DRIVE, false));
+    // Handle OAuth callback params
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("drive") === "connected") {
+        setDriveConnected(true);
+        window.history.replaceState({}, "", "/settings");
+      } else if (params.get("drive_error")) {
+        alert(`Error conectando Google Drive: ${params.get("drive_error")}`);
+        window.history.replaceState({}, "", "/settings");
+      }
+    }
     const stored = localStorage.getItem("fitnotes_weight_unit");
     if (stored === "lb" || stored === "kg") setWeightUnit(stored);
 
@@ -223,6 +247,37 @@ export default function SettingsPage() {
     if (error) { alert(`Error al eliminar la cuenta: ${error.message}`); return; }
     await client.auth.signOut();
     window.location.href = "/login";
+  }
+
+  async function handleDriveBackup() {
+    setDriveBacking(true);
+    try {
+      const res = await fetch("/api/google/backup", { method: "POST" });
+      const data = (await res.json()) as { success?: boolean; fileUrl?: string; exportedAt?: string; error?: string; code?: string };
+      if (!res.ok) {
+        if (data.code === "TOKEN_INVALID") setDriveConnected(false);
+        alert(data.error ?? "Error al hacer la copia en Drive");
+        return;
+      }
+      setDriveLastBackup(data.exportedAt ?? null);
+      setDriveLastBackupUrl(data.fileUrl ?? null);
+    } finally {
+      setDriveBacking(false);
+    }
+  }
+
+  async function handleDriveDisconnect() {
+    setDriveDisconnecting(true);
+    try {
+      await fetch("/api/google/disconnect", { method: "POST" });
+      setDriveConnected(false);
+      setDriveLastBackup(null);
+      setDriveLastBackupUrl(null);
+      writeBool(SETTING_KEYS.AUTO_BACKUP_DRIVE, false);
+      setAutoBackupDrive(false);
+    } finally {
+      setDriveDisconnecting(false);
+    }
   }
 
   async function handleBackup() {
@@ -546,6 +601,83 @@ export default function SettingsPage() {
             onChange={handleRestoreFileSelect}
             className="hidden"
           />
+        </div>
+
+        <div className="border-t" />
+
+        {/* Google Drive */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" aria-hidden="true">
+              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a15.92 15.92 0 0 0 2.1 8zm24.1-23.85-13.75-23.8a16.03 16.03 0 0 0-2.1 8v3.65L28.7 53h2zm32.9-3.65-13.75-23.8-13.75 23.8zm-8.05-27.45c-1.35-.8-2.9-1.25-4.5-1.25s-3.15.45-4.5 1.25L32.85 35.35h21.6l13.1-22.7zM73.05 53H56.3L70.05 76.8a16.42 16.42 0 0 0 3.3-3.3L87.3 45a15.96 15.96 0 0 0-2.1-8L73.05 53zm6.85 20.5-3.85-6.65a15.92 15.92 0 0 1-2.1 8l-13.75 23.8a15.92 15.92 0 0 0 3.3-3.3l13.75-23.85h2.65z" fill="#4285f4"/>
+            </svg>
+            <p className="text-sm font-medium">Google Drive</p>
+            {driveConnected && (
+              <span className="ml-auto text-xs text-green-600 font-medium">● Conectado</span>
+            )}
+          </div>
+
+          {!driveConnected ? (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Conecta tu Google Drive para hacer copias automáticas</p>
+              <a
+                href="/api/google/auth"
+                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+              >
+                Conectar Google Drive
+              </a>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {driveLastBackup && (
+                <p className="text-xs text-muted-foreground">
+                  Última copia:{" "}
+                  {new Date(driveLastBackup).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })}
+                  {driveLastBackupUrl && (
+                    <a href={driveLastBackupUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">
+                      Ver en Drive →
+                    </a>
+                  )}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium">Backup automático al finalizar entrenamiento</p>
+                  <p className="text-xs text-muted-foreground">Sube una copia a Drive cada vez que termines</p>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={autoBackupDrive}
+                  onClick={() => {
+                    const next = !autoBackupDrive;
+                    setAutoBackupDrive(next);
+                    writeBool(SETTING_KEYS.AUTO_BACKUP_DRIVE, next);
+                  }}
+                  className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${autoBackupDrive ? "bg-primary" : "bg-secondary border"}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoBackupDrive ? "translate-x-5" : "translate-x-1"}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDriveBackup}
+                  disabled={driveBacking}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {driveBacking ? "Subiendo…" : "Hacer copia ahora"}
+                </button>
+                <button
+                  onClick={handleDriveDisconnect}
+                  disabled={driveDisconnecting}
+                  className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
+                >
+                  {driveDisconnecting ? "Desconectando…" : "Desconectar"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="border-t" />

@@ -12,6 +12,7 @@ import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { readBool, SETTING_KEYS } from "@/lib/settings";
+import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -137,6 +138,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString() });
     finishWorkout();
     setActiveWEId(null);
+    autoBackupToDriveIfEnabled();
   }
 
   return (

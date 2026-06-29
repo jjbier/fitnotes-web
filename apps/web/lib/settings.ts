@@ -5,6 +5,7 @@ export const SETTING_KEYS = {
   KEEP_SCREEN_ON: "fitnotes_keep_screen_on",
   WEEK_START: "fitnotes_week_start",
   WEIGHT_UNIT: "fitnotes_weight_unit",
+  AUTO_BACKUP_DRIVE: "fitnotes_auto_backup_drive",
 } as const;
 
 export function readBool(key: string, defaultValue = true): boolean {
