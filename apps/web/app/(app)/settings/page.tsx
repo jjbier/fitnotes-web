@@ -1,10 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createBrowserClient } from "@fitnotes/database";
 import { SETTING_KEYS, readBool, writeBool, readWeekStart } from "@/lib/settings";
+
+type BackupEntry = Record<string, unknown>;
+type BackupData = {
+  version: number;
+  exported_at: string;
+  categories: BackupEntry[];
+  exercises: BackupEntry[];
+  routines: BackupEntry[];
+  routine_days: BackupEntry[];
+  routine_day_exercises: BackupEntry[];
+  predefined_sets: BackupEntry[];
+  body_measurements: BackupEntry[];
+  body_measurement_entries: BackupEntry[];
+  workouts: BackupEntry[];
+  workout_exercises: BackupEntry[];
+  sets: BackupEntry[];
+  personal_records: BackupEntry[];
+  exercise_goals: BackupEntry[];
+};
+
+function isBackupData(v: unknown): v is BackupData {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return o.version === 1 && typeof o.exported_at === "string" && Array.isArray(o.workouts);
+}
 
 function downloadCSV(content: string, filename: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
@@ -29,6 +54,13 @@ export default function SettingsPage() {
   const [exportingBody, setExportingBody] = useState(false);
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoreData, setRestoreData] = useState<BackupData | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreStep, setRestoreStep] = useState("");
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoreDone, setRestoreDone] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Advanced workout settings
   const [trackPRs, setTrackPRs] = useState(true);
@@ -191,6 +223,121 @@ export default function SettingsPage() {
     if (error) { alert(`Error al eliminar la cuenta: ${error.message}`); return; }
     await client.auth.signOut();
     window.location.href = "/login";
+  }
+
+  async function handleBackup() {
+    setBackingUp(true);
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+      const uid = user.id;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const q = (table: string) => (client.from(table as never) as any).select("*").eq("user_id", uid);
+      const [
+        { data: cats }, { data: exs }, { data: rts }, { data: rds }, { data: rdes },
+        { data: ps }, { data: bms }, { data: bmes }, { data: wos }, { data: wes }, { data: sets }, { data: prs },
+      ] = await Promise.all([
+        q("categories"), q("exercises"), q("routines"), q("routine_days"), q("routine_day_exercises"),
+        q("predefined_sets"), q("body_measurements"), q("body_measurement_entries"),
+        q("workouts"), q("workout_exercises"), q("sets"), q("personal_records"),
+      ]);
+      const { data: egs } = await q("exercise_goals");
+      const backup: BackupData = {
+        version: 1, exported_at: new Date().toISOString(),
+        categories: cats ?? [], exercises: exs ?? [], routines: rts ?? [],
+        routine_days: rds ?? [], routine_day_exercises: rdes ?? [], predefined_sets: ps ?? [],
+        body_measurements: bms ?? [], body_measurement_entries: bmes ?? [],
+        workouts: wos ?? [], workout_exercises: wes ?? [], sets: sets ?? [],
+        personal_records: prs ?? [], exercise_goals: egs ?? [],
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fitnotes-backup-${new Date().toISOString().split("T")[0]}.fitnotes`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
+  function handleRestoreFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string);
+        if (!isBackupData(parsed)) { alert("Archivo inválido o formato no reconocido."); return; }
+        setRestoreData(parsed);
+        setRestoreError(null);
+        setRestoreDone(false);
+      } catch {
+        alert("No se pudo leer el archivo. Asegúrate de que es un archivo .fitnotes válido.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  async function executeRestore() {
+    if (!restoreData) return;
+    setRestoring(true);
+    setRestoreError(null);
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) throw new Error("Sesión no válida");
+      const uid = user.id;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tbl = (table: string) => client.from(table as never) as any;
+
+      // Delete in FK-safe order
+      const deleteTables = [
+        "sets", "workout_exercises", "workouts", "personal_records",
+        "predefined_sets", "routine_day_exercises", "routine_days", "routines",
+        "body_measurement_entries", "body_measurements",
+        "exercise_goals", "exercises", "categories",
+      ];
+      for (const table of deleteTables) {
+        setRestoreStep(`Eliminando ${table}…`);
+        const { error } = await tbl(table).delete().eq("user_id", uid);
+        if (error) throw new Error(`Error eliminando ${table}: ${error.message}`);
+      }
+
+      // Insert in dependency order (no personal_records — rebuilt by SQL trigger on sets INSERT)
+      const insertSteps: [string, BackupEntry[]][] = [
+        ["categories", restoreData.categories],
+        ["exercises", restoreData.exercises],
+        ["routines", restoreData.routines],
+        ["routine_days", restoreData.routine_days],
+        ["routine_day_exercises", restoreData.routine_day_exercises],
+        ["predefined_sets", restoreData.predefined_sets],
+        ["body_measurements", restoreData.body_measurements],
+        ["body_measurement_entries", restoreData.body_measurement_entries],
+        ["workouts", restoreData.workouts],
+        ["workout_exercises", restoreData.workout_exercises],
+        ["sets", restoreData.sets],
+        ["exercise_goals", restoreData.exercise_goals],
+      ];
+      const CHUNK = 500;
+      for (const [table, rows] of insertSteps) {
+        if (!rows.length) continue;
+        setRestoreStep(`Restaurando ${table} (${rows.length})…`);
+        const patched = rows.map((r) => ({ ...r, user_id: uid }));
+        for (let i = 0; i < patched.length; i += CHUNK) {
+          const { error } = await tbl(table).insert(patched.slice(i, i + CHUNK));
+          if (error) throw new Error(`Error en ${table}: ${error.message}`);
+        }
+      }
+
+      setRestoreDone(true);
+      setRestoreStep("¡Restauración completada!");
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setRestoring(false);
+    }
   }
 
   async function handleDeleteHistory() {
@@ -365,6 +512,44 @@ export default function SettingsPage() {
       <section className="rounded-lg border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Datos</h2>
 
+        {/* Backup */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Copia de seguridad completa</p>
+            <p className="text-xs text-muted-foreground">Descarga todos tus datos en un archivo <code className="text-xs">.fitnotes</code></p>
+          </div>
+          <button
+            onClick={handleBackup}
+            disabled={backingUp}
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          >
+            {backingUp ? "Exportando…" : "Exportar .fitnotes"}
+          </button>
+        </div>
+
+        {/* Restore */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Restaurar copia de seguridad</p>
+            <p className="text-xs text-muted-foreground">Reemplaza todos tus datos con los de un archivo <code className="text-xs">.fitnotes</code></p>
+          </div>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+          >
+            Seleccionar archivo…
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".fitnotes,.json"
+            onChange={handleRestoreFileSelect}
+            className="hidden"
+          />
+        </div>
+
+        <div className="border-t" />
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Exportar entrenamientos</p>
@@ -466,6 +651,79 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      {/* Restore confirmation modal */}
+      {restoreData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl border bg-card shadow-xl p-6 space-y-5">
+            <h3 className="text-lg font-semibold">Restaurar copia de seguridad</h3>
+
+            <div className="rounded-lg bg-secondary/50 p-4 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Exportada: {new Date(restoreData.exported_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })}
+              </p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-1 text-sm">
+                {([
+                  ["Categorías", restoreData.categories.length],
+                  ["Ejercicios", restoreData.exercises.length],
+                  ["Rutinas", restoreData.routines.length],
+                  ["Entrenamientos", restoreData.workouts.length],
+                  ["Series", restoreData.sets.length],
+                  ["Medidas corporales", restoreData.body_measurements.length],
+                ] as [string, number][]).map(([label, count]) => (
+                  <div key={label} className="flex items-baseline gap-1.5">
+                    <span className="font-semibold tabular-nums">{count}</span>
+                    <span className="text-muted-foreground text-xs">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm space-y-1">
+              <p className="font-medium text-destructive">Atención</p>
+              <p className="text-xs text-muted-foreground">
+                Esta acción eliminará todos tus datos actuales y los reemplazará con los del archivo. No se puede deshacer.
+              </p>
+            </div>
+
+            {restoreError && (
+              <p className="text-sm text-destructive rounded-md bg-destructive/10 px-3 py-2">{restoreError}</p>
+            )}
+
+            {restoring ? (
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-4 w-4 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                <p className="text-sm text-muted-foreground">{restoreStep}</p>
+              </div>
+            ) : restoreDone ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-green-600">¡Restauración completada con éxito!</p>
+                <button
+                  onClick={() => { setRestoreData(null); setRestoreDone(false); router.refresh(); }}
+                  className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Cerrar y recargar
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => { setRestoreData(null); setRestoreError(null); }}
+                  className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeRestore}
+                  className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Restaurar datos
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
