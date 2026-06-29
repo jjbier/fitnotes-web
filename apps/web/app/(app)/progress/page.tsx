@@ -15,6 +15,19 @@ import type { ExerciseType } from "@fitnotes/core";
 type ChartMetric = "maxWeight" | "totalVolume" | "maxReps";
 type Tab = "records" | "chart" | "history" | "goals";
 
+function linearRegression(values: number[]): number[] {
+  const n = values.length;
+  if (n < 2) return [...values];
+  const xMean = (n - 1) / 2;
+  const yMean = values.reduce((s, v) => s + v, 0) / n;
+  const num = values.reduce((s, v, i) => s + (i - xMean) * (v - yMean), 0);
+  const den = values.reduce((s, _, i) => s + Math.pow(i - xMean, 2), 0);
+  if (den === 0) return values.map(() => parseFloat(yMean.toFixed(2)));
+  const slope = num / den;
+  const intercept = yMean - slope * xMean;
+  return values.map((_, i) => parseFloat((slope * i + intercept).toFixed(2)));
+}
+
 export default function ProgressPage() {
   const personalRecords = useProgressStore((s) => s.personalRecords);
   const chartData = useProgressStore((s) => s.chartData);
@@ -29,6 +42,7 @@ export default function ProgressPage() {
   const [selectedExId, setSelectedExId] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("records");
   const [metric, setMetric] = useState<ChartMetric>("maxWeight");
+  const [showTrend, setShowTrend] = useState(false);
 
   const [goals, setGoals] = useState<ExerciseGoalRow[]>([]);
   const [goalSaving, setGoalSaving] = useState(false);
@@ -256,7 +270,7 @@ export default function ProgressPage() {
           {/* Chart tab */}
           {activeTab === "chart" && (
             <div className="space-y-3">
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap items-center">
                 {(["maxWeight", "totalVolume", "maxReps"] as ChartMetric[]).map((m) => (
                   <button
                     key={m}
@@ -266,27 +280,45 @@ export default function ProgressPage() {
                     {metricLabel[m]}
                   </button>
                 ))}
+                <button
+                  onClick={() => setShowTrend((v) => !v)}
+                  className={`ml-auto rounded-full border px-3 py-1 text-xs font-medium ${showTrend ? "bg-orange-500 text-white border-orange-500" : "hover:bg-secondary text-muted-foreground"}`}
+                >
+                  Tendencia
+                </button>
               </div>
               {exChartData.length === 0 ? (
                 <div className="rounded-lg border border-dashed h-48 flex items-center justify-center text-sm text-muted-foreground">
                   Sin datos aún. Completa series para ver tu progreso.
                 </div>
-              ) : (
-                <div className="rounded-lg border bg-card p-4">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={exChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d: string) => d.slice(5)} />
-                      <YAxis tick={{ fontSize: 10 }} width={40} />
-                      <Tooltip
-                        labelFormatter={(l) => String(l)}
-                        formatter={(v) => [String(v), metricLabel[metric]]}
-                      />
-                      <Line type="monotone" dataKey={metric} stroke="#6366f1" strokeWidth={2}
-                        dot={{ r: 3, fill: "#6366f1" }} activeDot={{ r: 5 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              ) : (() => {
+                const trendValues = showTrend && exChartData.length >= 2
+                  ? linearRegression(exChartData.map((p) => p[metric] as number))
+                  : null;
+                const chartData = trendValues
+                  ? exChartData.map((p, i) => ({ ...p, trend: trendValues[i] }))
+                  : exChartData;
+                return (
+                  <div className="rounded-lg border bg-card p-4">
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d: string) => d.slice(5)} />
+                        <YAxis tick={{ fontSize: 10 }} width={40} />
+                        <Tooltip
+                          labelFormatter={(l) => String(l)}
+                          formatter={(v, name) => [String(v), name === "trend" ? "Tendencia" : metricLabel[metric]]}
+                        />
+                        <Line type="monotone" dataKey={metric} stroke="#6366f1" strokeWidth={2}
+                          dot={{ r: 3, fill: "#6366f1" }} activeDot={{ r: 5 }} />
+                        {trendValues && (
+                          <Line type="linear" dataKey="trend" stroke="#f97316" strokeWidth={1.5}
+                            strokeDasharray="5 3" dot={false} activeDot={false} />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
