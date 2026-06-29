@@ -9,6 +9,7 @@ import NavigationPanel from "@/components/workout/NavigationPanel";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
+import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -36,6 +37,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const [selectedExId, setSelectedExId] = useState("");
   const [showShare, setShowShare] = useState(false);
   const [showCopy, setShowCopy] = useState(false);
+  const [showMove, setShowMove] = useState(false);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -163,6 +165,12 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
               className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
             >
               Copiar de…
+            </button>
+            <button
+              onClick={() => setShowMove(true)}
+              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              Mover a…
             </button>
             <button
               onClick={handleFinish}
@@ -315,6 +323,17 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
           }}
           onClose={() => setShowCopy(false)}
+        />
+      )}
+
+      {showMove && activeWorkout && (
+        <MoveWorkoutModal
+          workoutId={activeWorkout.id}
+          currentDate={date}
+          onMoved={(newDate) => {
+            window.location.href = `/workout/${newDate}`;
+          }}
+          onClose={() => setShowMove(false)}
         />
       )}
     </div>

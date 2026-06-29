@@ -8,6 +8,7 @@ import TrainingScreen from "@/components/workout/TrainingScreen";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
+import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
 
 export default function DashboardPage() {
   const today = todayISO();
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [showExPicker, setShowExPicker] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showCopy, setShowCopy] = useState(false);
+  const [showMove, setShowMove] = useState(false);
   const [selectedExId, setSelectedExId] = useState("");
   const [currentDate, setCurrentDate] = useState(today);
 
@@ -211,8 +213,8 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Share + Copy + Finish */}
-          <div className="flex gap-2">
+          {/* Share + Copy + Move + Finish */}
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowShare(true)}
               className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
@@ -224,6 +226,12 @@ export default function DashboardPage() {
               className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
             >
               Copiar de…
+            </button>
+            <button
+              onClick={() => setShowMove(true)}
+              className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
+            >
+              Mover a…
             </button>
             <button
               onClick={handleFinish}
@@ -252,6 +260,18 @@ export default function DashboardPage() {
           userId={userId}
           onCopied={() => loadWorkoutForDate(currentDate, userId)}
           onClose={() => setShowCopy(false)}
+        />
+      )}
+
+      {showMove && activeWorkout && (
+        <MoveWorkoutModal
+          workoutId={activeWorkout.id}
+          currentDate={currentDate}
+          onMoved={(newDate) => {
+            setCurrentDate(newDate);
+            loadWorkoutForDate(newDate, userId);
+          }}
+          onClose={() => setShowMove(false)}
         />
       )}
 
