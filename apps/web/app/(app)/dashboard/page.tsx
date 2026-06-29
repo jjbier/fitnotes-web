@@ -6,12 +6,14 @@ import { useWorkoutStore, useExerciseStore, formatWorkoutDate, todayISO, Exercis
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
+import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 
 export default function DashboardPage() {
   const today = todayISO();
 
   const activeWorkout = useWorkoutStore((s) => s.activeWorkout);
   const workoutExercises = useWorkoutStore((s) => s.exercises);
+  const sets = useWorkoutStore((s) => s.sets);
   const workouts = useWorkoutStore((s) => s.workouts);
   const isLoading = useWorkoutStore((s) => s.isLoading);
   const loadWorkout = useWorkoutStore((s) => s.loadWorkout);
@@ -27,6 +29,7 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState("");
   const [activeWEId, setActiveWEId] = useState<string | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [selectedExId, setSelectedExId] = useState("");
   const [currentDate, setCurrentDate] = useState(today);
 
@@ -206,14 +209,32 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Finish button */}
-          <button
-            onClick={handleFinish}
-            className="w-full rounded-lg border border-destructive py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
-          >
-            Finalizar entrenamiento
-          </button>
+          {/* Share + Finish */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowShare(true)}
+              className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
+            >
+              Compartir
+            </button>
+            <button
+              onClick={handleFinish}
+              className="flex-1 rounded-lg border border-destructive py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+            >
+              Finalizar
+            </button>
+          </div>
         </div>
+      )}
+
+      {showShare && activeWorkout && (
+        <ShareWorkoutModal
+          date={currentDate}
+          workoutExercises={workoutExercises}
+          exercises={exercises}
+          sets={sets}
+          onClose={() => setShowShare(false)}
+        />
       )}
 
       {/* Recent workouts */}

@@ -7,6 +7,7 @@ import { createBrowserClient, createWorkoutRepository, createExerciseRepository 
 import TrainingScreen from "@/components/workout/TrainingScreen";
 import NavigationPanel from "@/components/workout/NavigationPanel";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
+import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -32,6 +33,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const [activeWEId, setActiveWEId] = useState<string | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
   const [selectedExId, setSelectedExId] = useState("");
+  const [showShare, setShowShare] = useState(false);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -147,12 +149,20 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(date)}</p>
         </div>
         {activeWorkout && (
-          <button
-            onClick={handleFinish}
-            className="rounded-md border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
-          >
-            Finalizar
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowShare(true)}
+              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              Compartir
+            </button>
+            <button
+              onClick={handleFinish}
+              className="rounded-md border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
+            >
+              Finalizar
+            </button>
+          </div>
         )}
       </div>
 
@@ -257,6 +267,16 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             )}
           </div>
         </div>
+      )}
+
+      {showShare && activeWorkout && (
+        <ShareWorkoutModal
+          date={date}
+          workoutExercises={workoutExercises}
+          exercises={exercises}
+          sets={sets}
+          onClose={() => setShowShare(false)}
+        />
       )}
     </div>
   );
