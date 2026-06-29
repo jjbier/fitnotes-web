@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useProgressStore, useExerciseStore, calculate1RM } from "@fitnotes/core";
+import { useProgressStore, useExerciseStore, calculate1RM, estimateRepMax } from "@fitnotes/core";
 import {
   createBrowserClient, createProgressRepository,
   createExerciseRepository, createGoalsRepository,
@@ -43,6 +43,7 @@ export default function ProgressPage() {
   const [activeTab, setActiveTab] = useState<Tab>("records");
   const [metric, setMetric] = useState<ChartMetric>("maxWeight");
   const [showTrend, setShowTrend] = useState(false);
+  const [prSubTab, setPrSubTab] = useState<"real" | "estimado">("real");
 
   const [goals, setGoals] = useState<ExerciseGoalRow[]>([]);
   const [goalSaving, setGoalSaving] = useState(false);
@@ -106,6 +107,7 @@ export default function ProgressPage() {
   function handleExerciseChange(id: string) {
     setSelectedExId(id);
     setActiveTab("records");
+    setPrSubTab("real");
     setShowGoalForm(false);
     if (id) loadExerciseData(id);
   }
@@ -247,22 +249,74 @@ export default function ProgressPage() {
 
           {/* Records tab */}
           {activeTab === "records" && (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              {/* Sub-tab toggle */}
+              <div className="flex rounded-lg border bg-secondary/20 p-0.5 w-fit">
+                {(["real", "estimado"] as const).map((sub) => (
+                  <button
+                    key={sub}
+                    onClick={() => setPrSubTab(sub)}
+                    className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+                      prSubTab === sub ? "bg-white shadow-sm dark:bg-secondary" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {sub === "real" ? "Real" : "Estimado"}
+                  </button>
+                ))}
+              </div>
+
               {exPRs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Sin récords para este ejercicio aún.</p>
+              ) : prSubTab === "real" ? (
+                /* Real: stored PRs per rep count */
+                <div className="space-y-2">
+                  {exPRs.map((pr) => (
+                    <div key={pr.id} className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
+                      <div>
+                        <span className="font-medium">{pr.reps} rep{pr.reps !== 1 ? "s" : ""}</span>
+                        <span className="ml-2 text-muted-foreground font-semibold">{pr.weight} kg</span>
+                      </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        1RM est. <span className="font-semibold text-primary">{calculate1RM(pr.weight, pr.reps).toFixed(1)} kg</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                exPRs.map((pr) => (
-                  <div key={pr.id} className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
-                    <div>
-                      <span className="font-medium">Máx. {pr.reps} rep</span>
-                      <span className="ml-2 text-muted-foreground">{pr.weight} kg</span>
+                /* Estimado: full 1–12 rep table from best 1RM */
+                (() => {
+                  const best1RM = Math.max(...exPRs.map((pr) => calculate1RM(pr.weight, pr.reps)));
+                  const realRepSet = new Set(exPRs.map((pr) => pr.reps));
+                  return (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Basado en 1RM estimado de <span className="font-semibold text-foreground">{best1RM.toFixed(1)} kg</span>
+                      </p>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((reps) => {
+                        const est = estimateRepMax(best1RM, reps);
+                        const isActual = realRepSet.has(reps);
+                        const actualPR = exPRs.find((pr) => pr.reps === reps);
+                        return (
+                          <div
+                            key={reps}
+                            className={`flex items-center justify-between rounded-md border px-4 py-2.5 text-sm ${isActual ? "border-primary/30 bg-primary/5" : ""}`}
+                          >
+                            <span className="font-medium flex items-center gap-2">
+                              {reps} rep{reps !== 1 ? "s" : ""}
+                              {isActual && <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">PR</span>}
+                            </span>
+                            <div className="text-right">
+                              <span className="font-semibold">{est.toFixed(1)} kg</span>
+                              {isActual && actualPR && (
+                                <span className="ml-2 text-xs text-green-600">real {actualPR.weight} kg</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs text-muted-foreground">1RM est. </span>
-                      <span className="font-semibold text-primary">{calculate1RM(pr.weight, pr.reps).toFixed(1)} kg</span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })()
               )}
             </div>
           )}
