@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useExerciseStore, ExerciseType, getExerciseFields } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 
@@ -83,6 +84,14 @@ export default function ExerciseHistoryPage() {
   const unit = exercise?.weight_unit ?? "kg";
   const categoryId = exercise?.category_id;
 
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: sessions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 160,
+    overscan: 5,
+  });
+
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
@@ -134,49 +143,57 @@ export default function ExerciseHistoryPage() {
           <p className="text-sm text-muted-foreground mt-1">Este ejercicio no tiene series registradas.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {sessions.map((session) => (
-            <div key={session.workout_id} className="rounded-lg border bg-card overflow-hidden">
-              {/* Session header */}
-              <div className="bg-secondary/30 px-5 py-3 border-b flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-sm capitalize">{formatDate(session.date)}</p>
-                  {session.comment && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{session.comment}</p>
-                  )}
-                </div>
-                <Link
-                  href={`/workout/${session.date}`}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+        <div ref={parentRef} className="overflow-auto" style={{ maxHeight: "70vh" }}>
+          <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const session = sessions[virtualRow.index]!;
+              return (
+                <div
+                  key={session.workout_id}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}
+                  className="pb-4"
                 >
-                  Ver workout →
-                </Link>
-              </div>
-
-              {/* Sets table */}
-              {session.sets.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-muted-foreground">Sin series</p>
-              ) : (
-                <div className="divide-y">
-                  {session.sets.map((set, idx) => (
-                    <div key={set.id} className="flex items-center gap-4 px-5 py-2.5">
-                      <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-semibold shrink-0 ${
-                        set.is_complete
-                          ? "bg-primary/10 text-primary"
-                          : "bg-secondary text-muted-foreground"
-                      }`}>
-                        {idx + 1}
-                      </span>
-                      <span className="text-sm flex-1">{formatSet(set, exerciseType, unit)}</span>
-                      {set.comment && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[160px]">{set.comment}</span>
-                      )}
+                  <div className="rounded-lg border bg-card overflow-hidden">
+                    <div className="bg-secondary/30 px-5 py-3 border-b flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-sm capitalize">{formatDate(session.date)}</p>
+                        {session.comment && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{session.comment}</p>
+                        )}
+                      </div>
+                      <Link
+                        href={`/workout/${session.date}`}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Ver workout →
+                      </Link>
                     </div>
-                  ))}
+                    {session.sets.length === 0 ? (
+                      <p className="px-5 py-4 text-sm text-muted-foreground">Sin series</p>
+                    ) : (
+                      <div className="divide-y">
+                        {session.sets.map((set, idx) => (
+                          <div key={set.id} className="flex items-center gap-4 px-5 py-2.5">
+                            <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-semibold shrink-0 ${
+                              set.is_complete ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
+                            }`}>
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm flex-1">{formatSet(set, exerciseType, unit)}</span>
+                            {set.comment && (
+                              <span className="text-xs text-muted-foreground truncate max-w-[160px]">{set.comment}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

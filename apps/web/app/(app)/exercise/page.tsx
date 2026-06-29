@@ -132,8 +132,12 @@ export default function ExercisePage() {
   }
 
   async function handleToggleFavorite(id: string, current: boolean) {
-    await repo.toggleFavorite(id, !current);
     toggleFavorite(id);
+    try {
+      await repo.toggleFavorite(id, !current);
+    } catch {
+      toggleFavorite(id); // rollback
+    }
   }
 
   async function handleDeleteExercise(id: string) {

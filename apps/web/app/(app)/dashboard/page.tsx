@@ -44,8 +44,8 @@ export default function DashboardPage() {
         id: s.id, workout_exercise_id: s.workout_exercise_id,
         weight: s.weight ?? undefined, reps: s.reps ?? undefined,
         distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
-        is_complete: s.is_complete, comment: s.comment ?? undefined,
-        order_index: s.order_index,
+        is_complete: s.is_complete, is_warmup: s.is_warmup ?? false,
+        comment: s.comment ?? undefined, order_index: s.order_index,
       }));
     }
     loadWorkout(
