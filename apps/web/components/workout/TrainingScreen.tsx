@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWorkoutStore, useExerciseStore } from "@fitnotes/core";
-import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
+import { createBrowserClient, createWorkoutRepository, createProgressRepository } from "@fitnotes/database";
 import SetRow from "./SetRow";
 import SetCommentModal from "./SetCommentModal";
 import type { ExerciseType, Set as FitSet } from "@fitnotes/core";
@@ -23,16 +23,40 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   const [saving, setSaving] = useState(false);
   const [commentSetId, setCommentSetId] = useState<string | null>(null);
 
+  const [prMap, setPrMap] = useState<Record<number, number>>({});
+
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
+  const progressRepo = createProgressRepository(client);
 
   const workoutExercise = workoutExercises.find((we) => we.id === workoutExerciseId);
   const exercise = exercises.find((e) => e.id === workoutExercise?.exercise_id);
   const exerciseSets = (workoutExercise ? sets[workoutExercise.id] ?? [] : []).slice().sort((a, b) => a.order_index - b.order_index);
 
+  useEffect(() => {
+    async function loadPRs() {
+      if (!exercise) return;
+      const { data } = await progressRepo.getPersonalRecords(exercise.id);
+      if (!data) return;
+      const map: Record<number, number> = {};
+      for (const r of data) {
+        if (map[r.reps] == null || r.weight > map[r.reps]!) map[r.reps] = r.weight;
+      }
+      setPrMap(map);
+    }
+    loadPRs();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise?.id]);
+
   if (!workoutExercise || !exercise) return null;
 
   const exerciseType = exercise.type as ExerciseType;
+
+  function isSetPR(s: FitSet): boolean {
+    if (!s.is_complete || s.weight == null || s.reps == null) return false;
+    const best = prMap[s.reps];
+    return best != null && s.weight >= best;
+  }
 
   async function handleCreateSet() {
     if (!workoutExercise) return;
@@ -99,6 +123,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
               onDelete={handleDeleteSet}
               onToggleComplete={handleToggleComplete}
               onComment={setCommentSetId}
+              isPR={isSetPR(s)}
             />
           ))}
         </div>
