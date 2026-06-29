@@ -17,8 +17,10 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
       <button
         onClick={() => onToggleComplete(set.id, set.is_complete)}
         className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center ${set.is_complete ? "bg-primary border-primary text-white" : "border-muted-foreground/40"}`}
+        aria-label={set.is_complete ? "Marcar serie como pendiente" : "Marcar serie como completada"}
+        aria-pressed={set.is_complete}
       >
-        {set.is_complete && <span className="text-xs">✓</span>}
+        {set.is_complete && <span className="text-xs" aria-hidden="true">✓</span>}
       </button>
 
       <div className="flex-1 flex items-center gap-2 flex-wrap">
@@ -31,9 +33,10 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
               placeholder="kg"
               min="0"
               step="0.5"
+              aria-label="Peso en kg"
               className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <span className="text-xs text-muted-foreground">kg</span>
+            <span className="text-xs text-muted-foreground" aria-hidden="true">kg</span>
           </div>
         )}
         {(exerciseType === "WEIGHT_REPS" || exerciseType === "REPS_ONLY") && (
@@ -44,9 +47,10 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
               onChange={(e) => onUpdate(set.id, { reps: e.target.value ? parseInt(e.target.value) : undefined })}
               placeholder="reps"
               min="0"
+              aria-label="Repeticiones"
               className="w-14 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <span className="text-xs text-muted-foreground">reps</span>
+            <span className="text-xs text-muted-foreground" aria-hidden="true">reps</span>
           </div>
         )}
         {(exerciseType === "DISTANCE_TIME") && (
@@ -59,9 +63,10 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
                 placeholder="km"
                 min="0"
                 step="0.1"
+                aria-label="Distancia en km"
                 className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
               />
-              <span className="text-xs text-muted-foreground">km</span>
+              <span className="text-xs text-muted-foreground" aria-hidden="true">km</span>
             </div>
             <div className="flex items-center gap-1">
               <input
@@ -70,9 +75,10 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
                 onChange={(e) => onUpdate(set.id, { time_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
                 placeholder="seg"
                 min="0"
+                aria-label="Tiempo en segundos"
                 className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
               />
-              <span className="text-xs text-muted-foreground">s</span>
+              <span className="text-xs text-muted-foreground" aria-hidden="true">s</span>
             </div>
           </>
         )}
@@ -84,17 +90,24 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
               onChange={(e) => onUpdate(set.id, { time_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
               placeholder="seg"
               min="0"
+              aria-label="Tiempo en segundos"
               className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <span className="text-xs text-muted-foreground">s</span>
+            <span className="text-xs text-muted-foreground" aria-hidden="true">s</span>
           </div>
         )}
       </div>
 
-      {isPR && <span title="Récord personal" className="text-amber-500 shrink-0">🏆</span>}
-      {set.comment && <span title={set.comment} className="text-blue-500 text-xs shrink-0">💬</span>}
+      {isPR && <span title="Récord personal" className="text-amber-500 shrink-0" aria-label="Récord personal">🏆</span>}
+      {set.comment && <span title={set.comment} className="text-blue-500 text-xs shrink-0" aria-label={`Comentario: ${set.comment}`}>💬</span>}
 
-      <button onClick={() => onDelete(set.id)} className="text-muted-foreground hover:text-destructive text-xs shrink-0">✕</button>
+      <button
+        onClick={() => onDelete(set.id)}
+        className="text-muted-foreground hover:text-destructive text-xs shrink-0"
+        aria-label="Eliminar serie"
+      >
+        <span aria-hidden="true">✕</span>
+      </button>
     </div>
   );
 }

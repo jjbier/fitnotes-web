@@ -1,9 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ExerciseType } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
-import { useState } from "react";
 
 const TYPE_BADGE: Record<ExerciseType, string> = {
   [ExerciseType.WEIGHT_REPS]: "Peso × Reps",
@@ -39,6 +39,29 @@ interface Props {
 
 export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onToggleFavorite }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Focus first menu item when menu opens
+  useEffect(() => {
+    if (menuOpen) {
+      const first = menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]');
+      first?.focus();
+    }
+  }, [menuOpen]);
+
+  // Close on Escape, restore focus to trigger
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
 
   return (
     <div className="relative flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-secondary/30 transition-colors group">
@@ -68,20 +91,23 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
           aria-label={exercise.is_favorite ? "Quitar de favoritos" : "Añadir a favoritos"}
         >
           {exercise.is_favorite ? (
-            <span className="text-primary text-base">★</span>
+            <span className="text-primary text-base" aria-hidden="true">★</span>
           ) : (
-            <span className="text-muted-foreground text-base">☆</span>
+            <span className="text-muted-foreground text-base" aria-hidden="true">☆</span>
           )}
         </button>
 
         {/* Menu */}
         <div className="relative">
           <button
+            ref={triggerRef}
             onClick={() => setMenuOpen((o) => !o)}
             className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground"
             aria-label="Opciones"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
           >
-            ⋯
+            <span aria-hidden="true">⋯</span>
           </button>
 
           {menuOpen && (
@@ -89,24 +115,33 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
               <div
                 className="fixed inset-0 z-10"
                 onClick={() => setMenuOpen(false)}
+                aria-hidden="true"
               />
-              <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-md border bg-card shadow-lg py-1">
+              <div
+                ref={menuRef}
+                role="menu"
+                aria-label={`Opciones para ${exercise.name}`}
+                className="absolute right-0 top-full mt-1 z-20 w-40 rounded-md border bg-card shadow-lg py-1"
+              >
                 <Link
                   href={`/exercise/history/${exercise.id}`}
                   onClick={() => setMenuOpen(false)}
-                  className="block w-full text-left px-4 py-2 text-sm hover:bg-secondary"
+                  role="menuitem"
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
                   Historial
                 </Link>
                 <button
                   onClick={() => { onEdit(exercise); setMenuOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-sm hover:bg-secondary"
+                  role="menuitem"
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => { onDelete(exercise.id); setMenuOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary"
+                  role="menuitem"
+                  className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
                   Eliminar
                 </button>

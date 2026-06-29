@@ -57,8 +57,9 @@ export default function SetForm({
     <form onSubmit={handleSubmit} className="flex items-end gap-3 rounded-md border bg-secondary/30 px-4 py-3">
       {showWeight && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Peso (kg)</label>
+          <label htmlFor="sf-weight" className="text-xs text-muted-foreground">Peso (kg)</label>
           <input
+            id="sf-weight"
             type="number"
             inputMode="decimal"
             value={weight}
@@ -71,8 +72,9 @@ export default function SetForm({
 
       {showReps && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Repeticiones</label>
+          <label htmlFor="sf-reps" className="text-xs text-muted-foreground">Repeticiones</label>
           <input
+            id="sf-reps"
             type="number"
             inputMode="numeric"
             value={reps}
@@ -85,8 +87,9 @@ export default function SetForm({
 
       {showDistance && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Distancia (km)</label>
+          <label htmlFor="sf-distance" className="text-xs text-muted-foreground">Distancia (km)</label>
           <input
+            id="sf-distance"
             type="number"
             inputMode="decimal"
             value={distance}
@@ -99,8 +102,9 @@ export default function SetForm({
 
       {showTime && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Tiempo (s)</label>
+          <label htmlFor="sf-time" className="text-xs text-muted-foreground">Tiempo (s)</label>
           <input
+            id="sf-time"
             type="number"
             inputMode="numeric"
             value={timeSeconds}

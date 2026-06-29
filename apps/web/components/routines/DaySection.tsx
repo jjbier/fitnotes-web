@@ -47,8 +47,10 @@ export default function DaySection({
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="text-muted-foreground hover:text-foreground"
+          aria-label={collapsed ? "Expandir día" : "Contraer día"}
+          aria-expanded={!collapsed}
         >
-          {collapsed ? "▶" : "▼"}
+          <span aria-hidden="true">{collapsed ? "▶" : "▼"}</span>
         </button>
         {renaming ? (
           <input
@@ -58,6 +60,7 @@ export default function DaySection({
             onBlur={handleRename}
             onKeyDown={(e) => e.key === "Enter" && handleRename()}
             className="flex-1 rounded border px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            aria-label="Nombre del día"
           />
         ) : (
           <span
@@ -107,8 +110,9 @@ export default function DaySection({
                     <button
                       onClick={() => onRemoveExercise(rde.id)}
                       className="text-destructive hover:text-destructive/70 text-xs"
+                      aria-label={`Quitar ${ex?.name ?? "ejercicio"} del día`}
                     >
-                      ✕
+                      <span aria-hidden="true">✕</span>
                     </button>
                   )}
                 </div>

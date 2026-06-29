@@ -147,7 +147,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
 
       {/* Category */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Categoría</label>
+        <label className="text-sm font-medium" htmlFor="ex-category">Categoría</label>
         <div className="flex gap-2">
           <select
             id="ex-category"
@@ -178,7 +178,9 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
         {showNewCat && onCreateCategory && (
           <div className="rounded-md border bg-secondary/20 p-3 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nueva categoría</p>
+            <label htmlFor="new-cat-name" className="sr-only">Nombre de la nueva categoría</label>
             <input
+              id="new-cat-name"
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder="Nombre de categoría"
@@ -193,6 +195,8 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
                   onClick={() => setNewCatColor(c)}
                   className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
                   style={{ backgroundColor: c, borderColor: newCatColor === c ? "#0f172a" : "transparent" }}
+                  aria-label={`Color ${c}`}
+                  aria-pressed={newCatColor === c}
                 />
               ))}
             </div>
@@ -210,8 +214,8 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
 
       {/* Type */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Tipo</label>
-        <div className="grid grid-cols-2 gap-2">
+        <p id="ex-type-label" className="text-sm font-medium">Tipo</p>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="ex-type-label">
           {(Object.values(ExerciseType) as ExerciseType[]).map((t) => (
             <button
               key={t}
@@ -232,8 +236,8 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
       {/* Weight unit */}
       {[ExerciseType.WEIGHT_REPS, ExerciseType.WEIGHT_ONLY, ExerciseType.WEIGHT_DISTANCE, ExerciseType.WEIGHT_TIME].includes(form.type) && (
         <div className="space-y-1.5">
-          <label className="text-sm font-medium">Unidad de peso</label>
-          <div className="flex gap-2">
+          <p id="ex-unit-label" className="text-sm font-medium">Unidad de peso</p>
+          <div className="flex gap-2" role="group" aria-labelledby="ex-unit-label">
             {(["kg", "lb"] as const).map((unit) => (
               <button
                 key={unit}

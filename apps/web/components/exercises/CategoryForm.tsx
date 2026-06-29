@@ -61,7 +61,8 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
                 backgroundColor: c,
                 borderColor: color === c ? "#0f172a" : "transparent",
               }}
-              aria-label={c}
+              aria-label={`Color ${c}`}
+              aria-pressed={color === c}
             />
           ))}
         </div>
@@ -71,6 +72,7 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
             value={color}
             onChange={(e) => setColor(e.target.value)}
             placeholder="#6366f1"
+            aria-label="Color personalizado (hex)"
             className="w-28 rounded-md border px-2 py-1 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
