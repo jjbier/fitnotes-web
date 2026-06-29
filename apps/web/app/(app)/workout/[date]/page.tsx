@@ -10,6 +10,8 @@ import WorkoutTimer from "@/components/workout/WorkoutTimer";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
+import { useWakeLock } from "@/hooks/useWakeLock";
+import { readBool, SETTING_KEYS } from "@/lib/settings";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -38,6 +40,8 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const [showShare, setShowShare] = useState(false);
   const [showCopy, setShowCopy] = useState(false);
   const [showMove, setShowMove] = useState(false);
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  useWakeLock(keepScreenOn && !!activeWorkout);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -97,6 +101,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
         );
         if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
       }
+      setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
       setLoading(false);
     }
     load();

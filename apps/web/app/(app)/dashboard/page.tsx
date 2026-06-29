@@ -9,6 +9,8 @@ import WorkoutTimer from "@/components/workout/WorkoutTimer";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
+import { useWakeLock } from "@/hooks/useWakeLock";
+import { readBool, SETTING_KEYS } from "@/lib/settings";
 
 export default function DashboardPage() {
   const today = todayISO();
@@ -34,6 +36,8 @@ export default function DashboardPage() {
   const [showShare, setShowShare] = useState(false);
   const [showCopy, setShowCopy] = useState(false);
   const [showMove, setShowMove] = useState(false);
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  useWakeLock(keepScreenOn && !!activeWorkout);
   const [selectedExId, setSelectedExId] = useState("");
   const [currentDate, setCurrentDate] = useState(today);
 
@@ -96,6 +100,7 @@ export default function DashboardPage() {
       }
 
       await loadWorkoutForDate(today, user?.id ?? "");
+      setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
       setLoading(false);
     }
     load();

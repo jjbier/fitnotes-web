@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createBrowserClient, createCalendarRepository } from "@fitnotes/database";
 import { formatWorkoutDate } from "@fitnotes/core";
+import { readWeekStart } from "@/lib/settings";
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
@@ -17,6 +18,7 @@ export default function CalendarPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [weekStart, setWeekStart] = useState<0 | 1>(1);
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set());
   const [categoryColors, setCategoryColors] = useState<Record<string, string[]>>({});
   const [workouts, setWorkouts] = useState<{id: string; date: string; comment: string | null}[]>([]);
@@ -24,6 +26,8 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [listView, setListView] = useState(false);
   const [history, setHistory] = useState<{id: string; date: string; comment: string | null}[]>([]);
+
+  useEffect(() => { setWeekStart(readWeekStart()); }, []);
 
   const client = createBrowserClient();
   const repo = createCalendarRepository(client);
@@ -63,9 +67,13 @@ export default function CalendarPage() {
   }
 
   const daysInMonth = getDaysInMonth(year, month);
-  const firstDow = getFirstDayOfWeek(year, month);
-  const monthName = new Date(year, month - 1, 1).toLocaleDateString("en", { month: "long", year: "numeric" });
+  const rawFirstDow = getFirstDayOfWeek(year, month);
+  const firstDow = weekStart === 1 ? (rawFirstDow + 6) % 7 : rawFirstDow;
+  const monthName = new Date(year, month - 1, 1).toLocaleDateString("es", { month: "long", year: "numeric" });
   const today = new Date().toISOString().split("T")[0]!;
+  const DAY_HEADERS = weekStart === 1
+    ? ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"]
+    : ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"];
 
   const selectedWorkout = workouts.find((w) => w.date === selectedDate);
 
@@ -113,7 +121,7 @@ export default function CalendarPage() {
 
           {/* Day-of-week headers */}
           <div className="grid grid-cols-7 gap-1">
-            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+            {DAY_HEADERS.map((d) => (
               <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
             ))}
             {/* Empty cells for first week offset */}

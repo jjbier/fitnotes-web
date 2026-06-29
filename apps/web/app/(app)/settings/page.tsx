@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createBrowserClient } from "@fitnotes/database";
+import { SETTING_KEYS, readBool, writeBool, readWeekStart } from "@/lib/settings";
 
 function downloadCSV(content: string, filename: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
@@ -29,6 +30,13 @@ export default function SettingsPage() {
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
 
+  // Advanced workout settings
+  const [trackPRs, setTrackPRs] = useState(true);
+  const [autoComplete, setAutoComplete] = useState(false);
+  const [autoNextSet, setAutoNextSet] = useState(false);
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  const [weekStart, setWeekStart] = useState<0 | 1>(1);
+
   const client = createBrowserClient();
 
   useEffect(() => {
@@ -41,6 +49,12 @@ export default function SettingsPage() {
     });
     const stored = localStorage.getItem("fitnotes_weight_unit");
     if (stored === "lb" || stored === "kg") setWeightUnit(stored);
+
+    setTrackPRs(readBool(SETTING_KEYS.TRACK_PRS, true));
+    setAutoComplete(readBool(SETTING_KEYS.AUTO_COMPLETE, false));
+    setAutoNextSet(readBool(SETTING_KEYS.AUTO_NEXT_SET, false));
+    setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
+    setWeekStart(readWeekStart());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -57,6 +71,17 @@ export default function SettingsPage() {
   function handleWeightUnit(unit: "kg" | "lb") {
     setWeightUnit(unit);
     localStorage.setItem("fitnotes_weight_unit", unit);
+  }
+
+  function handleToggle(key: string, current: boolean, setter: (v: boolean) => void) {
+    const next = !current;
+    setter(next);
+    writeBool(key, next);
+  }
+
+  function handleWeekStart(value: 0 | 1) {
+    setWeekStart(value);
+    localStorage.setItem(SETTING_KEYS.WEEK_START, String(value));
   }
 
   async function handleSignOut() {
@@ -176,6 +201,25 @@ export default function SettingsPage() {
     alert("Historial de entrenamientos eliminado.");
   }
 
+  function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: () => void }) {
+    return (
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={checked}
+          onClick={onChange}
+          className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${checked ? "bg-primary" : "bg-secondary border"}`}
+        >
+          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-1"}`} />
+        </button>
+      </div>
+    );
+  }
+
   const themeOptions = [
     { value: "light", label: "Claro" },
     { value: "system", label: "Sistema" },
@@ -255,6 +299,65 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Workout behaviour */}
+      <section className="rounded-lg border bg-card p-6 space-y-5">
+        <h2 className="font-semibold">Comportamiento del entrenamiento</h2>
+
+        {/* Track PRs */}
+        <ToggleRow
+          label="Registrar récords personales"
+          description="Muestra 🏆 cuando una serie iguala o supera tu récord personal"
+          checked={trackPRs}
+          onChange={() => handleToggle(SETTING_KEYS.TRACK_PRS, trackPRs, setTrackPRs)}
+        />
+
+        {/* Auto-complete set */}
+        <ToggleRow
+          label="Marcar series como completadas automáticamente"
+          description="Al añadir una nueva serie, la anterior se marca como completada"
+          checked={autoComplete}
+          onChange={() => handleToggle(SETTING_KEYS.AUTO_COMPLETE, autoComplete, setAutoComplete)}
+        />
+
+        {/* Auto-next set */}
+        <ToggleRow
+          label="Seleccionar siguiente serie automáticamente"
+          description="Tras completar una serie, el foco salta a la siguiente"
+          checked={autoNextSet}
+          onChange={() => handleToggle(SETTING_KEYS.AUTO_NEXT_SET, autoNextSet, setAutoNextSet)}
+        />
+
+        {/* Keep screen on */}
+        <ToggleRow
+          label="Mantener pantalla encendida"
+          description="Evita que la pantalla se apague durante el entrenamiento (requiere permiso del navegador)"
+          checked={keepScreenOn}
+          onChange={() => handleToggle(SETTING_KEYS.KEEP_SCREEN_ON, keepScreenOn, setKeepScreenOn)}
+        />
+
+        {/* Week start */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Inicio de semana</p>
+            <p className="text-xs text-muted-foreground">Primer día mostrado en el calendario</p>
+          </div>
+          <div className="flex rounded-md border overflow-hidden">
+            <button
+              onClick={() => handleWeekStart(1)}
+              className={`px-3 py-1.5 text-sm font-medium ${weekStart === 1 ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+            >
+              Lunes
+            </button>
+            <button
+              onClick={() => handleWeekStart(0)}
+              className={`px-3 py-1.5 text-sm font-medium ${weekStart === 0 ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+            >
+              Domingo
+            </button>
+          </div>
         </div>
       </section>
 

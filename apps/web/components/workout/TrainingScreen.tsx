@@ -6,6 +6,7 @@ import { createBrowserClient, createWorkoutRepository, createProgressRepository 
 import SetRow from "./SetRow";
 import SetCommentModal from "./SetCommentModal";
 import type { ExerciseType, Set as FitSet } from "@fitnotes/core";
+import { readBool, SETTING_KEYS } from "@/lib/settings";
 
 interface Props {
   workoutExerciseId: string;
@@ -24,6 +25,9 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   const [commentSetId, setCommentSetId] = useState<string | null>(null);
 
   const [prMap, setPrMap] = useState<Record<number, number>>({});
+  const [trackPRs, setTrackPRs] = useState(true);
+  const [autoComplete, setAutoComplete] = useState(false);
+  const [autoNextSet, setAutoNextSet] = useState(false);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -34,6 +38,9 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   const exerciseSets = (workoutExercise ? sets[workoutExercise.id] ?? [] : []).slice().sort((a, b) => a.order_index - b.order_index);
 
   useEffect(() => {
+    setTrackPRs(readBool(SETTING_KEYS.TRACK_PRS, true));
+    setAutoComplete(readBool(SETTING_KEYS.AUTO_COMPLETE, false));
+    setAutoNextSet(readBool(SETTING_KEYS.AUTO_NEXT_SET, false));
     async function loadPRs() {
       if (!exercise) return;
       const { data } = await progressRepo.getPersonalRecords(exercise.id);
@@ -61,6 +68,14 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   async function handleCreateSet() {
     if (!workoutExercise) return;
     setSaving(true);
+    // Auto-complete: mark last incomplete set as complete before adding a new one
+    if (autoComplete) {
+      const lastIncomplete = [...exerciseSets].reverse().find((s) => !s.is_complete);
+      if (lastIncomplete) {
+        await repo.updateSet(lastIncomplete.id, { is_complete: true });
+        markSetComplete(workoutExercise.id, lastIncomplete.id, true);
+      }
+    }
     const { data, error } = await repo.createSet({
       workout_exercise_id: workoutExercise.id,
       order_index: exerciseSets.length,
@@ -94,8 +109,17 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
 
   async function handleToggleComplete(setId: string, current: boolean) {
     if (!workoutExercise) return;
-    await repo.updateSet(setId, { is_complete: !current });
-    markSetComplete(workoutExercise.id, setId, !current);
+    const next = !current;
+    await repo.updateSet(setId, { is_complete: next });
+    markSetComplete(workoutExercise.id, setId, next);
+    // Auto-next: scroll the next incomplete set into view
+    if (next && autoNextSet) {
+      const currentIdx = exerciseSets.findIndex((s) => s.id === setId);
+      const nextSet = exerciseSets.slice(currentIdx + 1).find((s) => !s.is_complete);
+      if (nextSet) {
+        document.getElementById(`set-row-${nextSet.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
   }
 
   return (
@@ -115,16 +139,17 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
       ) : (
         <div className="space-y-1.5">
           {exerciseSets.map((s) => (
-            <SetRow
-              key={s.id}
-              set={s}
-              exerciseType={exerciseType}
-              onUpdate={handleUpdateSet}
-              onDelete={handleDeleteSet}
-              onToggleComplete={handleToggleComplete}
-              onComment={setCommentSetId}
-              isPR={isSetPR(s)}
-            />
+            <div key={s.id} id={`set-row-${s.id}`}>
+              <SetRow
+                set={s}
+                exerciseType={exerciseType}
+                onUpdate={handleUpdateSet}
+                onDelete={handleDeleteSet}
+                onToggleComplete={handleToggleComplete}
+                onComment={setCommentSetId}
+                isPR={trackPRs && isSetPR(s)}
+              />
+            </div>
           ))}
         </div>
       )}
