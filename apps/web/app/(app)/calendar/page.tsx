@@ -18,6 +18,7 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set());
+  const [categoryColors, setCategoryColors] = useState<Record<string, string[]>>({});
   const [workouts, setWorkouts] = useState<{id: string; date: string; comment: string | null}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -30,11 +31,15 @@ export default function CalendarPage() {
   useEffect(() => {
     async function load() {
       setIsLoading(true);
-      const { data } = await repo.getWorkoutsForMonth(year, month);
-      if (data) {
-        setWorkouts(data);
-        setWorkoutDates(new Set(data.map((w) => w.date)));
+      const [workoutsRes, colors] = await Promise.all([
+        repo.getWorkoutsForMonth(year, month),
+        repo.getWorkoutCategoryColorsForMonth(year, month),
+      ]);
+      if (workoutsRes.data) {
+        setWorkouts(workoutsRes.data);
+        setWorkoutDates(new Set(workoutsRes.data.map((w) => w.date)));
       }
+      setCategoryColors(colors);
       setIsLoading(false);
     }
     load();
@@ -119,6 +124,8 @@ export default function CalendarPage() {
               const hasWorkout = workoutDates.has(dateStr);
               const isToday = dateStr === today;
               const isSelected = dateStr === selectedDate;
+              const dots = categoryColors[dateStr] ?? (hasWorkout ? ["var(--primary)"] : []);
+              const visibleDots = dots.slice(0, 4);
               return (
                 <button
                   key={day}
@@ -129,8 +136,16 @@ export default function CalendarPage() {
                   `}
                 >
                   {day}
-                  {hasWorkout && (
-                    <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isSelected ? "bg-primary-foreground" : "bg-primary"}`} />
+                  {visibleDots.length > 0 && (
+                    <div className="flex gap-0.5 mt-0.5">
+                      {visibleDots.map((color, ci) => (
+                        <div
+                          key={ci}
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: isSelected ? "var(--primary-foreground)" : color }}
+                        />
+                      ))}
+                    </div>
                   )}
                 </button>
               );
