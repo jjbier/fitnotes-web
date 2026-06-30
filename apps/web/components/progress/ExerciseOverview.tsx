@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import type { Exercise, PersonalRecord } from "@fitnotes/core";
 import { calculate1RM } from "@fitnotes/core";
 import {
@@ -42,6 +43,10 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [historySets, setHistorySets] = useState<Record<string, HistorySet[]>>({});
   const [historyLoading, setHistoryLoading] = useState<string | null>(null);
+  const [copyingDate, setCopyingDate] = useState<string | null>(null);
+  const [copiedDates, setCopiedDates] = useState<Set<string>>(new Set());
+
+  const today = new Date().toISOString().split("T")[0]!;
 
   const [goal, setGoal] = useState<ExerciseGoalRow | null>(null);
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -103,6 +108,47 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
     setHistoryLoading(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedDate, historySets, exercise.id]);
+
+  async function handleCopySets(fromDate: string) {
+    const sets = historySets[fromDate];
+    if (!sets?.length || !userId) return;
+    setCopyingDate(fromDate);
+    try {
+      let { data: todayWorkout } = await workoutRepo.getWorkoutByDate(today);
+      if (!todayWorkout) {
+        const { data: created } = await workoutRepo.createWorkout({ date: today }, userId);
+        todayWorkout = created;
+      }
+      if (!todayWorkout) return;
+
+      const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
+      let targetWE = (todayWEs ?? []).find((w) => w.exercise_id === exercise.id);
+      if (!targetWE) {
+        const { data: newWE } = await workoutRepo.addExercise({
+          workout_id: todayWorkout.id,
+          exercise_id: exercise.id,
+          order_index: (todayWEs ?? []).length,
+        }, userId);
+        targetWE = newWE ?? undefined;
+      }
+      if (!targetWE) return;
+
+      for (let i = 0; i < sets.length; i++) {
+        const s = sets[i]!;
+        await workoutRepo.createSet({
+          workout_exercise_id: targetWE.id,
+          order_index: i,
+          ...(s.weight != null && { weight: s.weight }),
+          ...(s.reps != null && { reps: s.reps }),
+          ...(s.distance != null && { distance: s.distance }),
+          ...(s.time_seconds != null && { time_seconds: s.time_seconds }),
+        }, userId);
+      }
+      setCopiedDates((prev) => new Set([...prev, fromDate]));
+    } finally {
+      setCopyingDate(null);
+    }
+  }
 
   async function handleSaveGoal() {
     if (!userId) return;
@@ -222,20 +268,33 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   const isExpanded = expandedDate === point.date;
                   const isLoadingThis = historyLoading === point.date;
                   const sets = historySets[point.date] ?? [];
+                  const isCopying = copyingDate === point.date;
+                  const wasCopied = copiedDates.has(point.date);
+                  const isToday = point.date === today;
                   return (
                     <div key={point.date} className="rounded-md border text-sm overflow-hidden">
-                      <button
-                        onClick={() => handleExpandDate(point.date)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 text-left"
-                      >
-                        <span className="font-medium flex-1">{point.date}</span>
-                        <div className="flex gap-3 text-muted-foreground text-xs">
-                          {point.maxWeight > 0 && <span>{point.maxWeight} kg</span>}
-                          {point.totalVolume > 0 && <span>{point.totalVolume.toFixed(0)} vol.</span>}
-                          {point.maxReps > 0 && <span>{point.maxReps} reps</span>}
-                        </div>
-                        <span className="text-muted-foreground text-xs">{isExpanded ? "▲" : "▼"}</span>
-                      </button>
+                      {/* Row header — restructured to allow nested link */}
+                      <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/20">
+                        <button
+                          onClick={() => handleExpandDate(point.date)}
+                          className="flex-1 flex items-center gap-3 text-left min-w-0"
+                        >
+                          <span className="font-medium shrink-0">{point.date}</span>
+                          <div className="flex gap-3 text-muted-foreground text-xs flex-wrap">
+                            {point.maxWeight > 0 && <span>{point.maxWeight} kg</span>}
+                            {point.totalVolume > 0 && <span>{point.totalVolume.toFixed(0)} vol.</span>}
+                            {point.maxReps > 0 && <span>{point.maxReps} reps</span>}
+                          </div>
+                          <span className="text-muted-foreground text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
+                        </button>
+                        <Link
+                          href={`/workout/${point.date}`}
+                          className="shrink-0 text-xs text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Ver →
+                        </Link>
+                      </div>
                       {isExpanded && (
                         <div className="border-t px-4 pb-3 pt-2 space-y-1.5 bg-secondary/10">
                           {isLoadingThis ? (
@@ -245,23 +304,42 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                           ) : sets.length === 0 ? (
                             <p className="text-xs text-muted-foreground py-2">Sin series registradas.</p>
                           ) : (
-                            sets.map((s, idx) => (
-                              <div
-                                key={s.id}
-                                className={`flex items-center gap-2 rounded-md px-3 py-2 ${s.is_complete ? "bg-primary/5" : "bg-secondary/30"}`}
-                              >
-                                <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}</span>
-                                <span className="flex-1 text-xs">
-                                  {s.weight != null && s.reps != null && `${s.weight} kg × ${s.reps}`}
-                                  {s.weight != null && s.reps == null && `${s.weight} kg`}
-                                  {s.weight == null && s.reps != null && `${s.reps} reps`}
-                                  {s.distance != null && `${s.distance} km`}
-                                  {s.time_seconds != null && ` · ${s.time_seconds} s`}
-                                  {s.is_warmup && <span className="ml-1 text-muted-foreground">(calent.)</span>}
-                                </span>
-                                {s.is_complete && <span className="text-xs text-primary shrink-0">✓</span>}
-                              </div>
-                            ))
+                            <>
+                              {sets.map((s, idx) => (
+                                <div
+                                  key={s.id}
+                                  className={`flex items-center gap-2 rounded-md px-3 py-2 ${s.is_complete ? "bg-primary/5" : "bg-secondary/30"}`}
+                                >
+                                  <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}</span>
+                                  <span className="flex-1 text-xs">
+                                    {s.weight != null && s.reps != null && `${s.weight} kg × ${s.reps}`}
+                                    {s.weight != null && s.reps == null && `${s.weight} kg`}
+                                    {s.weight == null && s.reps != null && `${s.reps} reps`}
+                                    {s.distance != null && `${s.distance} km`}
+                                    {s.time_seconds != null && ` · ${s.time_seconds} s`}
+                                    {s.is_warmup && <span className="ml-1 text-muted-foreground">(calent.)</span>}
+                                  </span>
+                                  {s.is_complete && <span className="text-xs text-primary shrink-0">✓</span>}
+                                </div>
+                              ))}
+                              {/* Copy sets footer */}
+                              {!isToday && (
+                                <div className="flex items-center gap-3 pt-2 border-t mt-1">
+                                  <button
+                                    onClick={() => handleCopySets(point.date)}
+                                    disabled={isCopying || wasCopied}
+                                    className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+                                  >
+                                    {isCopying ? "Copiando…" : wasCopied ? "¡Copiado!" : "Copiar series a hoy"}
+                                  </button>
+                                  {wasCopied && (
+                                    <Link href={`/workout/${today}`} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                                      Abrir hoy →
+                                    </Link>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       )}
