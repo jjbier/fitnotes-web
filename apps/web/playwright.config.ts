@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const STORAGE_STATE = "e2e/.auth/user.json";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -12,7 +14,23 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // Step 1: log in once, save session to disk
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
+
+    // Step 2a: unauthenticated + mixed legacy tests (no stored auth)
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+      testIgnore: [/auth\.setup\.ts/, /(exercises|workout|routines|progress|body-tracker)\.spec\.ts/],
+    },
+
+    // Step 2b: CRUD tests that reuse stored auth state
+    {
+      name: "chromium-auth",
+      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+      dependencies: ["setup"],
+      testMatch: /(exercises|workout|routines|progress|body-tracker)\.spec\.ts/,
+    },
   ],
   webServer: {
     command: "pnpm dev",
