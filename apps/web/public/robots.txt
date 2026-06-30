@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /dashboard
+Disallow: /exercise
+Disallow: /progress
+Disallow: /calendar
+Disallow: /routines
+Disallow: /body-tracker
+Disallow: /tools
+Disallow: /settings
+Disallow: /workout
+Disallow: /api/
+Allow: /
