@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { createBrowserClient, createCalendarRepository, createExerciseRepository } from "@fitnotes/database";
+import { createBrowserClient, createCalendarRepository, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
 import { formatWorkoutDate } from "@fitnotes/core";
 import { readWeekStart } from "@/lib/settings";
 
@@ -30,6 +30,8 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [listView, setListView] = useState(false);
   const [history, setHistory] = useState<{id: string; date: string; comment: string | null}[]>([]);
+  const [dayExercises, setDayExercises] = useState<Record<string, {id: string; name: string}[]>>({});
+  const [dayExLoading, setDayExLoading] = useState<string | null>(null);
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
@@ -48,6 +50,7 @@ export default function CalendarPage() {
   const client = createBrowserClient();
   const repo = createCalendarRepository(client);
   const exRepo = createExerciseRepository(client);
+  const workoutRepo = createWorkoutRepository(client);
 
   // Load categories + exercises once for filter panel
   useEffect(() => {
@@ -119,6 +122,35 @@ export default function CalendarPage() {
     setFilteredExDates(new Set(dates));
     setFilterExLoading(false);
   }
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const workout = workouts.find((w) => w.date === selectedDate);
+    if (!workout) return;
+    if (dayExercises[selectedDate]) return;
+    const date = selectedDate;
+    const workoutId = workout.id;
+    setDayExLoading(date);
+    Promise.all([
+      workoutRepo.getWorkoutExercises(workoutId),
+      exRepo.getExercises(),
+    ]).then(([weRes, exRes]) => {
+      if (weRes.data && exRes.data) {
+        const exMap = Object.fromEntries(exRes.data.map((e) => [e.id, e.name]));
+        const seen = new Set<string>();
+        const list: {id: string; name: string}[] = [];
+        for (const we of weRes.data) {
+          if (!seen.has(we.exercise_id)) {
+            seen.add(we.exercise_id);
+            list.push({ id: we.exercise_id, name: exMap[we.exercise_id] ?? we.exercise_id });
+          }
+        }
+        setDayExercises((prev) => ({ ...prev, [date]: list }));
+      }
+      setDayExLoading(null);
+    }).catch(() => setDayExLoading(null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, workouts]);
 
   function clearFilters() {
     setSelectedCatIds(new Set());
@@ -363,15 +395,40 @@ export default function CalendarPage() {
 
           {/* Selected day popup */}
           {selectedDate && (
-            <div className="rounded-lg border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
+            <div className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">{formatWorkoutDate(selectedDate)}</h3>
                 {selectedWorkout && (
-                  <Link href={`/workout/${selectedDate}`} className="text-xs text-primary hover:underline">Abrir entrenamiento →</Link>
+                  <Link href={`/workout/${selectedDate}`} className="text-xs text-primary hover:underline">
+                    Abrir entrenamiento →
+                  </Link>
                 )}
               </div>
               {selectedWorkout ? (
-                <p className="text-xs text-muted-foreground">{selectedWorkout.comment ?? "Entrenamiento registrado"}</p>
+                <>
+                  {selectedWorkout.comment && (
+                    <p className="text-xs text-muted-foreground">{selectedWorkout.comment}</p>
+                  )}
+                  {dayExLoading === selectedDate ? (
+                    <div className="flex gap-2 flex-wrap">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-6 w-20 rounded-full bg-secondary/40 animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (dayExercises[selectedDate] ?? []).length > 0 ? (
+                    <div className="flex gap-2 flex-wrap">
+                      {(dayExercises[selectedDate] ?? []).map((ex) => (
+                        <Link
+                          key={ex.id}
+                          href={`/exercise/history/${ex.id}`}
+                          className="rounded-full border bg-secondary/30 px-3 py-1 text-xs font-medium hover:bg-secondary transition-colors"
+                        >
+                          {ex.name}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <p className="text-xs text-muted-foreground">Sin entrenamiento este día.</p>
               )}
