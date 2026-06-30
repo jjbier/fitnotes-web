@@ -1,18 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   calculate1RM,
   estimateRepMax,
   calculateSetWeight,
   calculatePlates,
-  roundToNearest,
 } from "@fitnotes/core";
+import { createBrowserClient, createExerciseRepository, createProgressRepository } from "@fitnotes/database";
 
 const DEFAULT_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
 const PERCENTAGES = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
-type Tab = "1rm" | "set" | "plates";
+type Tab = "1rm" | "set" | "plates" | "timer";
+
+interface ExerciseOption { id: string; name: string; }
+
+function useExerciseList() {
+  const [exercises, setExercises] = useState<ExerciseOption[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  function ensureLoaded() {
+    if (loaded) return;
+    setLoaded(true);
+    const client = createBrowserClient();
+    const repo = createExerciseRepository(client);
+    repo.getExercises().then(({ data }) => {
+      if (data) setExercises(data.map((e) => ({ id: e.id, name: e.name })).sort((a, b) => a.name.localeCompare(b.name)));
+    });
+  }
+  return { exercises, ensureLoaded };
+}
 
 export default function ToolsPage() {
   const [tab, setTab] = useState<Tab>("1rm");
@@ -21,9 +38,8 @@ export default function ToolsPage() {
     <div className="space-y-5 max-w-2xl">
       <h1 className="text-2xl font-bold tracking-tight">Herramientas de entrenamiento</h1>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 rounded-lg border p-1 w-fit">
-        {([["1rm", "Calculadora 1RM"], ["set", "Calculadora de series"], ["plates", "Calculadora de discos"]] as [Tab, string][]).map(
+      <div className="flex flex-wrap gap-1 rounded-lg border p-1 w-fit">
+        {([["1rm", "Calculadora 1RM"], ["set", "Calculadora de series"], ["plates", "Calculadora de discos"], ["timer", "Temporizador"]] as [Tab, string][]).map(
           ([key, label]) => (
             <button
               key={key}
@@ -41,6 +57,67 @@ export default function ToolsPage() {
       {tab === "1rm" && <OneRMCalculator />}
       {tab === "set" && <SetCalculator />}
       {tab === "plates" && <PlateCalculatorPanel />}
+      {tab === "timer" && <RestTimerSection />}
+    </div>
+  );
+}
+
+function PRSelector({ onSelect }: { onSelect: (weight: number, reps: number) => void }) {
+  const { exercises, ensureLoaded } = useExerciseList();
+  const [open, setOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function handleOpen() {
+    ensureLoaded();
+    setOpen((v) => !v);
+  }
+
+  async function handleLoad() {
+    if (!selectedId) return;
+    setLoading(true);
+    const client = createBrowserClient();
+    const repo = createProgressRepository(client);
+    const { data } = await repo.getPersonalRecords(selectedId);
+    if (data && data.length > 0) {
+      const best = data.reduce((b, pr) => pr.weight > b.weight ? pr : b, data[0]!);
+      onSelect(best.weight, best.reps);
+    }
+    setLoading(false);
+    setOpen(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={handleOpen}
+        className="text-xs text-primary underline-offset-2 hover:underline"
+      >
+        {open ? "Ocultar" : "Cargar desde ejercicio…"}
+      </button>
+      {open && (
+        <div className="flex gap-2 items-center">
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="flex-1 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring bg-background"
+          >
+            <option value="">Seleccionar ejercicio…</option>
+            {exercises.map((e) => (
+              <option key={e.id} value={e.id}>{e.name}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleLoad}
+            disabled={!selectedId || loading}
+            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {loading ? "…" : "Cargar PR"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -59,6 +136,8 @@ function OneRMCalculator() {
         <h2 className="font-semibold mb-1">Calculadora 1RM</h2>
         <p className="text-xs text-muted-foreground">Usa la fórmula de Brzycki. Más precisa para 1–10 repeticiones.</p>
       </div>
+
+      <PRSelector onSelect={(pw, pr) => { setWeight(String(pw)); setReps(String(pr)); }} />
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
@@ -132,6 +211,8 @@ function SetCalculator() {
         <p className="text-xs text-muted-foreground">Calcula los pesos de entrenamiento como porcentajes de tu peso de trabajo.</p>
       </div>
 
+      <PRSelector onSelect={(pw) => setBaseWeight(String(pw))} />
+
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Peso base (kg)</label>
@@ -178,6 +259,210 @@ function SetCalculator() {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+const PRESET_DURATIONS = [30, 60, 90, 120, 180, 300];
+
+function formatTimerDisplay(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+function playBeep() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.6);
+    ctx.close();
+  } catch { /* AudioContext not available */ }
+}
+
+function RestTimerSection() {
+  const [duration, setDuration] = useState(90);
+  const [remaining, setRemaining] = useState(90);
+  const [running, setRunning] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!running) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
+    intervalRef.current = setInterval(() => {
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current!);
+          setRunning(false);
+          playBeep();
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            new Notification("¡Descanso terminado!", { body: "Es hora de tu siguiente serie 💪", tag: "rest-timer" });
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [running]);
+
+  function handleSetDuration(secs: number) {
+    setDuration(secs);
+    if (!running) setRemaining(secs);
+    setCustomInput("");
+  }
+
+  function handleCustomDuration() {
+    const val = parseInt(customInput, 10);
+    if (val > 0) handleSetDuration(val);
+  }
+
+  function handleToggle() {
+    if (remaining === 0) {
+      setRemaining(duration);
+      setRunning(true);
+    } else {
+      setRunning((r) => !r);
+    }
+  }
+
+  function handleReset() {
+    setRunning(false);
+    setRemaining(duration);
+  }
+
+  function handleAdjust(delta: number) {
+    const next = Math.max(5, duration + delta);
+    setDuration(next);
+    if (!running) setRemaining(next);
+  }
+
+  function requestNotifPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  const progress = remaining / duration;
+  const finished = remaining === 0;
+  const circumference = 2 * Math.PI * 54;
+
+  return (
+    <div className="rounded-lg border bg-card p-6 space-y-6">
+      <div>
+        <h2 className="font-semibold mb-1">Temporizador de descanso</h2>
+        <p className="text-xs text-muted-foreground">Contador regresivo para el descanso entre series.</p>
+      </div>
+
+      {/* Circular timer display */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative" style={{ width: 136, height: 136 }}>
+          <svg width="136" height="136" className="rotate-[-90deg]">
+            <circle cx="68" cy="68" r="54" strokeWidth="8" fill="none" className="stroke-secondary" />
+            <circle
+              cx="68" cy="68" r="54" strokeWidth="8" fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - progress)}
+              strokeLinecap="round"
+              className={`transition-all duration-1000 ${finished ? "stroke-green-500" : "stroke-primary"}`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-3xl font-mono font-bold tabular-nums ${finished ? "text-green-600" : running ? "text-primary" : "text-foreground"}`}>
+              {formatTimerDisplay(remaining)}
+            </span>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleAdjust(-15)}
+            disabled={running}
+            aria-label="Restar 15 segundos"
+            className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-40"
+          >
+            −15s
+          </button>
+          <button
+            onClick={handleToggle}
+            className={`rounded-lg px-6 py-2 text-sm font-medium text-white transition-colors ${
+              finished ? "bg-green-500 hover:bg-green-600" : "bg-primary hover:bg-primary/90"
+            }`}
+          >
+            {running ? "Pausar" : finished ? "Reiniciar" : "Iniciar"}
+          </button>
+          <button
+            onClick={() => handleAdjust(15)}
+            disabled={running}
+            aria-label="Añadir 15 segundos"
+            className="rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-40"
+          >
+            +15s
+          </button>
+          <button
+            onClick={handleReset}
+            aria-label="Reiniciar"
+            className="rounded-lg border p-2 hover:bg-secondary text-muted-foreground"
+          >
+            ↺
+          </button>
+        </div>
+      </div>
+
+      {/* Preset durations */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Duración</p>
+        <div className="flex flex-wrap gap-2">
+          {PRESET_DURATIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSetDuration(s)}
+              className={`rounded-md border px-3 py-1 text-sm ${duration === s && !customInput ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"}`}
+            >
+              {s < 60 ? `${s}s` : `${s / 60}min`}
+            </button>
+          ))}
+          <div className="flex gap-1">
+            <input
+              type="number"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCustomDuration()}
+              placeholder="seg"
+              min="5"
+              className="w-16 rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              onClick={handleCustomDuration}
+              disabled={!customInput}
+              className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Notification permission */}
+      {typeof window !== "undefined" && "Notification" in window && Notification.permission === "default" && (
+        <button
+          onClick={requestNotifPermission}
+          className="text-xs text-primary underline-offset-2 hover:underline"
+        >
+          Activar notificaciones para recibir alerta cuando termine
+        </button>
       )}
     </div>
   );
@@ -261,24 +546,18 @@ function PlateCalculatorPanel() {
                 </div>
               </div>
 
-              {/* Bar visualization */}
               <div className="overflow-x-auto">
                 <div className="flex items-center gap-1 min-w-max px-2 py-4 justify-center">
-                  {/* Left collar */}
                   <div className="w-2 h-10 bg-slate-400 rounded-l-sm" />
-                  {/* Left plates (reversed) */}
                   {[...perSide].reverse().map((p, i) => (
                     <PlateBlock key={`l${i}`} weight={p} />
                   ))}
-                  {/* Bar */}
                   <div className="w-24 h-4 bg-slate-300 rounded-sm flex items-center justify-center">
                     <span className="text-xs text-slate-600 font-medium">{bar}kg</span>
                   </div>
-                  {/* Right plates */}
                   {perSide.map((p, i) => (
                     <PlateBlock key={`r${i}`} weight={p} />
                   ))}
-                  {/* Right collar */}
                   <div className="w-2 h-10 bg-slate-400 rounded-r-sm" />
                 </div>
               </div>
@@ -322,3 +601,4 @@ function PlateBlock({ weight }: { weight: number }) {
     </div>
   );
 }
+

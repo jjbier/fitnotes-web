@@ -1,15 +1,6 @@
-/**
- * NavigationPanel — Exercise navigation drawer
- *
- * TODO:
- *  - List all exercises in the current workout session
- *  - Highlight the active exercise
- *  - Click to jump to an exercise (calls useWorkoutStore.setActiveExercise)
- *  - Show set count + completion status per exercise
- *  - Button to add another exercise to the session
- *  - Drag-to-reorder (calls useWorkoutStore.reorderExercises)
- */
+"use client";
 
+import { useState } from "react";
 import type { WorkoutExercise, Exercise, Set } from "@fitnotes/core";
 
 interface NavigationPanelProps {
@@ -19,6 +10,7 @@ interface NavigationPanelProps {
   activeExerciseId: string | null;
   onSelectExercise: (workoutExerciseId: string) => void;
   onAddExercise: () => void;
+  onReorderExercises?: (orderedIds: string[]) => void;
 }
 
 export default function NavigationPanel({
@@ -28,38 +20,83 @@ export default function NavigationPanel({
   activeExerciseId,
   onSelectExercise,
   onAddExercise,
+  onReorderExercises,
 }: NavigationPanelProps) {
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const sorted = [...workoutExercises].sort((a, b) => a.order_index - b.order_index);
+
+  function handleDragEnd() {
+    if (dragIdx === null || dragOverIdx === null || dragIdx === dragOverIdx) {
+      setDragIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const newOrder = [...sorted];
+    const [moved] = newOrder.splice(dragIdx, 1);
+    newOrder.splice(dragOverIdx, 0, moved!);
+    setDragIdx(null);
+    setDragOverIdx(null);
+    onReorderExercises?.(newOrder.map((we) => we.id));
+  }
+
   return (
     <div className="flex flex-col gap-1">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-1 mb-2">
         Ejercicios
       </h3>
 
-      {workoutExercises.map((we) => {
+      {sorted.map((we, i) => {
         const exercise = exercises.find((e) => e.id === we.exercise_id);
         const exerciseSets = sets[we.id] ?? [];
         const completedSets = exerciseSets.filter((s) => s.is_complete).length;
         const isActive = activeExerciseId === we.id;
+        const isBeingDragged = dragIdx === i;
+        const isDragTarget = dragOverIdx === i && dragIdx !== i;
 
         return (
-          <button
+          <div
             key={we.id}
-            onClick={() => onSelectExercise(we.id)}
-            className={`flex items-center justify-between rounded-md px-3 py-2 text-sm text-left transition-colors ${
-              isActive
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-secondary"
-            }`}
+            draggable={!!onReorderExercises}
+            onDragStart={() => setDragIdx(i)}
+            onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+            onDragEnd={handleDragEnd}
+            className={[
+              "group rounded-md transition-opacity",
+              isBeingDragged ? "opacity-40" : "",
+              isDragTarget ? "ring-2 ring-primary" : "",
+              onReorderExercises ? "cursor-grab active:cursor-grabbing" : "",
+            ].join(" ")}
           >
-            <span className="truncate">{exercise?.name ?? "Desconocido"}</span>
-            <span
-              className={`ml-2 text-xs shrink-0 ${
-                isActive ? "text-primary-foreground/70" : "text-muted-foreground"
+            <button
+              onClick={() => onSelectExercise(we.id)}
+              className={`flex items-center justify-between w-full rounded-md px-3 py-2 text-sm text-left transition-colors ${
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-secondary"
               }`}
             >
-              {completedSets}/{exerciseSets.length}
-            </span>
-          </button>
+              {onReorderExercises && (
+                <span
+                  className={`mr-1.5 text-xs select-none shrink-0 ${
+                    isActive ? "text-primary-foreground/40" : "text-muted-foreground/40 group-hover:text-muted-foreground/70"
+                  }`}
+                  aria-hidden="true"
+                >
+                  ⠿
+                </span>
+              )}
+              <span className="truncate flex-1">{exercise?.name ?? "Desconocido"}</span>
+              <span
+                className={`ml-2 text-xs shrink-0 ${
+                  isActive ? "text-primary-foreground/70" : "text-muted-foreground"
+                }`}
+              >
+                {completedSets}/{exerciseSets.length}
+              </span>
+            </button>
+          </div>
         );
       })}
 

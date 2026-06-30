@@ -57,19 +57,13 @@ export default function CopyWorkoutModal({
 
   async function handleCopy(sourceWorkoutId: string) {
     setCopying(true);
-    const { data: sourceExercises } = await repo.getWorkoutExercises(sourceWorkoutId);
-    const currentExerciseIds = new Set(currentExercises.map((we) => we.exercise_id));
-    let orderIndex = currentExercises.length;
-
-    for (const we of sourceExercises ?? []) {
-      if (currentExerciseIds.has(we.exercise_id)) continue;
-      await repo.addExercise({
-        workout_id: currentWorkout.id,
-        exercise_id: we.exercise_id,
-        order_index: orderIndex++,
-      }, userId);
-    }
-
+    await repo.copyWorkout(
+      sourceWorkoutId,
+      currentWorkout.id,
+      userId,
+      currentExercises.map((we) => we.exercise_id),
+      currentExercises.length
+    );
     setCopying(false);
     onCopied();
     onClose();

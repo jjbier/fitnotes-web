@@ -28,6 +28,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const loadWorkout = useWorkoutStore((s) => s.loadWorkout);
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const addExerciseToWorkout = useWorkoutStore((s) => s.addExerciseToWorkout);
+  const reorderExercisesStore = useWorkoutStore((s) => s.reorderExercises);
   const finishWorkout = useWorkoutStore((s) => s.finishWorkout);
   const setLoading = useWorkoutStore((s) => s.setLoading);
 
@@ -133,6 +134,12 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     setShowExPicker(false);
   }
 
+  async function handleReorderExercises(orderedIds: string[]) {
+    reorderExercisesStore(orderedIds);
+    const updates = orderedIds.map((id, i) => ({ id, order_index: i }));
+    await repo.reorderExercises(updates);
+  }
+
   async function handleFinish() {
     if (!activeWorkout) return;
     await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString() });
@@ -216,6 +223,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
               activeExerciseId={activeWEId}
               onSelectExercise={setActiveWEId}
               onAddExercise={() => setShowExPicker((v) => !v)}
+              onReorderExercises={handleReorderExercises}
             />
           </aside>
 

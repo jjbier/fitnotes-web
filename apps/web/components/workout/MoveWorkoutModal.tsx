@@ -44,7 +44,7 @@ export default function MoveWorkoutModal({ workoutId, currentDate, onMoved, onCl
   async function handleMove() {
     if (targetDate === currentDate || conflict) return;
     setSaving(true);
-    await repo.updateWorkout(workoutId, { date: targetDate });
+    await repo.moveWorkout(workoutId, targetDate);
     setSaving(false);
     onMoved(targetDate);
     onClose();

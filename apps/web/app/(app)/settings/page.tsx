@@ -76,6 +76,7 @@ export default function SettingsPage() {
   const [autoNextSet, setAutoNextSet] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = useState(false);
   const [weekStart, setWeekStart] = useState<0 | 1>(1);
+  const [recalcPRs, setRecalcPRs] = useState<"idle" | "running" | "done" | "error">("idle");
 
   const client = createBrowserClient();
 
@@ -138,6 +139,58 @@ export default function SettingsPage() {
   function handleWeekStart(value: 0 | 1) {
     setWeekStart(value);
     localStorage.setItem(SETTING_KEYS.WEEK_START, String(value));
+  }
+
+  async function handleRecalcPRs() {
+    setRecalcPRs("running");
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) { setRecalcPRs("error"); return; }
+
+      await client.from("personal_records").delete().eq("user_id", user.id);
+
+      const { data: weRows } = await client
+        .from("workout_exercises")
+        .select("id, exercise_id");
+      if (!weRows?.length) { setRecalcPRs("done"); return; }
+
+      const weIds = weRows.map((we) => we.id);
+      const exerciseById = Object.fromEntries(weRows.map((we) => [we.id, we.exercise_id]));
+
+      const { data: setRows } = await client
+        .from("sets")
+        .select("workout_exercise_id, weight, reps")
+        .in("workout_exercise_id", weIds)
+        .eq("is_complete", true)
+        .eq("is_warmup", false)
+        .not("weight", "is", null)
+        .not("reps", "is", null);
+
+      const prMap: Record<string, Record<number, number>> = {};
+      for (const s of setRows ?? []) {
+        const exId = exerciseById[s.workout_exercise_id];
+        if (!exId || s.weight == null || s.reps == null) continue;
+        if (!prMap[exId]) prMap[exId] = {};
+        if (!prMap[exId][s.reps] || s.weight > prMap[exId][s.reps]!) {
+          prMap[exId][s.reps] = s.weight;
+        }
+      }
+
+      const records: { exercise_id: string; reps: number; weight: number; user_id: string }[] = [];
+      for (const [exerciseId, repMap] of Object.entries(prMap)) {
+        for (const [reps, weight] of Object.entries(repMap)) {
+          records.push({ exercise_id: exerciseId, reps: Number(reps), weight, user_id: user.id });
+        }
+      }
+      if (records.length > 0) {
+        await client.from("personal_records").insert(records);
+      }
+      setRecalcPRs("done");
+      setTimeout(() => setRecalcPRs("idle"), 3000);
+    } catch {
+      setRecalcPRs("error");
+      setTimeout(() => setRecalcPRs("idle"), 3000);
+    }
   }
 
   async function handleSignOut() {
@@ -560,6 +613,20 @@ export default function SettingsPage() {
               Domingo
             </button>
           </div>
+        </div>
+        {/* Recalculate PRs */}
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div>
+            <p className="text-sm font-medium">Recalcular récords personales</p>
+            <p className="text-xs text-muted-foreground">Escanea todo el historial de series y recalcula tus PRs desde cero</p>
+          </div>
+          <button
+            onClick={handleRecalcPRs}
+            disabled={recalcPRs === "running"}
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          >
+            {recalcPRs === "running" ? "Calculando…" : recalcPRs === "done" ? "¡Listo!" : recalcPRs === "error" ? "Error — reintentar" : "Recalcular PRs"}
+          </button>
         </div>
       </section>
 

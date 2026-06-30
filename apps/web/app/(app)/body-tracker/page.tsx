@@ -1,18 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
+import { useBodyTrackerStore, GoalType } from "@fitnotes/core";
 import { createBrowserClient, createBodyTrackerRepository } from "@fitnotes/database";
+import type { BodyMeasurementEntry } from "@fitnotes/core";
 
-interface Measurement {
-  id: string;
-  name: string;
-  unit: string;
-  is_enabled: boolean;
-  goal_type: string;
-  goal_value: number | null;
-}
-
-interface Entry {
+interface HistoryEntry {
   id: string;
   measurement_id: string;
   value: number;
@@ -21,45 +18,91 @@ interface Entry {
 }
 
 export default function BodyTrackerPage() {
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [latestEntries, setLatestEntries] = useState<Record<string, Entry>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const measurements = useBodyTrackerStore((s) => s.measurements);
+  const latestEntries = useBodyTrackerStore((s) => s.latestEntries);
+  const chartData = useBodyTrackerStore((s) => s.chartData);
+  const isLoading = useBodyTrackerStore((s) => s.isLoading);
+  const loadMeasurements = useBodyTrackerStore((s) => s.loadMeasurements);
+  const setLatestEntry = useBodyTrackerStore((s) => s.setLatestEntry);
+  const loadChartData = useBodyTrackerStore((s) => s.loadChartData);
+  const addEntry = useBodyTrackerStore((s) => s.addEntry);
+  const setLoading = useBodyTrackerStore((s) => s.setLoading);
+
   const [userId, setUserId] = useState("");
+  const [tab, setTab] = useState<"track" | "history" | "chart">("track");
   const [logMeasurementId, setLogMeasurementId] = useState("");
   const [logValue, setLogValue] = useState("");
   const [logComment, setLogComment] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"track" | "history">("track");
-  const [historyEntries, setHistoryEntries] = useState<Entry[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [chartMeasurementId, setChartMeasurementId] = useState("");
+  const [chartLoading, setChartLoading] = useState(false);
 
   const client = createBrowserClient();
   const repo = createBodyTrackerRepository(client);
 
   useEffect(() => {
     async function load() {
-      setIsLoading(true);
+      setLoading(true);
       const { data: { user } } = await client.auth.getUser();
       if (user) setUserId(user.id);
 
       const { data: mData } = await repo.getMeasurements();
       if (mData) {
-        setMeasurements(mData.filter((m) => m.is_enabled));
-        const latestMap: Record<string, Entry> = {};
+        loadMeasurements(mData.map((m) => ({
+          id: m.id, name: m.name, unit: m.unit,
+          goal_type: m.goal_type as GoalType,
+          goal_value: m.goal_value ?? undefined,
+          is_enabled: m.is_enabled,
+          is_default: m.is_default,
+        })));
         await Promise.all(mData.filter((m) => m.is_enabled).map(async (m) => {
           const { data: entries } = await repo.getEntries(m.id, 1);
-          if (entries && entries[0]) latestMap[m.id] = entries[0] as Entry;
+          if (entries && entries[0]) {
+            setLatestEntry({
+              id: entries[0].id,
+              measurement_id: entries[0].measurement_id,
+              value: entries[0].value,
+              comment: entries[0].comment ?? undefined,
+              recorded_at: entries[0].recorded_at,
+            });
+          }
         }));
-        setLatestEntries(latestMap);
       }
-      setIsLoading(false);
+      setLoading(false);
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (tab !== "chart" || !chartMeasurementId || chartData[chartMeasurementId]) return;
+    async function loadChart() {
+      setChartLoading(true);
+      const { data } = await repo.getEntries(chartMeasurementId, 200);
+      if (data) {
+        loadChartData(chartMeasurementId, data.map((e) => ({
+          id: e.id,
+          measurement_id: e.measurement_id,
+          value: e.value,
+          comment: e.comment ?? undefined,
+          recorded_at: e.recorded_at,
+        })));
+      }
+      setChartLoading(false);
+    }
+    loadChart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, chartMeasurementId]);
+
   async function loadHistory() {
+    if (historyLoaded) return;
     const { data } = await repo.getAllEntries(userId);
-    if (data) setHistoryEntries(data as Entry[]);
+    if (data) {
+      setHistoryEntries(data as HistoryEntry[]);
+      setHistoryLoaded(true);
+    }
   }
 
   async function handleLog(e: React.FormEvent) {
@@ -72,7 +115,15 @@ export default function BodyTrackerPage() {
       comment: logComment || undefined,
     }, userId);
     if (!error && data) {
-      setLatestEntries((prev) => ({ ...prev, [logMeasurementId]: data as Entry }));
+      const entry: BodyMeasurementEntry = {
+        id: data.id,
+        measurement_id: data.measurement_id,
+        value: data.value,
+        comment: data.comment ?? undefined,
+        recorded_at: data.recorded_at,
+      };
+      addEntry(entry);
+      setHistoryLoaded(false);
       setLogValue("");
       setLogComment("");
       setLogMeasurementId("");
@@ -82,24 +133,43 @@ export default function BodyTrackerPage() {
 
   const enabledMeasurements = measurements.filter((m) => m.is_enabled);
 
+  const chartPoints = (chartData[chartMeasurementId] ?? [])
+    .slice()
+    .sort((a, b) => a.recorded_at.localeCompare(b.recorded_at))
+    .map((e) => ({
+      date: e.recorded_at.slice(0, 10),
+      value: e.value,
+    }));
+
+  const selectedMeasurement = measurements.find((m) => m.id === chartMeasurementId);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Medidas corporales</h1>
-        <div className="flex gap-1 rounded-lg border p-1">
-          {(["track", "history"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); if (t === "history") loadHistory(); }}
-              className={`rounded-md px-3 py-1 text-sm font-medium capitalize ${tab === t ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
-            >
-              {t === "track" ? "Registrar" : "Historial"}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/body-tracker/settings"
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"
+          >
+            Configuración
+          </Link>
+          <div className="flex gap-1 rounded-lg border p-1">
+            {(["track", "history", "chart"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTab(t); if (t === "history") loadHistory(); }}
+                className={`rounded-md px-3 py-1 text-sm font-medium ${tab === t ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+              >
+                {t === "track" ? "Registrar" : t === "history" ? "Historial" : "Gráfica"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {tab === "track" ? (
+      {/* Registrar tab */}
+      {tab === "track" && (
         <>
           {isLoading ? (
             <div className="grid gap-3 md:grid-cols-2">
@@ -107,7 +177,10 @@ export default function BodyTrackerPage() {
             </div>
           ) : enabledMeasurements.length === 0 ? (
             <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-              No hay medidas activas. Añade algunas en la configuración.
+              No hay medidas activas.{" "}
+              <Link href="/body-tracker/settings" className="underline text-primary">
+                Añade algunas en la configuración.
+              </Link>
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
@@ -137,7 +210,6 @@ export default function BodyTrackerPage() {
             </div>
           )}
 
-          {/* Log form */}
           {logMeasurementId && (
             <div className="rounded-lg border bg-card p-5">
               <h2 className="text-sm font-semibold mb-4">
@@ -172,7 +244,10 @@ export default function BodyTrackerPage() {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {/* Historial tab */}
+      {tab === "history" && (
         <div className="space-y-2">
           {historyEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Sin registros aún.</p>
@@ -184,11 +259,76 @@ export default function BodyTrackerPage() {
                   <div>
                     <p className="text-sm font-medium">{m?.name ?? "—"}</p>
                     <p className="text-xs text-muted-foreground">{new Date(entry.recorded_at).toLocaleDateString()}</p>
+                    {entry.comment && <p className="text-xs text-muted-foreground">{entry.comment}</p>}
                   </div>
                   <p className="text-sm font-semibold">{entry.value} {m?.unit}</p>
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* Gráfica tab */}
+      {tab === "chart" && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <label htmlFor="chart-measure" className="text-sm font-medium shrink-0">Medida:</label>
+            <select
+              id="chart-measure"
+              value={chartMeasurementId}
+              onChange={(e) => setChartMeasurementId(e.target.value)}
+              className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
+            >
+              <option value="">Seleccionar medida…</option>
+              {enabledMeasurements.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {!chartMeasurementId ? (
+            <div className="rounded-lg border border-dashed p-16 text-center text-muted-foreground text-sm">
+              Selecciona una medida para ver la gráfica.
+            </div>
+          ) : chartLoading ? (
+            <div className="h-64 rounded-lg border bg-secondary/30 animate-pulse" />
+          ) : chartPoints.length < 2 ? (
+            <div className="rounded-lg border border-dashed p-16 text-center text-muted-foreground text-sm">
+              {chartPoints.length === 0 ? "Sin datos registrados para esta medida." : "Necesitas al menos 2 registros para ver la gráfica."}
+            </div>
+          ) : (
+            <div className="rounded-lg border bg-card p-5">
+              <p className="text-sm font-semibold mb-4">
+                {selectedMeasurement?.name} ({selectedMeasurement?.unit})
+              </p>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartPoints} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v: string) => {
+                      const [, m, d] = v.split("-");
+                      return `${d}/${m}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} width={45} />
+                  <Tooltip
+                    formatter={(v: number) => [`${v} ${selectedMeasurement?.unit}`, selectedMeasurement?.name ?? ""]}
+                    labelFormatter={(l: string) => new Date(l).toLocaleDateString()}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    className="stroke-primary"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       )}
