@@ -21,7 +21,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   const deleteSet = useWorkoutStore((s) => s.deleteSet);
   const markSetComplete = useWorkoutStore((s) => s.markSetComplete);
   const exercises = useExerciseStore((s) => s.exercises);
-  const [saving, setSaving] = useState(false);
+  const [networkError, setNetworkError] = useState(false);
   const [commentSetId, setCommentSetId] = useState<string | null>(null);
 
   const [prMap, setPrMap] = useState<Record<number, number>>({});
@@ -65,54 +65,101 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
     return best != null && s.weight >= best;
   }
 
+  function showNetworkError() {
+    setNetworkError(true);
+    setTimeout(() => setNetworkError(false), 3000);
+  }
+
   async function handleCreateSet() {
     if (!workoutExercise) return;
-    setSaving(true);
-    // Auto-complete: mark last incomplete set as complete before adding a new one
+    const tempId = `temp-${Date.now()}`;
+    const newOrder = exerciseSets.length;
+
+    // Auto-complete: optimistically mark last incomplete set before adding new one
     if (autoComplete) {
       const lastIncomplete = [...exerciseSets].reverse().find((s) => !s.is_complete);
       if (lastIncomplete) {
-        await repo.updateSet(lastIncomplete.id, { is_complete: true });
         markSetComplete(workoutExercise.id, lastIncomplete.id, true);
+        repo.updateSet(lastIncomplete.id, { is_complete: true }).then(({ error }) => {
+          if (error) markSetComplete(workoutExercise.id, lastIncomplete.id, false);
+        });
       }
     }
+
+    // Add temp set immediately
+    createSet(workoutExercise.id, {
+      id: tempId,
+      workout_exercise_id: workoutExercise.id,
+      is_complete: false,
+      is_warmup: false,
+      order_index: newOrder,
+    });
+
     const { data, error } = await repo.createSet({
       workout_exercise_id: workoutExercise.id,
-      order_index: exerciseSets.length,
+      order_index: newOrder,
     }, userId);
+
+    deleteSet(workoutExercise.id, tempId);
     if (!error && data) {
       createSet(workoutExercise.id, {
         id: data.id, workout_exercise_id: data.workout_exercise_id,
         is_complete: data.is_complete, order_index: data.order_index,
       });
+    } else if (error) {
+      showNetworkError();
     }
-    setSaving(false);
   }
 
   async function handleUpdateSet(setId: string, patch: Partial<FitSet>) {
     if (!workoutExercise) return;
-    await repo.updateSet(setId, patch);
+    const old = exerciseSets.find((s) => s.id === setId);
     updateSet(workoutExercise.id, setId, patch);
+    const { error } = await repo.updateSet(setId, patch as Parameters<typeof repo.updateSet>[1]);
+    if (error) {
+      if (old) {
+        const rollback = Object.fromEntries(
+          Object.keys(patch).map((k) => [k, old[k as keyof FitSet]])
+        ) as Partial<FitSet>;
+        updateSet(workoutExercise.id, setId, rollback);
+      }
+      showNetworkError();
+    }
   }
 
   async function handleDeleteSet(setId: string) {
     if (!workoutExercise) return;
-    await repo.deleteSet(setId);
+    const saved = exerciseSets.find((s) => s.id === setId);
     deleteSet(workoutExercise.id, setId);
+    const { error } = await repo.deleteSet(setId);
+    if (error) {
+      if (saved) createSet(workoutExercise.id, saved);
+      showNetworkError();
+    }
   }
 
   async function handleSaveComment(setId: string, comment: string) {
     if (!workoutExercise) return;
-    await repo.updateSet(setId, { comment: comment || undefined });
-    updateSet(workoutExercise.id, setId, { comment: comment || undefined });
+    const old = exerciseSets.find((s) => s.id === setId)?.comment;
+    const patch = { comment: comment || undefined };
+    updateSet(workoutExercise.id, setId, patch);
+    const { error } = await repo.updateSet(setId, patch);
+    if (error) {
+      updateSet(workoutExercise.id, setId, { comment: old });
+      showNetworkError();
+    }
   }
 
   async function handleToggleComplete(setId: string, current: boolean) {
     if (!workoutExercise) return;
     const next = !current;
-    await repo.updateSet(setId, { is_complete: next });
     markSetComplete(workoutExercise.id, setId, next);
-    // Auto-next: scroll the next incomplete set into view
+    const { error } = await repo.updateSet(setId, { is_complete: next });
+    if (error) {
+      markSetComplete(workoutExercise.id, setId, current);
+      showNetworkError();
+      return;
+    }
     if (next && autoNextSet) {
       const currentIdx = exerciseSets.findIndex((s) => s.id === setId);
       const nextSet = exerciseSets.slice(currentIdx + 1).find((s) => !s.is_complete);
@@ -134,12 +181,18 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
         </span>
       </div>
 
+      {networkError && (
+        <p className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-1.5" role="alert">
+          Error de red — cambio no guardado
+        </p>
+      )}
+
       {exerciseSets.length === 0 ? (
         <p className="text-xs text-muted-foreground">Sin series todavía.</p>
       ) : (
         <div className="space-y-1.5">
           {exerciseSets.map((s) => (
-            <div key={s.id} id={`set-row-${s.id}`}>
+            <div key={s.id} id={`set-row-${s.id}`} className={s.id.startsWith("temp-") ? "opacity-60" : ""}>
               <SetRow
                 set={s}
                 exerciseType={exerciseType}
@@ -156,10 +209,9 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
 
       <button
         onClick={handleCreateSet}
-        disabled={saving}
-        className="w-full rounded-lg border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50 disabled:opacity-50"
+        className="w-full rounded-lg border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50"
       >
-        {saving ? "Agregando…" : "+ Agregar serie"}
+        + Agregar serie
       </button>
 
       {commentSetId && (

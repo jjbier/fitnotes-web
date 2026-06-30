@@ -164,14 +164,19 @@ export default function ExerciseCategoryPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este ejercicio y todo su historial?")) return;
-    const { error } = await repo.deleteExercise(id);
-    if (error) return;
+    const saved = exercises.find((e) => e.id === id);
     deleteExercise(id);
+    const { error } = await repo.deleteExercise(id);
+    if (error && saved) addExercise(saved);
   }
 
   async function handleToggleFavorite(id: string, current: boolean) {
-    await repo.toggleFavorite(id, !current);
     toggleFavorite(id);
+    try {
+      await repo.toggleFavorite(id, !current);
+    } catch {
+      toggleFavorite(id);
+    }
   }
 
   const pageTitle = isFavoritesView ? "★ Favoritos" : (category?.name ?? "Ejercicios");

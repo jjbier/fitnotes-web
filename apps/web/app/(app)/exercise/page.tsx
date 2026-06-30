@@ -143,9 +143,10 @@ export default function ExercisePage() {
 
   async function handleDeleteExercise(id: string) {
     if (!confirm("¿Eliminar este ejercicio y todo su historial?")) return;
-    const { error } = await repo.deleteExercise(id);
-    if (error) return;
+    const saved = exercises.find((e) => e.id === id);
     deleteExercise(id);
+    const { error } = await repo.deleteExercise(id);
+    if (error && saved) addExercise(saved);
   }
 
   async function handleCategoryDrop(toId: string) {
