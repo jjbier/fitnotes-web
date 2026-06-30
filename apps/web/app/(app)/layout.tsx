@@ -10,11 +10,19 @@ import MobileNav from "@/components/layout/MobileNav";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
+      {/* Skip link — first focusable element on page */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg"
+      >
+        Saltar al contenido
+      </a>
+
       {/* Desktop sidebar */}
       <Sidebar />
 
       {/* Main content area */}
-      <main className="flex-1 flex flex-col">
+      <main id="main-content" className="flex-1 flex flex-col" tabIndex={-1}>
         <div className="flex-1 p-6 pb-20 md:pb-6">{children}</div>
       </main>
 

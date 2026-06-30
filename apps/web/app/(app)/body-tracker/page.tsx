@@ -154,10 +154,12 @@ export default function BodyTrackerPage() {
           >
             Configuración
           </Link>
-          <div className="flex gap-1 rounded-lg border p-1">
+          <div role="tablist" aria-label="Secciones de medidas" className="flex gap-1 rounded-lg border p-1">
             {(["track", "history", "chart"] as const).map((t) => (
               <button
                 key={t}
+                role="tab"
+                aria-selected={tab === t}
                 onClick={() => { setTab(t); if (t === "history") loadHistory(); }}
                 className={`rounded-md px-3 py-1 text-sm font-medium ${tab === t ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
               >
@@ -217,7 +219,11 @@ export default function BodyTrackerPage() {
               </h2>
               <form onSubmit={handleLog} className="space-y-3">
                 <div className="flex gap-2">
+                  <label htmlFor="log-value" className="sr-only">
+                    Valor ({measurements.find((m) => m.id === logMeasurementId)?.unit ?? "Valor"})
+                  </label>
                   <input
+                    id="log-value"
                     type="number"
                     value={logValue}
                     onChange={(e) => setLogValue(e.target.value)}
@@ -226,7 +232,9 @@ export default function BodyTrackerPage() {
                     autoFocus
                     className="w-32 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
+                  <label htmlFor="log-comment" className="sr-only">Comentario (opcional)</label>
                   <input
+                    id="log-comment"
                     type="text"
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}

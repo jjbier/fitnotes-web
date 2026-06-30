@@ -38,11 +38,13 @@ export default function ToolsPage() {
     <div className="space-y-5 max-w-2xl">
       <h1 className="text-2xl font-bold tracking-tight">Herramientas de entrenamiento</h1>
 
-      <div className="flex flex-wrap gap-1 rounded-lg border p-1 w-fit">
+      <div role="tablist" aria-label="Herramientas de entrenamiento" className="flex flex-wrap gap-1 rounded-lg border p-1 w-fit">
         {([["1rm", "Calculadora 1RM"], ["set", "Calculadora de series"], ["plates", "Calculadora de discos"], ["timer", "Temporizador"]] as [Tab, string][]).map(
           ([key, label]) => (
             <button
               key={key}
+              role="tab"
+              aria-selected={tab === key}
               onClick={() => setTab(key)}
               className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
                 tab === key ? "bg-primary text-primary-foreground" : "hover:bg-secondary"

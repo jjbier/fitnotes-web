@@ -3,8 +3,11 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FitNotes App",
-  description: "Your personal fitness tracking companion",
+  title: {
+    template: "%s | FitNotes",
+    default: "FitNotes",
+  },
+  description: "Tu seguimiento fitness personal",
 };
 
 export default function RootLayout({
@@ -13,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}

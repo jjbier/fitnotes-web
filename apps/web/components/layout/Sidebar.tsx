@@ -35,20 +35,21 @@ export default function Sidebar() {
       </Link>
 
       {/* Nav links */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav aria-label="Navegación principal" className="flex-1 px-3 py-4 space-y-1">
         {NAV_ITEMS.map(({ href, label, icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
               href={href}
+              aria-current={active ? "page" : undefined}
               className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-primary text-primary-foreground"
                   : "text-foreground hover:bg-secondary"
               }`}
             >
-              <span>{icon}</span>
+              <span aria-hidden="true">{icon}</span>
               {label}
             </Link>
           );

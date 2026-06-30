@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import type { PredefinedSet, RoutineDayExercise, Exercise } from "@fitnotes/core";
 
 interface SetRow {
@@ -27,6 +28,20 @@ function makeKey(i: number) {
 }
 
 export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave, onClose }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, true);
+
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    return () => { prev?.focus(); };
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const isDistanceTime =
     exercise?.type === "DISTANCE_TIME" ||
     exercise?.type === "DISTANCE_ONLY" ||
@@ -79,10 +94,14 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="predefined-sets-title"
         className="bg-background rounded-lg border shadow-lg w-full max-w-sm mx-4 p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="font-semibold text-base mb-0.5">Series predefinidas</h2>
+        <h2 id="predefined-sets-title" className="font-semibold text-base mb-0.5">Series predefinidas</h2>
         <p className="text-xs text-muted-foreground mb-4">
           {exercise?.name ?? "Ejercicio"} · Vacío = copiar del historial anterior
         </p>
@@ -110,6 +129,7 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
                     type="number"
                     min="0"
                     placeholder="—"
+                    aria-label={`Serie ${i + 1} — distancia (m)`}
                     value={row.distance}
                     onChange={(e) => updateRow(row._key, "distance", e.target.value)}
                     className="rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -118,6 +138,7 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
                     type="number"
                     min="0"
                     placeholder="—"
+                    aria-label={`Serie ${i + 1} — tiempo (s)`}
                     value={row.time_seconds}
                     onChange={(e) => updateRow(row._key, "time_seconds", e.target.value)}
                     className="rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -130,6 +151,7 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
                     min="0"
                     step="0.5"
                     placeholder="—"
+                    aria-label={`Serie ${i + 1} — peso (${exercise?.weight_unit ?? "kg"})`}
                     value={row.weight}
                     onChange={(e) => updateRow(row._key, "weight", e.target.value)}
                     className="rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -138,6 +160,7 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
                     type="number"
                     min="0"
                     placeholder="—"
+                    aria-label={`Serie ${i + 1} — reps`}
                     value={row.reps}
                     onChange={(e) => updateRow(row._key, "reps", e.target.value)}
                     className="rounded border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"

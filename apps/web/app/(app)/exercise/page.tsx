@@ -193,7 +193,9 @@ export default function ExercisePage() {
       </div>
 
       {/* Global search */}
+      <label htmlFor="exercise-search" className="sr-only">Buscar ejercicios</label>
       <input
+        id="exercise-search"
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}

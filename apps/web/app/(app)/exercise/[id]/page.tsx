@@ -199,7 +199,9 @@ export default function ExerciseCategoryPage() {
       </div>
 
       {/* Search */}
+      <label htmlFor="category-search" className="sr-only">Buscar ejercicios en esta categoría</label>
       <input
+        id="category-search"
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}

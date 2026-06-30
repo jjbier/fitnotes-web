@@ -491,8 +491,9 @@ export default function SettingsPage() {
         {email && <p className="text-sm text-muted-foreground">{email}</p>}
         <form onSubmit={handleSaveProfile} className="space-y-3">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Nombre de usuario</label>
+            <label htmlFor="display-name" className="text-xs font-medium text-muted-foreground">Nombre de usuario</label>
             <input
+              id="display-name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Tu nombre"
@@ -502,6 +503,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={saveStatus === "saving"}
+            aria-live="polite"
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {saveStatus === "saving" ? "Guardando…" : saveStatus === "saved" ? "¡Guardado!" : saveStatus === "error" ? "Error — intentar de nuevo" : "Guardar cambios"}
@@ -519,15 +521,17 @@ export default function SettingsPage() {
             <p className="text-sm font-medium">Unidad de peso predeterminada</p>
             <p className="text-xs text-muted-foreground">Usada en toda la app para mostrar el peso</p>
           </div>
-          <div className="flex rounded-md border overflow-hidden">
+          <div role="group" aria-label="Unidad de peso" className="flex rounded-md border overflow-hidden">
             <button
               onClick={() => handleWeightUnit("kg")}
+              aria-pressed={weightUnit === "kg"}
               className={`px-3 py-1.5 text-sm font-medium ${weightUnit === "kg" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
               kg
             </button>
             <button
               onClick={() => handleWeightUnit("lb")}
+              aria-pressed={weightUnit === "lb"}
               className={`px-3 py-1.5 text-sm font-medium ${weightUnit === "lb" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
               lb
@@ -542,11 +546,12 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">Claro, oscuro o seguir preferencia del sistema</p>
           </div>
           {mounted && (
-            <div className="flex rounded-md border overflow-hidden">
+            <div role="group" aria-label="Tema de la aplicación" className="flex rounded-md border overflow-hidden">
               {themeOptions.map(({ value, label }) => (
                 <button
                   key={value}
                   onClick={() => setTheme(value)}
+                  aria-pressed={theme === value}
                   className={`px-3 py-1.5 text-sm font-medium ${theme === value ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
                 >
                   {label}

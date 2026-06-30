@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import Link from "next/link";
 import type { Exercise, PersonalRecord } from "@fitnotes/core";
 import { calculate1RM } from "@fitnotes/core";
@@ -35,6 +36,22 @@ interface ExerciseOverviewProps {
 }
 
 export default function ExerciseOverview({ exercise, exercises, userId, onClose }: ExerciseOverviewProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true);
+
+  // Restore focus on close
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    return () => { prev?.focus(); };
+  }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const [activeTab, setActiveTab] = useState<Tab>("records");
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
@@ -202,11 +219,17 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
       />
 
       {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-background shadow-2xl flex flex-col overflow-hidden">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="exercise-overview-title"
+        className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-background shadow-2xl flex flex-col overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
           <div className="min-w-0">
-            <h2 className="font-bold text-lg leading-tight truncate">{exercise.name}</h2>
+            <h2 id="exercise-overview-title" className="font-bold text-lg leading-tight truncate">{exercise.name}</h2>
             {!isLoading && (
               <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
                 {best1RM > 0 && (
@@ -233,10 +256,12 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b px-4 pt-2">
+        <div role="tablist" aria-label="Secciones del ejercicio" className="flex gap-1 border-b px-4 pt-2">
           {(["records", "chart", "history", "goals"] as Tab[]).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab

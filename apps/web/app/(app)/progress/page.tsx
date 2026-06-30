@@ -327,10 +327,12 @@ export default function ProgressPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 rounded-lg border bg-secondary/30 p-1">
+            <div role="tablist" aria-label="Secciones de progreso" className="flex gap-1 rounded-lg border bg-secondary/30 p-1">
               {(["records", "chart", "history", "goals"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
+                  role="tab"
+                  aria-selected={activeTab === tab}
                   onClick={() => setActiveTab(tab)}
                   className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
                     activeTab === tab ? "bg-white shadow-sm dark:bg-secondary" : "text-muted-foreground hover:text-foreground"
@@ -374,6 +376,8 @@ export default function ProgressPage() {
                         <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/20">
                           <button
                             onClick={() => handleExpandDate(point.date)}
+                            aria-expanded={isExpanded}
+                            aria-label={`${isExpanded ? "Contraer" : "Expandir"} sesión del ${point.date}`}
                             className="flex-1 flex items-center gap-3 text-left min-w-0"
                           >
                             <span className="font-medium shrink-0">{point.date}</span>
@@ -382,7 +386,7 @@ export default function ProgressPage() {
                               {point.totalVolume > 0 && <span>{point.totalVolume.toFixed(0)} vol.</span>}
                               {point.maxReps > 0 && <span>{point.maxReps} reps</span>}
                             </div>
-                            <span className="text-muted-foreground text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
+                            <span aria-hidden="true" className="text-muted-foreground text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
                           </button>
                           <Link
                             href={`/workout/${point.date}`}
@@ -492,6 +496,7 @@ export default function ProgressPage() {
                                   <button
                                     onClick={() => handleCopySets(point.date)}
                                     disabled={isCopying || wasCopied}
+                                    aria-live="polite"
                                     className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline"
                                   >
                                     {isCopying ? "Copiando…" : wasCopied ? "¡Copiado!" : "Copiar series a hoy"}

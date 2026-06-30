@@ -176,12 +176,14 @@ export default function DashboardPage() {
       ) : (
         <div className="space-y-4">
           {/* Exercise tabs */}
-          <div className="flex gap-2 flex-wrap">
+          <div role="tablist" aria-label="Ejercicios del entrenamiento" className="flex gap-2 flex-wrap">
             {workoutExercises.map((we) => {
               const ex = exercises.find((e) => e.id === we.exercise_id);
               return (
                 <button
                   key={we.id}
+                  role="tab"
+                  aria-selected={activeWEId === we.id}
                   onClick={() => setActiveWEId(we.id)}
                   className={`rounded-full border px-3 py-1 text-xs font-medium ${activeWEId === we.id ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"}`}
                 >
@@ -200,7 +202,9 @@ export default function DashboardPage() {
           {/* Exercise picker */}
           {showExPicker && (
             <div className="flex gap-2">
+              <label htmlFor="exercise-picker" className="sr-only">Seleccionar ejercicio</label>
               <select
+                id="exercise-picker"
                 value={selectedExId}
                 onChange={(e) => setSelectedExId(e.target.value)}
                 className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
