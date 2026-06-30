@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useExerciseStore, filterExercises, ExerciseType } from "@fitnotes/core";
@@ -86,6 +87,14 @@ export default function ExerciseCategoryPage() {
     ...filtered.filter((e) => e.is_favorite),
     ...filtered.filter((e) => !e.is_favorite),
   ];
+
+  const listRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useWindowVirtualizer({
+    count: sorted.length,
+    estimateSize: () => 80,
+    overscan: 5,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
+  });
 
   const doCreate = useCallback(async (data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
@@ -240,17 +249,33 @@ export default function ExerciseCategoryPage() {
           {search ? `Sin ejercicios que coincidan con "${search}"` : "Sin ejercicios aún. ¡Añade el primero!"}
         </div>
       ) : (
-        <div className="space-y-2">
-          {sorted.map((ex) => (
-            <ExerciseCard
-              key={ex.id}
-              exercise={ex}
-              stats={exerciseStats[ex.id]}
-              onEdit={setEditing}
-              onDelete={handleDelete}
-              onToggleFavorite={handleToggleFavorite}
-            />
-          ))}
+        <div ref={listRef} style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+          {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+            const ex = sorted[virtualItem.index]!;
+            return (
+              <div
+                key={ex.id}
+                data-index={virtualItem.index}
+                ref={rowVirtualizer.measureElement}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualItem.start - (listRef.current?.offsetTop ?? 0)}px)`,
+                }}
+                className="pb-2"
+              >
+                <ExerciseCard
+                  exercise={ex}
+                  stats={exerciseStats[ex.id]}
+                  onEdit={setEditing}
+                  onDelete={handleDelete}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

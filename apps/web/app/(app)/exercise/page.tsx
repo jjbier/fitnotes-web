@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { useExerciseStore, ExerciseType, filterExercises } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
@@ -170,6 +171,14 @@ export default function ExercisePage() {
     ? filterExercises(exercises, search.trim())
     : [];
 
+  const searchListRef = useRef<HTMLDivElement>(null);
+  const searchVirtualizer = useWindowVirtualizer({
+    count: searchResults.length,
+    estimateSize: () => 80,
+    overscan: 5,
+    scrollMargin: searchListRef.current?.offsetTop ?? 0,
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -203,16 +212,34 @@ export default function ExercisePage() {
               Sin ejercicios que coincidan con &ldquo;{search}&rdquo;
             </div>
           ) : (
-            searchResults.map((ex) => (
-              <ExerciseCard
-                key={ex.id}
-                exercise={ex}
-                stats={exerciseStats[ex.id]}
-                onEdit={() => {}}
-                onDelete={handleDeleteExercise}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            ))
+            <div ref={searchListRef} style={{ height: `${searchVirtualizer.getTotalSize()}px`, position: "relative" }}>
+              {searchVirtualizer.getVirtualItems().map((virtualItem) => {
+                const ex = searchResults[virtualItem.index]!;
+                return (
+                  <div
+                    key={ex.id}
+                    data-index={virtualItem.index}
+                    ref={searchVirtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualItem.start - (searchListRef.current?.offsetTop ?? 0)}px)`,
+                    }}
+                    className="pb-2"
+                  >
+                    <ExerciseCard
+                      exercise={ex}
+                      stats={exerciseStats[ex.id]}
+                      onEdit={() => {}}
+                      onDelete={handleDeleteExercise}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

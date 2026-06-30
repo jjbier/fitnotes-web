@@ -39,8 +39,27 @@ interface Props {
 
 export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onToggleFavorite }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  function handleMenuToggle() {
+    if (menuOpen) {
+      setMenuOpen(false);
+      setMenuPos(null);
+      return;
+    }
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setMenuOpen(true);
+  }
+
+  function closeMenu() {
+    setMenuOpen(false);
+    setMenuPos(null);
+  }
 
   // Focus first menu item when menu opens
   useEffect(() => {
@@ -55,12 +74,20 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
     if (!menuOpen) return;
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setMenuOpen(false);
+        closeMenu();
         triggerRef.current?.focus();
       }
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
+
+  // Close on scroll to prevent stale fixed position
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleScroll() { closeMenu(); }
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
   }, [menuOpen]);
 
   return (
@@ -98,10 +125,10 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
         </button>
 
         {/* Menu */}
-        <div className="relative">
+        <div>
           <button
             ref={triggerRef}
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={handleMenuToggle}
             className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground"
             aria-label="Opciones"
             aria-haspopup="menu"
@@ -110,36 +137,37 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
             <span aria-hidden="true">⋯</span>
           </button>
 
-          {menuOpen && (
+          {menuOpen && menuPos && (
             <>
               <div
-                className="fixed inset-0 z-10"
-                onClick={() => setMenuOpen(false)}
+                className="fixed inset-0 z-40"
+                onClick={closeMenu}
                 aria-hidden="true"
               />
               <div
                 ref={menuRef}
                 role="menu"
                 aria-label={`Opciones para ${exercise.name}`}
-                className="absolute right-0 top-full mt-1 z-20 w-40 rounded-md border bg-card shadow-lg py-1"
+                style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 50 }}
+                className="w-40 rounded-md border bg-card shadow-lg py-1"
               >
                 <Link
                   href={`/exercise/history/${exercise.id}`}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={closeMenu}
                   role="menuitem"
                   className="block w-full text-left px-4 py-2 text-sm hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
                   Historial
                 </Link>
                 <button
-                  onClick={() => { onEdit(exercise); setMenuOpen(false); }}
+                  onClick={() => { onEdit(exercise); closeMenu(); }}
                   role="menuitem"
                   className="w-full text-left px-4 py-2 text-sm hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
                   Editar
                 </button>
                 <button
-                  onClick={() => { onDelete(exercise.id); setMenuOpen(false); }}
+                  onClick={() => { onDelete(exercise.id); closeMenu(); }}
                   role="menuitem"
                   className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
