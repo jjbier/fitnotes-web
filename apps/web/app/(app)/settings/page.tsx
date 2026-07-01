@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
-import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit } from "@/lib/settings";
+import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
+import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit, readHiddenCategories, writeHiddenCategories } from "@/lib/settings";
 
 type BackupEntry = Record<string, unknown>;
 type BackupData = {
@@ -85,6 +85,11 @@ export default function SettingsPage() {
   const [estimatedRecordsRepLimit, setEstimatedRecordsRepLimit] = useState("");
   const [recalcPRs, setRecalcPRs] = useState<"idle" | "running" | "done" | "error">("idle");
 
+  // Home screen settings
+  const [showSetCountHome, setShowSetCountHome] = useState(true);
+  const [categories, setCategories] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
+
   const client = createBrowserClient();
 
   useEffect(() => {
@@ -124,8 +129,26 @@ export default function SettingsPage() {
     client.from("exercises").select("id, name").order("name").then(({ data }) => {
       setExerciseOptions(data ?? []);
     });
+    setShowSetCountHome(readBool(SETTING_KEYS.SHOW_SET_COUNT_HOME, true));
+    setHiddenCategoryIds(readHiddenCategories());
+    createExerciseRepository(client).getCategories().then(({ data }) => {
+      setCategories(data ?? []);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function handleShowSetCountHome(next: boolean) {
+    setShowSetCountHome(next);
+    writeBool(SETTING_KEYS.SHOW_SET_COUNT_HOME, next);
+  }
+
+  function handleToggleCategoryVisible(categoryId: string) {
+    setHiddenCategoryIds((prev) => {
+      const next = prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId];
+      writeHiddenCategories(next);
+      return next;
+    });
+  }
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -718,6 +741,47 @@ export default function SettingsPage() {
           >
             {recalcPRs === "running" ? "Calculando…" : recalcPRs === "done" ? "¡Listo!" : recalcPRs === "error" ? "Error — reintentar" : "Recalcular PRs"}
           </button>
+        </div>
+      </section>
+
+      {/* Home screen */}
+      <section className="rounded-lg border bg-card p-6 space-y-4">
+        <h2 className="font-semibold">Pantalla de inicio</h2>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Mostrar contador de series</p>
+            <p className="text-xs text-muted-foreground">Muestra series completadas/totales en las pestañas de ejercicio del entrenamiento activo</p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={showSetCountHome}
+            onClick={() => handleShowSetCountHome(!showSetCountHome)}
+            className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${showSetCountHome ? "bg-primary" : "bg-secondary border"}`}
+          >
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showSetCountHome ? "translate-x-5" : "translate-x-1"}`} />
+          </button>
+        </div>
+
+        <div className="border-t pt-3">
+          <p className="text-sm font-medium mb-1">Categorías visibles</p>
+          <p className="text-xs text-muted-foreground mb-2">Las categorías desmarcadas se ocultan del selector de "+ Ejercicio" en Inicio</p>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => {
+              const visible = !hiddenCategoryIds.includes(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => handleToggleCategoryVisible(cat.id)}
+                  aria-pressed={visible}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${visible ? "bg-secondary/50" : "opacity-40"}`}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 

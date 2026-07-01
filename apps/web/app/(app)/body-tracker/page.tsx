@@ -53,6 +53,7 @@ export default function BodyTrackerPage() {
   const [historyFilterId, setHistoryFilterId] = useState("");
   const [chartMeasurementId, setChartMeasurementId] = useState("");
   const [chartLoading, setChartLoading] = useState(false);
+  const [clickedChartDate, setClickedChartDate] = useState<string | null>(null);
 
   const client = createBrowserClient();
   const repo = createBodyTrackerRepository(client);
@@ -166,6 +167,18 @@ export default function BodyTrackerPage() {
     for (const e of historyEntries) (map[e.measurement_id] ??= []).push(e);
     return map;
   }, [historyEntries]);
+
+  function handleChartClick(state: { activeLabel?: string } | null) {
+    if (!state?.activeLabel) return;
+    setClickedChartDate(state.activeLabel);
+    void loadHistory();
+  }
+
+  const clickedDateEntries = useMemo(() => {
+    if (!clickedChartDate) return [];
+    return historyEntries.filter((e) => e.recorded_at.slice(0, 10) === clickedChartDate);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyEntries, clickedChartDate]);
 
   function deltaColorClassFor(m: { goal_type: GoalType; goal_value?: number } | undefined, current: number, prev: number): string {
     if (!m) return "text-muted-foreground";
@@ -392,7 +405,7 @@ export default function BodyTrackerPage() {
             <select
               id="chart-measure"
               value={chartMeasurementId}
-              onChange={(e) => setChartMeasurementId(e.target.value)}
+              onChange={(e) => { setChartMeasurementId(e.target.value); setClickedChartDate(null); }}
               className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
             >
               <option value="">Seleccionar medida…</option>
@@ -417,8 +430,9 @@ export default function BodyTrackerPage() {
               <p className="text-sm font-semibold mb-4">
                 {selectedMeasurement?.name} ({selectedMeasurement?.unit})
               </p>
+              <p className="text-xs text-muted-foreground mb-2">Toca un punto para ver el resto de medidas registradas ese día.</p>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartPoints} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <LineChart data={chartPoints} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} onClick={handleChartClick}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis
                     dataKey="date"
@@ -451,6 +465,32 @@ export default function BodyTrackerPage() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+
+              {clickedChartDate && (
+                <div className="mt-4 rounded-lg border bg-secondary/20 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold">Medidas del {new Date(clickedChartDate).toLocaleDateString("es-ES", { dateStyle: "long" })}</p>
+                    <button onClick={() => setClickedChartDate(null)} className="text-xs text-muted-foreground hover:text-foreground">Cerrar ✕</button>
+                  </div>
+                  {!historyLoaded ? (
+                    <p className="text-xs text-muted-foreground">Cargando…</p>
+                  ) : clickedDateEntries.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin otras medidas registradas ese día.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {clickedDateEntries.map((e) => {
+                        const m = measurements.find((meas) => meas.id === e.measurement_id);
+                        return (
+                          <div key={e.id} className="flex items-center justify-between text-sm">
+                            <span className={e.measurement_id === chartMeasurementId ? "font-medium" : ""}>{m?.name ?? e.measurement_id}</span>
+                            <span className="text-muted-foreground">{e.value} {m?.unit ?? ""}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

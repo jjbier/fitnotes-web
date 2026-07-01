@@ -10,7 +10,7 @@ import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { readBool, SETTING_KEYS } from "@/lib/settings";
+import { readBool, SETTING_KEYS, readHiddenCategories } from "@/lib/settings";
 import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
 
 export default function DashboardPage() {
@@ -43,6 +43,8 @@ export default function DashboardPage() {
   const [selectedExId, setSelectedExId] = useState("");
   const [currentDate, setCurrentDate] = useState(today);
   const [workoutCommentLocal, setWorkoutCommentLocal] = useState("");
+  const [showSetCount, setShowSetCount] = useState(true);
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -108,6 +110,8 @@ export default function DashboardPage() {
 
       await loadWorkoutForDate(today, user?.id ?? "");
       setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
+      setShowSetCount(readBool(SETTING_KEYS.SHOW_SET_COUNT_HOME, true));
+      setHiddenCategoryIds(readHiddenCategories());
       setLoading(false);
     }
     load();
@@ -191,6 +195,8 @@ export default function DashboardPage() {
           <div role="tablist" aria-label="Ejercicios del entrenamiento" className="flex gap-2 flex-wrap">
             {workoutExercises.map((we) => {
               const ex = exercises.find((e) => e.id === we.exercise_id);
+              const weSets = sets[we.id] ?? [];
+              const completedCount = weSets.filter((s) => s.is_complete).length;
               return (
                 <button
                   key={we.id}
@@ -200,6 +206,9 @@ export default function DashboardPage() {
                   className={`rounded-full border px-3 py-1 text-xs font-medium ${activeWEId === we.id ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"}`}
                 >
                   {ex?.name ?? we.exercise_id}
+                  {showSetCount && weSets.length > 0 && (
+                    <span className="ml-1 opacity-70">({completedCount}/{weSets.length})</span>
+                  )}
                 </button>
               );
             })}
@@ -222,7 +231,7 @@ export default function DashboardPage() {
                 className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Seleccionar ejercicio…</option>
-                {exercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                {exercises.filter((ex) => !hiddenCategoryIds.includes(ex.category_id)).map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
               </select>
               <button onClick={handleAddExercise} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
               <button onClick={() => setShowExPicker(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>

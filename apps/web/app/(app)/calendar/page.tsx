@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createBrowserClient, createCalendarRepository, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
 import { formatWorkoutDate, ExerciseType } from "@fitnotes/core";
 import type { Exercise as CoreExercise } from "@fitnotes/core";
-import { readWeekStart } from "@/lib/settings";
+import { readWeekStart, readBool, writeBool, SETTING_KEYS } from "@/lib/settings";
 import ExerciseOverview from "@/components/progress/ExerciseOverview";
 
 function getDaysInMonth(year: number, month: number): number {
@@ -53,8 +53,22 @@ export default function CalendarPage() {
   const [fullExercises, setFullExercises] = useState<CoreExercise[]>([]);
   const [userId, setUserId] = useState("");
   const [overviewExercise, setOverviewExercise] = useState<CoreExercise | null>(null);
+  const [showDayPanel, setShowDayPanel] = useState(true);
+  const [showCategoryDots, setShowCategoryDots] = useState(true);
 
-  useEffect(() => { setWeekStart(readWeekStart()); }, []);
+  useEffect(() => {
+    setWeekStart(readWeekStart());
+    setShowDayPanel(readBool(SETTING_KEYS.CALENDAR_SHOW_DAY_PANEL, true));
+    setShowCategoryDots(readBool(SETTING_KEYS.CALENDAR_SHOW_CATEGORY_DOTS, true));
+  }, []);
+
+  function toggleShowDayPanel() {
+    setShowDayPanel((v) => { writeBool(SETTING_KEYS.CALENDAR_SHOW_DAY_PANEL, !v); return !v; });
+  }
+
+  function toggleShowCategoryDots() {
+    setShowCategoryDots((v) => { writeBool(SETTING_KEYS.CALENDAR_SHOW_CATEGORY_DOTS, !v); return !v; });
+  }
 
   const client = createBrowserClient();
   const repo = createCalendarRepository(client);
@@ -258,6 +272,26 @@ export default function CalendarPage() {
             Limpiar
           </button>
         )}
+        {!listView && (
+          <>
+            <button
+              onClick={toggleShowCategoryDots}
+              title={showCategoryDots ? "Mostrar indicador único" : "Mostrar puntos de categoría"}
+              aria-pressed={showCategoryDots}
+              className={`rounded-md border px-2.5 py-1.5 text-sm ${showCategoryDots ? "bg-secondary" : "hover:bg-secondary"}`}
+            >
+              {showCategoryDots ? "●●●" : "●"}
+            </button>
+            <button
+              onClick={toggleShowDayPanel}
+              title={showDayPanel ? "Ocultar panel del día" : "Mostrar panel del día"}
+              aria-pressed={showDayPanel}
+              className={`rounded-md border px-2.5 py-1.5 text-sm ${showDayPanel ? "bg-secondary" : "hover:bg-secondary"}`}
+            >
+              ▾
+            </button>
+          </>
+        )}
         <button
           onClick={() => setListView((v) => !v)}
           className={`rounded-md border px-3 py-1.5 text-sm ${listView ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
@@ -448,8 +482,10 @@ export default function CalendarPage() {
               const isSelected = dateStr === selectedDate;
               const matchesFilter = !isFiltered || activeDates!.has(dateStr);
               const dimmed = isFiltered && hasWorkout && !matchesFilter;
-              const dots = categoryColors[dateStr] ?? (hasWorkout ? ["var(--primary)"] : []);
-              const visibleDots = dots.slice(0, 4);
+              const dots = showCategoryDots
+                ? (categoryColors[dateStr] ?? (hasWorkout ? ["var(--primary)"] : []))
+                : (hasWorkout ? ["var(--primary)"] : []);
+              const visibleDots = dots.slice(0, showCategoryDots ? 4 : 1);
               return (
                 <button
                   key={day}
@@ -483,7 +519,7 @@ export default function CalendarPage() {
           )}
 
           {/* Selected day popup */}
-          {selectedDate && (
+          {showDayPanel && selectedDate && (
             <div className="rounded-lg border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">{formatWorkoutDate(selectedDate)}</h3>
