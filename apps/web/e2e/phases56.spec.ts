@@ -32,30 +32,18 @@ test.describe("Phase 6 — Tools timer tab (authenticated)", () => {
     await page.waitForURL(/dashboard|tools/);
   });
 
-  test("tools page has timer tab [T6.11]", async ({ page }) => {
-    await page.goto("/tools");
-    await expect(page.locator("button", { hasText: /Temporizador/i })).toBeVisible();
-  });
-
-  test("timer tab shows countdown display [T6.12]", async ({ page }) => {
-    await page.goto("/tools");
-    await page.locator("button", { hasText: /Temporizador/i }).click();
-    // Should show MM:SS format
-    await expect(page.locator("text=/\\d{2}:\\d{2}/")).toBeVisible();
-    // Should show preset buttons
-    await expect(page.locator("button", { hasText: "1:30" }).or(page.locator("button", { hasText: "90s" }))).toBeVisible();
-  });
+  // Nota: la pestaña Temporizador (countdown, presets) se cubre en tools.spec.ts.
 
   test("1RM calculator has exercise PR selector [T6.13]", async ({ page }) => {
     await page.goto("/tools");
-    await page.locator("button", { hasText: /1RM/i }).first().click();
-    await expect(page.locator("text=/ejercicio/i")).toBeVisible();
+    await page.getByRole("tab", { name: "Calculadora 1RM" }).click();
+    await expect(page.getByRole("button", { name: "Cargar desde ejercicio…" })).toBeVisible();
   });
 
   test("set calculator has exercise PR selector [T6.14]", async ({ page }) => {
     await page.goto("/tools");
-    await page.locator("button", { hasText: /series/i }).first().click();
-    await expect(page.locator("text=/ejercicio/i")).toBeVisible();
+    await page.getByRole("tab", { name: "Calculadora de series" }).click();
+    await expect(page.getByRole("button", { name: "Cargar desde ejercicio…" })).toBeVisible();
   });
 });
 

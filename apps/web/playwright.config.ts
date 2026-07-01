@@ -4,10 +4,15 @@ const STORAGE_STATE = "e2e/.auth/user.json";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  // Todos los tests autenticados comparten UNA sola cuenta Supabase persistente
+  // (sin aislamiento de datos por test) — correr en paralelo hace que tests
+  // que tocan el mismo registro (p.ej. el workout de "ayer") se pisen entre sí.
+  fullyParallel: false,
   forbidOnly: !!process.env["CI"],
-  retries: process.env["CI"] ? 2 : 0,
-  workers: process.env["CI"] ? 1 : undefined,
+  // 1 reintento local: `next dev` recompila rutas on-demand tras inactividad,
+  // lo que ocasionalmente hace que el primer login tarde más de lo esperado.
+  retries: process.env["CI"] ? 2 : 1,
+  workers: 1,
   reporter: "html",
   use: {
     baseURL: "http://localhost:3000",

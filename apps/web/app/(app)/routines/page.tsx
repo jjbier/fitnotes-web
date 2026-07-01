@@ -36,8 +36,18 @@ export default function RoutinesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // userId se resuelve async al montar; si el usuario crea/copia algo antes de que
+  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  async function resolveUserId(): Promise<string> {
+    if (userId) return userId;
+    const { data: { user } } = await client.auth.getUser();
+    if (user) setUserId(user.id);
+    return user?.id ?? "";
+  }
+
   const handleCreate = useCallback(async (data: { name: string; notes: string }) => {
-    const { data: created, error } = await repo.createRoutine(data, userId);
+    const uid = await resolveUserId();
+    const { data: created, error } = await repo.createRoutine(data, uid);
     if (error) throw new Error(error.message);
     createRoutine({ id: created.id, name: created.name, notes: created.notes ?? undefined });
     setShowForm(false);
@@ -61,7 +71,8 @@ export default function RoutinesPage() {
   }
 
   async function handleCopy(routine: Routine) {
-    const { data, error } = await repo.copyRoutine(routine.id, `Copia de ${routine.name}`, userId);
+    const uid = await resolveUserId();
+    const { data, error } = await repo.copyRoutine(routine.id, `Copia de ${routine.name}`, uid);
     if (error || !data) return;
     createRoutine({ id: data.id, name: data.name, notes: data.notes ?? undefined });
   }

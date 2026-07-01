@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test.describe("Registro de entrenamiento", () => {
   test.beforeEach(async () => {
     if (!process.env["PLAYWRIGHT_USER_EMAIL"]) test.skip();
@@ -11,17 +15,21 @@ test.describe("Registro de entrenamiento", () => {
 
     // ── Ir a ayer para evitar conflictos con entrenamientos activos ──────────
     await page.getByRole("button", { name: "Día anterior" }).click();
-    await page.waitForTimeout(500);
+
+    // Esperar a que termine de cargar el día (evita la carrera entre el fetch
+    // de getWorkoutByDate y comprobar si el botón de iniciar está visible)
+    const startBtn = page.getByRole("button", { name: "Iniciar entrenamiento" });
+    const finishBtn = page.getByRole("button", { name: "Finalizar" });
+    await expect(startBtn.or(finishBtn)).toBeVisible({ timeout: 8_000 });
 
     // ── Iniciar entrenamiento (si no existe) ─────────────────────────────────
-    const startBtn = page.getByRole("button", { name: "Iniciar entrenamiento" });
-    if (await startBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    if (await startBtn.isVisible().catch(() => false)) {
       await startBtn.click();
-      await expect(page.getByRole("button", { name: "Finalizar" })).toBeVisible({ timeout: 8_000 });
+      await expect(finishBtn).toBeVisible({ timeout: 8_000 });
     }
 
     // At this point we should have an active workout panel
-    await expect(page.getByRole("button", { name: "Finalizar" })).toBeVisible({ timeout: 5_000 });
+    await expect(finishBtn).toBeVisible({ timeout: 5_000 });
 
     // ── Añadir ejercicio ─────────────────────────────────────────────────────
     const addExTab = page.locator("button", { hasText: "+ Ejercicio" });
@@ -32,20 +40,33 @@ test.describe("Registro de entrenamiento", () => {
       const picker = page.locator("#exercise-picker");
       await expect(picker).toBeVisible({ timeout: 5_000 });
 
-      // Pick the second option (first real exercise, index 0 = placeholder)
+      // Elegir un ejercicio de peso×reps (no distancia/tiempo) para que los
+      // pasos siguientes (peso, reps) tengan sentido — si no se encuentra
+      // ninguno, cae al índice 1 (primer ejercicio real tras el placeholder).
       const options = picker.locator("option");
       const count = await options.count();
       if (count <= 1) {
         test.skip(); // No exercises exist — can't test workout flow
         return;
       }
-      const firstExName = await options.nth(1).textContent();
-      await picker.selectOption({ index: 1 });
-      await page.getByRole("button", { name: "Añadir" }).click();
+      const allNames = await options.allTextContents();
+      let pickIndex = allNames.findIndex((n) => /press banca|sentadilla|dominadas|elevaciones/i.test(n));
+      if (pickIndex <= 0) pickIndex = 1;
+      const firstExName = allNames[pickIndex];
+      await picker.selectOption({ index: pickIndex });
+      await page.getByRole("button", { name: "Añadir", exact: true }).click();
 
-      // Exercise tab should appear
+      // El nuevo ejercicio se añade siempre al final de la tablist — usar la
+      // ÚLTIMA tab por posición (no por nombre) evita ambigüedad si ya existe
+      // otro ejercicio con el mismo nombre de una ejecución anterior.
       if (firstExName) {
-        await expect(page.getByRole("tab", { name: firstExName.trim() })).toBeVisible({ timeout: 8_000 });
+        const newTab = page.getByRole("tablist", { name: "Ejercicios del entrenamiento" }).getByRole("tab").last();
+        await expect(newTab).toBeVisible({ timeout: 8_000 });
+        await expect(newTab).toHaveAccessibleName(new RegExp(escapeRegExp(firstExName.trim())));
+        await newTab.click();
+        // Confirmar que el panel de entrenamiento activo es realmente el del
+        // ejercicio recién añadido.
+        await expect(page.getByRole("heading", { level: 2, name: firstExName.trim(), exact: true })).toBeVisible({ timeout: 5_000 });
       }
     }
 

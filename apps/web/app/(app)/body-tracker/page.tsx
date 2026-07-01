@@ -118,9 +118,19 @@ export default function BodyTrackerPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, chartMeasurementId]);
 
+  // userId se resuelve async al montar; si el usuario registra algo antes de que
+  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  async function resolveUserId(): Promise<string> {
+    if (userId) return userId;
+    const { data: { user } } = await client.auth.getUser();
+    if (user) setUserId(user.id);
+    return user?.id ?? "";
+  }
+
   async function loadHistory() {
     if (historyLoaded) return;
-    const { data } = await repo.getAllEntries(userId);
+    const uid = await resolveUserId();
+    const { data } = await repo.getAllEntries(uid);
     if (data) {
       setHistoryEntries(data as HistoryEntry[]);
       setHistoryLoaded(true);
@@ -131,13 +141,14 @@ export default function BodyTrackerPage() {
     e.preventDefault();
     if (!logMeasurementId || !logValue) return;
     setSaving(true);
+    const uid = await resolveUserId();
     const recordedAt = logDate ? `${logDate}T12:00:00` : new Date().toISOString();
     const { data, error } = await repo.addEntry({
       measurement_id: logMeasurementId,
       value: parseFloat(logValue),
       comment: logComment || undefined,
       recorded_at: recordedAt,
-    }, userId);
+    }, uid);
     if (!error && data) {
       const entry: BodyMeasurementEntry = {
         id: data.id,

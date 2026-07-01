@@ -213,8 +213,9 @@ function OneRMCalculator() {
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Peso (kg)</label>
+          <label htmlFor="onerm-weight" className="text-xs font-medium text-muted-foreground">Peso (kg)</label>
           <input
+            id="onerm-weight"
             type="number"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
@@ -225,8 +226,9 @@ function OneRMCalculator() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Repeticiones</label>
+          <label htmlFor="onerm-reps" className="text-xs font-medium text-muted-foreground">Repeticiones</label>
           <input
+            id="onerm-reps"
             type="number"
             value={reps}
             onChange={(e) => setReps(e.target.value)}
@@ -300,8 +302,9 @@ function SetCalculator() {
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Peso base (kg)</label>
+          <label htmlFor="set-base-weight" className="text-xs font-medium text-muted-foreground">Peso base (kg)</label>
           <input
+            id="set-base-weight"
             type="number"
             value={baseWeight}
             onChange={(e) => setBaseWeight(e.target.value)}
@@ -312,8 +315,9 @@ function SetCalculator() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Redondear a (kg)</label>
+          <label htmlFor="set-increment" className="text-xs font-medium text-muted-foreground">Redondear a (kg)</label>
           <select
+            id="set-increment"
             value={increment}
             onChange={(e) => setIncrement(e.target.value)}
             className="w-28 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
@@ -593,8 +597,9 @@ function PlateCalculatorPanel() {
 
       <div className="flex gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Peso objetivo (kg)</label>
+          <label htmlFor="plates-target" className="text-xs font-medium text-muted-foreground">Peso objetivo (kg)</label>
           <input
+            id="plates-target"
             type="number"
             value={targetWeight}
             onChange={(e) => setTargetWeight(e.target.value)}
@@ -605,8 +610,9 @@ function PlateCalculatorPanel() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Peso de la barra (kg)</label>
+          <label htmlFor="plates-bar" className="text-xs font-medium text-muted-foreground">Peso de la barra (kg)</label>
           <select
+            id="plates-bar"
             value={barWeight}
             onChange={(e) => setBarWeight(e.target.value)}
             className="w-28 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
@@ -619,8 +625,9 @@ function PlateCalculatorPanel() {
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">Discos disponibles (kg, separados por coma)</label>
+        <label htmlFor="plates-custom" className="text-xs font-medium text-muted-foreground">Discos disponibles (kg, separados por coma)</label>
         <input
+          id="plates-custom"
           type="text"
           value={customPlates}
           onChange={(e) => setCustomPlates(e.target.value)}

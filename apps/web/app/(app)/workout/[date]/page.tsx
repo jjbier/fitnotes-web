@@ -102,6 +102,11 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           setsMap
         );
         if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
+      } else {
+        // Sin esto, navegar aquí desde otra página con un workout ya cargado
+        // en el store deja visible ese workout stale bajo esta fecha.
+        loadWorkout({ id: "", date }, [], {});
+        setActiveWEId(null);
       }
       setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
       setLoading(false);
@@ -110,10 +115,20 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
+  // userId se resuelve async al montar; si el usuario actúa antes de que
+  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  async function resolveUserId(): Promise<string> {
+    if (userId) return userId;
+    const { data: { user } } = await client.auth.getUser();
+    if (user) setUserId(user.id);
+    return user?.id ?? "";
+  }
+
   async function handleStartWorkout() {
+    const uid = await resolveUserId();
     const { data, error } = await repo.createWorkout(
       { date, start_time: new Date().toISOString() },
-      userId
+      uid
     );
     if (error || !data) return;
     startWorkout(date);
@@ -122,13 +137,14 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
 
   async function handleAddExercise() {
     if (!selectedExId || !activeWorkout) return;
+    const uid = await resolveUserId();
     const { data, error } = await repo.addExercise({
       workout_id: activeWorkout.id,
       exercise_id: selectedExId,
       order_index: workoutExercises.length,
-    }, userId);
+    }, uid);
     if (error || !data) return;
-    addExerciseToWorkout(selectedExId);
+    addExerciseToWorkout(selectedExId, data.id);
     setActiveWEId(data.id);
     setSelectedExId("");
     setShowExPicker(false);
@@ -202,7 +218,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             <div key={i} className="h-16 rounded-lg border bg-secondary/30 animate-pulse" />
           ))}
         </div>
-      ) : !activeWorkout ? (
+      ) : !activeWorkout || !activeWorkout.id ? (
         <div className="rounded-lg border bg-card p-10 text-center space-y-4">
           <p className="text-muted-foreground text-sm">Sin entrenamiento para este día.</p>
           <button

@@ -44,7 +44,7 @@ test.describe("Body Tracker", () => {
     await page.getByRole("tab", { name: "Historial" }).click();
     await expect(page.getByRole("tab", { name: "Historial" })).toHaveAttribute("aria-selected", "true");
     // History should have at least one entry now
-    await expect(page.locator("text=75.5")).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator("text=75.5").first()).toBeVisible({ timeout: 5_000 });
   });
 
   test("cambia entre tabs y muestra gráfica [T5.5]", async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe("Body Tracker", () => {
 
   test("navega a configuración de medidas [T5.6]", async ({ page }) => {
     await page.goto("/body-tracker");
-    await page.getByRole("link", { name: "Configuración" }).click();
+    await page.locator("#main-content").getByRole("link", { name: "Configuración", exact: true }).click();
     await expect(page).toHaveURL(/\/body-tracker\/settings/);
     await expect(page.locator("h1, h2").first()).toBeVisible();
   });

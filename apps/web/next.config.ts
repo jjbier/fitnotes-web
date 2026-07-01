@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
+// Next.js dev mode wraps modules in eval() for HMR/source maps — 'unsafe-eval' is
+// required in dev only, or ALL client-side JS silently fails under this CSP (no error
+// shown to the user, just dead buttons/forms). Production builds never eval(), so prod
+// keeps the stricter policy.
+const SCRIPT_SRC = process.env.NODE_ENV === "production" ? "'self' 'unsafe-inline'" : "'self' 'unsafe-inline' 'unsafe-eval'";
+
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src ${SCRIPT_SRC}`,
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://oauth2.googleapis.com",
   "img-src 'self' data: blob:",

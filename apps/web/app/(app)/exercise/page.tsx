@@ -68,10 +68,20 @@ export default function ExercisePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // userId se resuelve async al montar; si el usuario crea algo antes de que
+  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  async function resolveUserId(): Promise<string> {
+    if (userId) return userId;
+    const { data: { user } } = await client.auth.getUser();
+    if (user) setUserId(user.id);
+    return user?.id ?? "";
+  }
+
   async function doCreateExercise(data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
   }) {
-    const { data: created, error } = await repo.createExercise(data, userId);
+    const uid = await resolveUserId();
+    const { data: created, error } = await repo.createExercise(data, uid);
     if (error) throw new Error(error.message);
     addExercise({
       id: created.id,
@@ -100,7 +110,8 @@ export default function ExercisePage() {
   }
 
   async function handleCreateCategory(data: { name: string; color: string }): Promise<Category> {
-    const { data: created, error } = await repo.createCategory(data, userId);
+    const uid = await resolveUserId();
+    const { data: created, error } = await repo.createCategory(data, uid);
     if (error) throw new Error(error.message);
     const cat: Category = {
       id: created.id,

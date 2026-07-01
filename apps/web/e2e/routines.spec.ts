@@ -1,6 +1,18 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const ROUTINE_NAME = `E2E-Rutina-${Date.now()}`;
+
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Localiza la fila de una rutina por su nombre exacto (evita que "Copia de X"
+// o "X-v2" hagan match por substring con el nombre base X).
+function routineRowByName(page: Page, exactName: string) {
+  return page
+    .locator("p", { hasText: new RegExp(`^${escapeRegex(exactName)}$`) })
+    .locator("xpath=ancestor::div[contains(@class,'bg-card')][1]");
+}
 
 test.describe("Rutinas CRUD", () => {
   test.beforeEach(async () => {
@@ -21,7 +33,7 @@ test.describe("Rutinas CRUD", () => {
     await expect(page.getByText(ROUTINE_NAME)).toBeVisible({ timeout: 8_000 });
 
     // ── Copiar rutina ─────────────────────────────────────────────────────────
-    const routineRow = page.locator("div", { has: page.getByText(ROUTINE_NAME) }).first();
+    const routineRow = routineRowByName(page, ROUTINE_NAME);
     await routineRow.getByRole("button", { name: "Copiar" }).click();
     // A copy should appear ("Copia de ...")
     await expect(page.getByText(`Copia de ${ROUTINE_NAME}`)).toBeVisible({ timeout: 8_000 });
@@ -36,7 +48,7 @@ test.describe("Rutinas CRUD", () => {
     await expect(page.getByText(`${ROUTINE_NAME}-v2`)).toBeVisible({ timeout: 8_000 });
 
     // ── Abrir rutina ─────────────────────────────────────────────────────────
-    const v2Row = page.locator("div", { has: page.getByText(`${ROUTINE_NAME}-v2`) }).first();
+    const v2Row = routineRowByName(page, `${ROUTINE_NAME}-v2`);
     await v2Row.getByRole("link", { name: "Abrir" }).click();
     await expect(page).toHaveURL(/\/routines\//);
     await expect(page.locator("h1, h2").first()).toBeVisible();
@@ -44,7 +56,7 @@ test.describe("Rutinas CRUD", () => {
 
     // ── Eliminar rutinas de prueba ────────────────────────────────────────────
     for (const name of [`${ROUTINE_NAME}-v2`, `Copia de ${ROUTINE_NAME}`]) {
-      const row = page.locator("div", { has: page.getByText(name) }).first();
+      const row = routineRowByName(page, name);
       if (await row.isVisible({ timeout: 2_000 }).catch(() => false)) {
         page.once("dialog", (d) => d.accept());
         await row.getByRole("button", { name: "Eliminar" }).click();

@@ -119,8 +119,19 @@ export default function ProgressPage() {
     if (id) loadExerciseData(id);
   }
 
+  // userId se resuelve async al montar; si el usuario guarda algo antes de que
+  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  async function resolveUserId(): Promise<string> {
+    if (userId) return userId;
+    const { data: { user } } = await client.auth.getUser();
+    if (user) setUserId(user.id);
+    return user?.id ?? "";
+  }
+
   async function handleSaveGoal() {
-    if (!selectedExId || !userId) return;
+    if (!selectedExId) return;
+    const uid = await resolveUserId();
+    if (!uid) return;
     setGoalSaving(true);
     const saved = await goalsRepo.upsertGoal({
       exercise_id: selectedExId,
@@ -128,7 +139,7 @@ export default function ProgressPage() {
       target_reps: goalForm.target_reps ? parseInt(goalForm.target_reps, 10) : undefined,
       target_date: goalForm.target_date || undefined,
       notes: goalForm.notes || undefined,
-    }, userId);
+    }, uid);
     if (saved) {
       setGoals((prev) => {
         const filtered = prev.filter((g) => g.exercise_id !== selectedExId);
@@ -209,12 +220,14 @@ export default function ProgressPage() {
 
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
-    if (!sets?.length || !userId || !selectedExId) return;
+    if (!sets?.length || !selectedExId) return;
+    const uid = await resolveUserId();
+    if (!uid) return;
     setCopyingDate(fromDate);
     try {
       let { data: todayWorkout } = await workoutRepo.getWorkoutByDate(today);
       if (!todayWorkout) {
-        const { data: created } = await workoutRepo.createWorkout({ date: today }, userId);
+        const { data: created } = await workoutRepo.createWorkout({ date: today }, uid);
         todayWorkout = created;
       }
       if (!todayWorkout) return;
@@ -226,7 +239,7 @@ export default function ProgressPage() {
           workout_id: todayWorkout.id,
           exercise_id: selectedExId,
           order_index: (todayWEs ?? []).length,
-        }, userId);
+        }, uid);
         targetWE = newWE ?? undefined;
       }
       if (!targetWE) return;
@@ -240,7 +253,7 @@ export default function ProgressPage() {
           ...(s.reps != null && { reps: s.reps }),
           ...(s.distance != null && { distance: s.distance }),
           ...(s.time_seconds != null && { time_seconds: s.time_seconds }),
-        }, userId);
+        }, uid);
       }
       setCopiedDates((prev) => new Set([...prev, fromDate]));
     } finally {

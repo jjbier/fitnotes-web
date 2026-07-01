@@ -21,7 +21,9 @@ setup("autenticar usuario de prueba", async ({ page }) => {
   await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL(/dashboard/, { timeout: 20_000 });
+  // Timeout generoso: en `next dev` la primera visita a /dashboard después de
+  // inactividad dispara una recompilación on-demand de la ruta.
+  await page.waitForURL(/dashboard/, { timeout: 40_000 });
 
   await page.context().storageState({ path: STORAGE_STATE });
 });

@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 /**
  * Tools page E2E tests.
  * Unauthenticated: verifies redirects.
- * With auth fixture (future): verifies calculator UI.
+ * Authenticated: verifies each calculator tab (1RM, Set %, Plates, Timer).
  */
 
 test.describe("Tools redirect [T6.7]", () => {
@@ -35,33 +35,36 @@ test.describe("Tools calculators (authenticated)", () => {
 
   test("1RM calculator shows result table [T6.7]", async ({ page }) => {
     await page.goto("/tools");
-    await page.locator("button", { hasText: "1RM" }).click();
-    // Fill weight and reps
-    const weightInput = page.locator('input[placeholder*="100"], input[placeholder*="peso"], input[type="number"]').first();
-    await weightInput.fill("100");
-    const repsInput = page.locator('input[placeholder*="5"], input[placeholder*="reps"]').first();
-    await repsInput.fill("5");
-    // Result table should appear
-    await expect(page.locator("text=1RM")).toBeVisible();
-    // 1RM should be approximately 116
-    await expect(page.locator("text=/116\\.\\d/")).toBeVisible();
+    await page.getByRole("tab", { name: "Calculadora 1RM" }).click();
+    await page.getByLabel("Peso (kg)").fill("100");
+    await page.getByLabel("Repeticiones").fill("5");
+    // Brzycki 1RM for 100kg × 5 reps ≈ 112.5kg
+    await expect(page.getByText("1RM estimado")).toBeVisible();
+    await expect(page.getByText(/112\.5/).first()).toBeVisible();
   });
 
   test("Plate calculator shows plates for 100kg [T6.10]", async ({ page }) => {
     await page.goto("/tools");
-    await page.locator("button", { hasText: /Plate/i }).click();
-    const targetInput = page.locator('input[placeholder*="140"], input[placeholder*="100"]').first();
-    await targetInput.fill("100");
-    // Should show 20kg plates
-    await expect(page.locator("text=/20/")).toBeVisible();
+    await page.getByRole("tab", { name: "Calculadora de discos" }).click();
+    await page.getByLabel("Peso objetivo (kg)").fill("100");
+    // Default bar 20kg + default plate set → 100.0kg achievable exactly
+    await expect(page.getByText("Total cargado")).toBeVisible();
+    await expect(page.getByText("100.0")).toBeVisible();
   });
 
   test("Set calculator shows percentage table [T6.8]", async ({ page }) => {
     await page.goto("/tools");
-    await page.locator("button", { hasText: /Set/i }).click();
-    const baseInput = page.locator('input[placeholder*="100"]').first();
-    await baseInput.fill("100");
-    // 80% of 100 = 80kg
-    await expect(page.locator("text=80%")).toBeVisible();
+    await page.getByRole("tab", { name: "Calculadora de series" }).click();
+    await page.getByLabel("Peso base (kg)").fill("100");
+    // 80% of 100kg = 80kg
+    await expect(page.getByText("80%")).toBeVisible();
+  });
+
+  test("Timer tab shows countdown and duration presets [T6.11-T6.12]", async ({ page }) => {
+    await page.goto("/tools");
+    await page.getByRole("tab", { name: "Temporizador" }).click();
+    await expect(page.locator("text=/\\d{2}:\\d{2}/")).toBeVisible();
+    await expect(page.getByRole("button", { name: "30s" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Iniciar", exact: true })).toBeVisible();
   });
 });

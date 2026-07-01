@@ -10,13 +10,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/login");
 });
 
-test("Brzycki 1RM formula: 100kg × 5 reps ≈ 116.67 [T4.1]", async ({ page }) => {
+test("Brzycki 1RM formula: 100kg × 5 reps ≈ 112.5 [T4.1]", async ({ page }) => {
   const result = await page.evaluate(() => {
     const weight = 100, reps = 5;
     const denominator = 37 - reps;
     return weight * (36 / denominator);
   });
-  expect(result).toBeCloseTo(116.67, 1);
+  expect(result).toBeCloseTo(112.5, 1);
 });
 
 test("1RM guard: 1 rep returns weight directly", async ({ page }) => {

@@ -14,6 +14,11 @@ test.describe("Progreso y PRs", () => {
     await page.goto("/progress");
     await page.waitForLoadState("networkidle");
 
+    // Las tabs (PRs/Gráfica) solo aparecen tras seleccionar un ejercicio
+    const picker = page.locator("select").first();
+    await expect(picker).toBeVisible({ timeout: 8_000 });
+    await picker.selectOption({ index: 1 });
+
     // Find the tablist
     const tablist = page.getByRole("tablist").first();
     await expect(tablist).toBeVisible({ timeout: 8_000 });

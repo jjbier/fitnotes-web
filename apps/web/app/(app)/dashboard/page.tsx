@@ -52,7 +52,13 @@ export default function DashboardPage() {
 
   const loadWorkoutForDate = useCallback(async (date: string, uid: string) => {
     const { data: workout } = await repo.getWorkoutByDate(date);
-    if (!workout) { return; }
+    if (!workout) {
+      // Sin esto, navegar a un día sin entrenamiento deja visible el
+      // workout del día anterior (activeWorkout no se limpia).
+      loadWorkout({ id: "", date }, [], {});
+      setActiveWEId(null);
+      return;
+    }
     const { data: wExercises } = await repo.getWorkoutExercises(workout.id);
     const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
     for (const we of wExercises ?? []) {
@@ -118,8 +124,18 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // userId se resuelve async al montar; si el usuario crea algo antes de que
+  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  async function resolveUserId(): Promise<string> {
+    if (userId) return userId;
+    const { data: { user } } = await client.auth.getUser();
+    if (user) setUserId(user.id);
+    return user?.id ?? "";
+  }
+
   async function handleStartWorkout() {
-    const { data, error } = await repo.createWorkout({ date: currentDate, start_time: new Date().toISOString() }, userId);
+    const uid = await resolveUserId();
+    const { data, error } = await repo.createWorkout({ date: currentDate, start_time: new Date().toISOString() }, uid);
     if (error || !data) return;
     startWorkout(currentDate);
     loadWorkout({ id: data.id, date: data.date, start_time: data.start_time ?? undefined }, [], {});
@@ -127,13 +143,14 @@ export default function DashboardPage() {
 
   async function handleAddExercise() {
     if (!selectedExId || !activeWorkout) return;
+    const uid = await resolveUserId();
     const { data, error } = await repo.addExercise({
       workout_id: activeWorkout.id,
       exercise_id: selectedExId,
       order_index: workoutExercises.length,
-    }, userId);
+    }, uid);
     if (error || !data) return;
-    addExerciseToWorkout(selectedExId);
+    addExerciseToWorkout(selectedExId, data.id);
     setActiveWEId(data.id);
     setSelectedExId("");
     setShowExPicker(false);
@@ -154,18 +171,23 @@ export default function DashboardPage() {
   }
 
   async function handleDateChange(delta: number) {
+    // Deshabilitar los botones mientras carga evita que clics rápidos lean
+    // un `currentDate` obsoleto (closure) antes de que termine el fetch
+    // anterior y salten menos días de los pulsados.
+    setLoading(true);
     const date = new Date(currentDate);
     date.setDate(date.getDate() + delta);
     const newDate = date.toISOString().split("T")[0]!;
     setCurrentDate(newDate);
     await loadWorkoutForDate(newDate, userId);
+    setLoading(false);
   }
 
   return (
     <div className="space-y-5">
       {/* Header with date nav */}
       <div className="flex items-center gap-3">
-        <button onClick={() => handleDateChange(-1)} aria-label="Día anterior" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary"><span aria-hidden="true">←</span></button>
+        <button onClick={() => handleDateChange(-1)} disabled={isLoading} aria-label="Día anterior" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">←</span></button>
         <div className="flex-1">
           <div className="flex items-baseline gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
@@ -175,14 +197,14 @@ export default function DashboardPage() {
           </div>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(currentDate)}</p>
         </div>
-        <button onClick={() => handleDateChange(1)} disabled={currentDate >= today} aria-label="Día siguiente" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">→</span></button>
+        <button onClick={() => handleDateChange(1)} disabled={isLoading || currentDate >= today} aria-label="Día siguiente" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">→</span></button>
       </div>
 
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2].map((i) => <div key={i} className="h-16 rounded-lg border bg-secondary/30 animate-pulse" />)}
         </div>
-      ) : !activeWorkout ? (
+      ) : !activeWorkout || !activeWorkout.id ? (
         <div className="rounded-lg border bg-card p-10 text-center space-y-4">
           <p className="text-muted-foreground text-sm">Sin entrenamiento para este día.</p>
           <button onClick={handleStartWorkout} className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
