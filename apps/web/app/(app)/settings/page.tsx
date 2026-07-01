@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { createBrowserClient } from "@fitnotes/database";
-import { SETTING_KEYS, readBool, writeBool, readWeekStart } from "@/lib/settings";
+import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
+import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit } from "@/lib/settings";
 
 type BackupEntry = Record<string, unknown>;
 type BackupData = {
@@ -53,6 +53,11 @@ export default function SettingsPage() {
   const [exportingWorkouts, setExportingWorkouts] = useState(false);
   const [exportingBody, setExportingBody] = useState(false);
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false);
+  const [deleteHistoryFrom, setDeleteHistoryFrom] = useState("");
+  const [deleteHistoryTo, setDeleteHistoryTo] = useState("");
+  const [deleteHistoryExerciseId, setDeleteHistoryExerciseId] = useState("");
+  const [deleteHistoryLoading, setDeleteHistoryLoading] = useState(false);
+  const [exerciseOptions, setExerciseOptions] = useState<{ id: string; name: string }[]>([]);
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   // Google Drive
   const [driveConnected, setDriveConnected] = useState(false);
@@ -76,6 +81,8 @@ export default function SettingsPage() {
   const [autoNextSet, setAutoNextSet] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = useState(false);
   const [weekStart, setWeekStart] = useState<0 | 1>(1);
+  const [defaultWeightIncrement, setDefaultWeightIncrement] = useState("2.5");
+  const [estimatedRecordsRepLimit, setEstimatedRecordsRepLimit] = useState("");
   const [recalcPRs, setRecalcPRs] = useState<"idle" | "running" | "done" | "error">("idle");
 
   const client = createBrowserClient();
@@ -112,6 +119,11 @@ export default function SettingsPage() {
     setAutoNextSet(readBool(SETTING_KEYS.AUTO_NEXT_SET, false));
     setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
     setWeekStart(readWeekStart());
+    setDefaultWeightIncrement(String(readDefaultWeightIncrement()));
+    setEstimatedRecordsRepLimit(String(readEstimatedRecordsRepLimit() ?? ""));
+    client.from("exercises").select("id, name").order("name").then(({ data }) => {
+      setExerciseOptions(data ?? []);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -139,6 +151,24 @@ export default function SettingsPage() {
   function handleWeekStart(value: 0 | 1) {
     setWeekStart(value);
     localStorage.setItem(SETTING_KEYS.WEEK_START, String(value));
+  }
+
+  function handleDefaultWeightIncrement(value: string) {
+    setDefaultWeightIncrement(value);
+    const parsed = parseFloat(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      localStorage.setItem(SETTING_KEYS.DEFAULT_WEIGHT_INCREMENT, String(parsed));
+    }
+  }
+
+  function handleEstimatedRecordsRepLimit(value: string) {
+    setEstimatedRecordsRepLimit(value);
+    const parsed = parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      localStorage.setItem(SETTING_KEYS.ESTIMATED_RECORDS_REP_LIMIT, String(parsed));
+    } else {
+      localStorage.removeItem(SETTING_KEYS.ESTIMATED_RECORDS_REP_LIMIT);
+    }
   }
 
   async function handleRecalcPRs() {
@@ -451,9 +481,22 @@ export default function SettingsPage() {
   async function handleDeleteHistory() {
     const { data: { user } } = await client.auth.getUser();
     if (!user) return;
-    await client.from("workouts").delete().eq("user_id", user.id);
-    setDeleteHistoryConfirm(false);
-    alert("Historial de entrenamientos eliminado.");
+    setDeleteHistoryLoading(true);
+    try {
+      const repo = createWorkoutRepository(client);
+      const count = await repo.deleteWorkoutHistory(user.id, {
+        dateFrom: deleteHistoryFrom || undefined,
+        dateTo: deleteHistoryTo || undefined,
+        exerciseId: deleteHistoryExerciseId || undefined,
+      });
+      setDeleteHistoryConfirm(false);
+      setDeleteHistoryFrom("");
+      setDeleteHistoryTo("");
+      setDeleteHistoryExerciseId("");
+      alert(`${count} elemento(s) eliminado(s) del historial.`);
+    } finally {
+      setDeleteHistoryLoading(false);
+    }
   }
 
   function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: () => void }) {
@@ -617,6 +660,49 @@ export default function SettingsPage() {
             >
               Domingo
             </button>
+          </div>
+        </div>
+
+        {/* Default weight increment */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Incremento de peso predeterminado</p>
+            <p className="text-xs text-muted-foreground">Usado en los botones +/− cuando el ejercicio no define uno propio</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="default-weight-increment" className="sr-only">Incremento de peso predeterminado</label>
+            <input
+              id="default-weight-increment"
+              type="number"
+              step="0.5"
+              min="0.5"
+              value={defaultWeightIncrement}
+              onChange={(e) => handleDefaultWeightIncrement(e.target.value)}
+              className="w-20 rounded-md border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+            />
+            <span className="text-sm text-muted-foreground">{weightUnit}</span>
+          </div>
+        </div>
+
+        {/* Estimated records rep limit */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Límite de reps para récords estimados</p>
+            <p className="text-xs text-muted-foreground">Excluye series de muchas repeticiones del cálculo del 1RM estimado (recomendado: 10-12)</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="est-records-rep-limit" className="sr-only">Límite de reps para récords estimados</label>
+            <input
+              id="est-records-rep-limit"
+              type="number"
+              step="1"
+              min="1"
+              placeholder="Sin límite"
+              value={estimatedRecordsRepLimit}
+              onChange={(e) => handleEstimatedRecordsRepLimit(e.target.value)}
+              className="w-24 rounded-md border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+            />
+            <span className="text-sm text-muted-foreground">reps</span>
           </div>
         </div>
         {/* Recalculate PRs */}
@@ -820,21 +906,67 @@ export default function SettingsPage() {
         <h2 className="font-semibold text-destructive">Zona de peligro</h2>
 
         {/* Delete workout history */}
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <div>
             <p className="text-sm font-medium">Eliminar historial de entrenamientos</p>
-            <p className="text-xs text-muted-foreground">Elimina permanentemente todos los datos de entrenamiento. No se puede deshacer.</p>
+            <p className="text-xs text-muted-foreground">Deja los filtros vacíos para eliminar todo el historial, o acótalo por fecha y/o ejercicio. No se puede deshacer.</p>
           </div>
-          {deleteHistoryConfirm ? (
-            <div className="flex gap-2">
-              <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
-              <button onClick={handleDeleteHistory} className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirmar</button>
+          {deleteHistoryConfirm && (
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label htmlFor="del-hist-from" className="block text-xs text-muted-foreground mb-1">Desde</label>
+                <input
+                  id="del-hist-from"
+                  type="date"
+                  value={deleteHistoryFrom}
+                  onChange={(e) => setDeleteHistoryFrom(e.target.value)}
+                  className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                />
+              </div>
+              <div>
+                <label htmlFor="del-hist-to" className="block text-xs text-muted-foreground mb-1">Hasta</label>
+                <input
+                  id="del-hist-to"
+                  type="date"
+                  value={deleteHistoryTo}
+                  onChange={(e) => setDeleteHistoryTo(e.target.value)}
+                  className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                />
+              </div>
+              <div>
+                <label htmlFor="del-hist-ex" className="block text-xs text-muted-foreground mb-1">Ejercicio</label>
+                <select
+                  id="del-hist-ex"
+                  value={deleteHistoryExerciseId}
+                  onChange={(e) => setDeleteHistoryExerciseId(e.target.value)}
+                  className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                >
+                  <option value="">Todos</option>
+                  {exerciseOptions.map((ex) => (
+                    <option key={ex.id} value={ex.id}>{ex.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          ) : (
-            <button onClick={() => setDeleteHistoryConfirm(true)} className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
-              Eliminar historial
-            </button>
           )}
+          <div className="flex justify-end gap-2">
+            {deleteHistoryConfirm ? (
+              <>
+                <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
+                <button
+                  onClick={handleDeleteHistory}
+                  disabled={deleteHistoryLoading}
+                  className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground disabled:opacity-50"
+                >
+                  {deleteHistoryLoading ? "Eliminando…" : "Confirmar"}
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setDeleteHistoryConfirm(true)} className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
+                Eliminar historial
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Delete account */}

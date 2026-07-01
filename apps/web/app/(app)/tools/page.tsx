@@ -7,7 +7,7 @@ import {
   calculateSetWeight,
   calculatePlates,
 } from "@fitnotes/core";
-import { createBrowserClient, createExerciseRepository, createProgressRepository } from "@fitnotes/database";
+import { createBrowserClient, createExerciseRepository, createProgressRepository, createWorkoutRepository } from "@fitnotes/database";
 
 const DEFAULT_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
 const PERCENTAGES = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
@@ -124,6 +124,76 @@ function PRSelector({ onSelect }: { onSelect: (weight: number, reps: number) => 
   );
 }
 
+async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: number | undefined): Promise<boolean> {
+  const client = createBrowserClient();
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return false;
+  const workoutRepo = createWorkoutRepository(client);
+  const today = new Date().toISOString().split("T")[0]!;
+
+  let workout = (await workoutRepo.getWorkoutByDate(today)).data;
+  if (!workout) {
+    const { data } = await workoutRepo.createWorkout({ date: today }, user.id);
+    workout = data ?? null;
+  }
+  if (!workout) return false;
+
+  const { data: wes } = await workoutRepo.getWorkoutExercises(workout.id);
+  let we = wes?.find((w) => w.exercise_id === exerciseId);
+  if (!we) {
+    const { data } = await workoutRepo.addExercise(
+      { workout_id: workout.id, exercise_id: exerciseId, order_index: wes?.length ?? 0 },
+      user.id
+    );
+    we = data ?? undefined;
+  }
+  if (!we) return false;
+
+  const { data: existingSets } = await workoutRepo.getSets(we.id);
+  const { error } = await workoutRepo.createSet(
+    { workout_exercise_id: we.id, weight, reps, order_index: existingSets?.length ?? 0 },
+    user.id
+  );
+  return !error;
+}
+
+function AddToWorkoutPicker({ exerciseId, reps, onChangeExercise, onChangeReps }: {
+  exerciseId: string;
+  reps: string;
+  onChangeExercise: (id: string) => void;
+  onChangeReps: (r: string) => void;
+}) {
+  const { exercises, ensureLoaded } = useExerciseList();
+  return (
+    <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed p-3">
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground">Añadir a entrenamiento de hoy</label>
+        <select
+          value={exerciseId}
+          onFocus={ensureLoaded}
+          onChange={(e) => onChangeExercise(e.target.value)}
+          className="w-48 rounded-md border px-2 py-1.5 text-sm bg-background"
+        >
+          <option value="">Seleccionar ejercicio…</option>
+          {exercises.map((e) => (
+            <option key={e.id} value={e.id}>{e.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground">Reps</label>
+        <input
+          type="number"
+          value={reps}
+          onChange={(e) => onChangeReps(e.target.value)}
+          min="1"
+          className="w-20 rounded-md border px-2 py-1.5 text-sm bg-background"
+        />
+      </div>
+    </div>
+  );
+}
+
 function OneRMCalculator() {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
@@ -202,9 +272,22 @@ function OneRMCalculator() {
 function SetCalculator() {
   const [baseWeight, setBaseWeight] = useState("");
   const [increment, setIncrement] = useState("2.5");
+  const [addExerciseId, setAddExerciseId] = useState("");
+  const [addReps, setAddReps] = useState("5");
+  const [addedPct, setAddedPct] = useState<number | null>(null);
 
   const base = parseFloat(baseWeight);
   const inc = parseFloat(increment) || 2.5;
+
+  async function handleAdd(pct: number, weight: number) {
+    if (!addExerciseId) return;
+    const reps = parseInt(addReps, 10) || undefined;
+    const ok = await addSetToTodayWorkout(addExerciseId, weight, reps);
+    if (ok) {
+      setAddedPct(pct);
+      setTimeout(() => setAddedPct((p) => (p === pct ? null : p)), 1500);
+    }
+  }
 
   return (
     <div className="rounded-lg border bg-card p-6 space-y-5">
@@ -243,24 +326,40 @@ function SetCalculator() {
       </div>
 
       {base > 0 && (
-        <div className="space-y-2">
-          {PERCENTAGES.map((pct) => {
-            const setW = calculateSetWeight(base, pct, inc);
-            const exact = base * (pct / 100);
-            const diff = setW - exact;
-            return (
-              <div key={pct} className="flex items-center gap-3 rounded-md border px-4 py-2">
-                <span className="w-10 text-sm text-muted-foreground font-medium">{pct}%</span>
-                <span className="flex-1 text-sm font-semibold">{setW.toFixed(1)} kg</span>
-                {Math.abs(diff) > 0.01 && (
-                  <span className="text-xs text-muted-foreground">
-                    exacto: {exact.toFixed(1)}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <>
+          <AddToWorkoutPicker
+            exerciseId={addExerciseId}
+            reps={addReps}
+            onChangeExercise={setAddExerciseId}
+            onChangeReps={setAddReps}
+          />
+          <div className="space-y-2">
+            {PERCENTAGES.map((pct) => {
+              const setW = calculateSetWeight(base, pct, inc);
+              const exact = base * (pct / 100);
+              const diff = setW - exact;
+              return (
+                <div key={pct} className="flex items-center gap-3 rounded-md border px-4 py-2">
+                  <span className="w-10 text-sm text-muted-foreground font-medium">{pct}%</span>
+                  <span className="flex-1 text-sm font-semibold">{setW.toFixed(1)} kg</span>
+                  {Math.abs(diff) > 0.01 && (
+                    <span className="text-xs text-muted-foreground">
+                      exacto: {exact.toFixed(1)}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleAdd(pct, setW)}
+                    disabled={!addExerciseId}
+                    className="rounded-md border px-3 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-40"
+                  >
+                    {addedPct === pct ? "Añadido ✓" : "+ Añadir"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

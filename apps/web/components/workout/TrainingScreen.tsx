@@ -6,7 +6,7 @@ import { createBrowserClient, createWorkoutRepository, createProgressRepository 
 import SetRow from "./SetRow";
 import SetCommentModal from "./SetCommentModal";
 import type { ExerciseType, Set as FitSet } from "@fitnotes/core";
-import { readBool, SETTING_KEYS } from "@/lib/settings";
+import { readBool, SETTING_KEYS, readDefaultWeightIncrement } from "@/lib/settings";
 
 interface Props {
   workoutExerciseId: string;
@@ -201,6 +201,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
                 onToggleComplete={handleToggleComplete}
                 onComment={setCommentSetId}
                 isPR={trackPRs && isSetPR(s)}
+                weightStep={exercise.weight_increment ?? readDefaultWeightIncrement()}
               />
             </div>
           ))}

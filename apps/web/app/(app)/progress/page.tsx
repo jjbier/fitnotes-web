@@ -13,8 +13,10 @@ import type { ExerciseGoalRow } from "@fitnotes/database";
 import ProgressChart from "@/components/progress/ProgressChart";
 import PersonalRecords from "@/components/progress/PersonalRecords";
 import ExerciseOverview from "@/components/progress/ExerciseOverview";
+import PeriodStats from "@/components/progress/PeriodStats";
+import { readEstimatedRecordsRepLimit } from "@/lib/settings";
 
-type Tab = "records" | "chart" | "history" | "goals";
+type Tab = "records" | "chart" | "history" | "stats" | "goals";
 
 export default function ProgressPage() {
   const personalRecords = useProgressStore((s) => s.personalRecords);
@@ -50,12 +52,17 @@ export default function ProgressPage() {
   const [goalSaving, setGoalSaving] = useState(false);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [goalForm, setGoalForm] = useState({ target_weight: "", target_reps: "", target_date: "", notes: "" });
+  const [estimatedRepLimit, setEstimatedRepLimit] = useState<number | undefined>(undefined);
 
   const client = createBrowserClient();
   const progressRepo = createProgressRepository(client);
   const exRepo = createExerciseRepository(client);
   const goalsRepo = createGoalsRepository(client);
   const workoutRepo = createWorkoutRepository(client);
+
+  useEffect(() => {
+    setEstimatedRepLimit(readEstimatedRecordsRepLimit());
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -328,7 +335,7 @@ export default function ProgressPage() {
 
             {/* Tabs */}
             <div role="tablist" aria-label="Secciones de progreso" className="flex gap-1 rounded-lg border bg-secondary/30 p-1">
-              {(["records", "chart", "history", "goals"] as Tab[]).map((tab) => (
+              {(["records", "chart", "history", "stats", "goals"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   role="tab"
@@ -338,7 +345,7 @@ export default function ProgressPage() {
                     activeTab === tab ? "bg-white shadow-sm dark:bg-secondary" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : tab === "history" ? "Historial" : "Objetivos"}
+                  {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : tab === "history" ? "Historial" : tab === "stats" ? "Estadísticas" : "Objetivos"}
                 </button>
               ))}
             </div>
@@ -349,12 +356,18 @@ export default function ProgressPage() {
                 records={exPRs}
                 exercises={exercises}
                 selectedExercise={selectedExercise}
+                estimatedRepLimit={estimatedRepLimit}
               />
             )}
 
             {/* Chart tab */}
             {activeTab === "chart" && (
-              <ProgressChart data={exChartData} exerciseName={selectedExercise?.name} />
+              <ProgressChart data={exChartData} exerciseName={selectedExercise?.name} exerciseType={selectedExercise?.type} />
+            )}
+
+            {/* Stats tab */}
+            {activeTab === "stats" && (
+              <PeriodStats data={exChartData} exerciseType={selectedExercise?.type} unit={selectedExercise?.weight_unit} />
             )}
 
             {/* History tab */}

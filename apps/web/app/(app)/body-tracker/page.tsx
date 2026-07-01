@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { useBodyTrackerStore, GoalType } from "@fitnotes/core";
 import { createBrowserClient, createBodyTrackerRepository } from "@fitnotes/database";
 import type { BodyMeasurementEntry } from "@fitnotes/core";
+
+function formatTimeAgo(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "hoy";
+  if (days === 1) return "hace 1 día";
+  if (days < 30) return `hace ${days} días`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return months === 1 ? "hace 1 mes" : `hace ${months} meses`;
+  const years = Math.floor(months / 12);
+  return years === 1 ? "hace 1 año" : `hace ${years} años`;
+}
 
 interface HistoryEntry {
   id: string;
@@ -33,9 +45,12 @@ export default function BodyTrackerPage() {
   const [logMeasurementId, setLogMeasurementId] = useState("");
   const [logValue, setLogValue] = useState("");
   const [logComment, setLogComment] = useState("");
+  const [logDate, setLogDate] = useState("");
+  const [previousEntries, setPreviousEntries] = useState<Record<string, HistoryEntry>>({});
   const [saving, setSaving] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyFilterId, setHistoryFilterId] = useState("");
   const [chartMeasurementId, setChartMeasurementId] = useState("");
   const [chartLoading, setChartLoading] = useState(false);
 
@@ -46,7 +61,10 @@ export default function BodyTrackerPage() {
     async function load() {
       setLoading(true);
       const { data: { user } } = await client.auth.getUser();
-      if (user) setUserId(user.id);
+      if (user) {
+        setUserId(user.id);
+        await repo.seedDefaultMeasurementsIfNeeded(user.id);
+      }
 
       const { data: mData } = await repo.getMeasurements();
       if (mData) {
@@ -58,7 +76,7 @@ export default function BodyTrackerPage() {
           is_default: m.is_default,
         })));
         await Promise.all(mData.filter((m) => m.is_enabled).map(async (m) => {
-          const { data: entries } = await repo.getEntries(m.id, 1);
+          const { data: entries } = await repo.getEntries(m.id, 2);
           if (entries && entries[0]) {
             setLatestEntry({
               id: entries[0].id,
@@ -67,6 +85,9 @@ export default function BodyTrackerPage() {
               comment: entries[0].comment ?? undefined,
               recorded_at: entries[0].recorded_at,
             });
+          }
+          if (entries && entries[1]) {
+            setPreviousEntries((prev) => ({ ...prev, [m.id]: entries[1] as HistoryEntry }));
           }
         }));
       }
@@ -109,10 +130,12 @@ export default function BodyTrackerPage() {
     e.preventDefault();
     if (!logMeasurementId || !logValue) return;
     setSaving(true);
+    const recordedAt = logDate ? `${logDate}T12:00:00` : new Date().toISOString();
     const { data, error } = await repo.addEntry({
       measurement_id: logMeasurementId,
       value: parseFloat(logValue),
       comment: logComment || undefined,
+      recorded_at: recordedAt,
     }, userId);
     if (!error && data) {
       const entry: BodyMeasurementEntry = {
@@ -122,16 +145,51 @@ export default function BodyTrackerPage() {
         comment: data.comment ?? undefined,
         recorded_at: data.recorded_at,
       };
+      const priorLatest = latestEntries[logMeasurementId];
+      if (priorLatest) {
+        setPreviousEntries((prev) => ({ ...prev, [logMeasurementId]: priorLatest as HistoryEntry }));
+      }
       addEntry(entry);
       setHistoryLoaded(false);
       setLogValue("");
       setLogComment("");
+      setLogDate("");
       setLogMeasurementId("");
     }
     setSaving(false);
   }
 
   const enabledMeasurements = measurements.filter((m) => m.is_enabled);
+
+  const entriesByMeasurement = useMemo(() => {
+    const map: Record<string, HistoryEntry[]> = {};
+    for (const e of historyEntries) (map[e.measurement_id] ??= []).push(e);
+    return map;
+  }, [historyEntries]);
+
+  function deltaColorClassFor(m: { goal_type: GoalType; goal_value?: number } | undefined, current: number, prev: number): string {
+    if (!m) return "text-muted-foreground";
+    if (m.goal_type === "SPECIFIC" && m.goal_value != null) {
+      return Math.abs(current - m.goal_value) <= Math.abs(prev - m.goal_value) ? "text-green-600" : "text-destructive";
+    }
+    const delta = current - prev;
+    return m.goal_type === "DECREASE"
+      ? (delta <= 0 ? "text-green-600" : "text-destructive")
+      : (delta >= 0 ? "text-green-600" : "text-destructive");
+  }
+
+  const filteredHistory = historyFilterId ? historyEntries.filter((e) => e.measurement_id === historyFilterId) : historyEntries;
+  const groupedHistory = useMemo(() => {
+    const groups: { date: string; entries: HistoryEntry[] }[] = [];
+    for (const e of filteredHistory) {
+      const date = e.recorded_at.slice(0, 10);
+      const last = groups[groups.length - 1];
+      if (last && last.date === date) last.entries.push(e);
+      else groups.push({ date, entries: [e] });
+    }
+    return groups;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyEntries, historyFilterId]);
 
   const chartPoints = (chartData[chartMeasurementId] ?? [])
     .slice()
@@ -197,11 +255,20 @@ export default function BodyTrackerPage() {
                     <p className="text-3xl font-bold">{latest ? latest.value : "—"}</p>
                     {latest && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(latest.recorded_at).toLocaleDateString()}
+                        {formatTimeAgo(latest.recorded_at)}
                       </p>
                     )}
+                    {latest && previousEntries[m.id] && (() => {
+                      const prev = previousEntries[m.id]!;
+                      const delta = latest.value - prev.value;
+                      return (
+                        <p className={`text-xs font-semibold mt-0.5 ${deltaColorClassFor(m, latest.value, prev.value)}`}>
+                          {delta >= 0 ? "+" : ""}{delta % 1 === 0 ? delta : delta.toFixed(1)} {m.unit} vs anterior
+                        </p>
+                      );
+                    })()}
                     <button
-                      onClick={() => setLogMeasurementId(m.id)}
+                      onClick={() => { setLogMeasurementId(m.id); setLogDate(new Date().toISOString().split("T")[0]!); }}
                       className="mt-3 rounded-md border px-3 py-1 text-xs hover:bg-secondary"
                     >
                       Registrar
@@ -241,6 +308,14 @@ export default function BodyTrackerPage() {
                     placeholder="Comentario (opcional)"
                     className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
+                  <label htmlFor="log-date" className="sr-only">Fecha</label>
+                  <input
+                    id="log-date"
+                    type="date"
+                    value={logDate}
+                    onChange={(e) => setLogDate(e.target.value)}
+                    className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setLogMeasurementId("")} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
@@ -256,23 +331,55 @@ export default function BodyTrackerPage() {
 
       {/* Historial tab */}
       {tab === "history" && (
-        <div className="space-y-2">
-          {historyEntries.length === 0 ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <label htmlFor="history-filter" className="text-sm font-medium shrink-0">Medida:</label>
+            <select
+              id="history-filter"
+              value={historyFilterId}
+              onChange={(e) => setHistoryFilterId(e.target.value)}
+              className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
+            >
+              <option value="">Todas las medidas</option>
+              {measurements.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {groupedHistory.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Sin registros aún.</p>
           ) : (
-            historyEntries.map((entry) => {
-              const m = measurements.find((m) => m.id === entry.measurement_id);
-              return (
-                <div key={entry.id} className="flex items-center justify-between rounded-lg border px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">{m?.name ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(entry.recorded_at).toLocaleDateString()}</p>
-                    {entry.comment && <p className="text-xs text-muted-foreground">{entry.comment}</p>}
-                  </div>
-                  <p className="text-sm font-semibold">{entry.value} {m?.unit}</p>
+            <div className="space-y-5">
+              {groupedHistory.map((group) => (
+                <div key={group.date} className="space-y-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {new Date(`${group.date}T12:00:00`).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                  </h3>
+                  {group.entries.map((entry) => {
+                    const m = measurements.find((x) => x.id === entry.measurement_id);
+                    const list = entriesByMeasurement[entry.measurement_id] ?? [];
+                    const idx = list.findIndex((x) => x.id === entry.id);
+                    const prev = idx >= 0 ? list[idx + 1] : undefined;
+                    const delta = prev ? entry.value - prev.value : null;
+                    return (
+                      <div key={entry.id} className="flex items-center justify-between rounded-lg border px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium">{m?.name ?? "—"}</p>
+                          {entry.comment && <p className="text-xs text-muted-foreground">{entry.comment}</p>}
+                          {delta != null && prev && (
+                            <p className={`text-xs font-medium ${deltaColorClassFor(m, entry.value, prev.value)}`}>
+                              {delta >= 0 ? "+" : ""}{delta % 1 === 0 ? delta : delta.toFixed(1)} {m?.unit} vs anterior
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold">{entry.value} {m?.unit}</p>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -326,6 +433,14 @@ export default function BodyTrackerPage() {
                     formatter={(v: number) => [`${v} ${selectedMeasurement?.unit}`, selectedMeasurement?.name ?? ""]}
                     labelFormatter={(l: string) => new Date(l).toLocaleDateString()}
                   />
+                  {selectedMeasurement?.goal_value != null && (
+                    <ReferenceLine
+                      y={selectedMeasurement.goal_value}
+                      stroke="#f59e0b"
+                      strokeDasharray="4 3"
+                      label={{ value: `Objetivo ${selectedMeasurement.goal_value}`, position: "insideTopRight", fontSize: 11, fill: "#f59e0b" }}
+                    />
+                  )}
                   <Line
                     type="monotone"
                     dataKey="value"

@@ -14,8 +14,10 @@ import {
 import type { ChartPoint, ExerciseGoalRow } from "@fitnotes/database";
 import ProgressChart from "./ProgressChart";
 import PersonalRecords from "./PersonalRecords";
+import PeriodStats from "./PeriodStats";
+import { readEstimatedRecordsRepLimit } from "@/lib/settings";
 
-type Tab = "records" | "chart" | "history" | "goals";
+type Tab = "records" | "chart" | "history" | "stats" | "goals";
 
 type HistorySet = {
   id: string;
@@ -69,6 +71,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [goalForm, setGoalForm] = useState({ target_weight: "", target_reps: "", target_date: "", notes: "" });
   const [goalSaving, setGoalSaving] = useState(false);
+  const [estimatedRepLimit] = useState<number | undefined>(() => readEstimatedRecordsRepLimit());
 
   const client = createBrowserClient();
   const progressRepo = createProgressRepository(client);
@@ -257,7 +260,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
 
         {/* Tabs */}
         <div role="tablist" aria-label="Secciones del ejercicio" className="flex gap-1 border-b px-4 pt-2">
-          {(["records", "chart", "history", "goals"] as Tab[]).map((tab) => (
+          {(["records", "chart", "history", "stats", "goals"] as Tab[]).map((tab) => (
             <button
               key={tab}
               role="tab"
@@ -269,7 +272,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : tab === "history" ? "Historial" : "Objetivo"}
+              {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : tab === "history" ? "Historial" : tab === "stats" ? "Estadísticas" : "Objetivo"}
             </button>
           ))}
         </div>
@@ -281,9 +284,11 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
               {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-lg bg-secondary/30 animate-pulse" />)}
             </div>
           ) : activeTab === "records" ? (
-            <PersonalRecords records={records} exercises={exercises} selectedExercise={exercise} />
+            <PersonalRecords records={records} exercises={exercises} selectedExercise={exercise} estimatedRepLimit={estimatedRepLimit} />
           ) : activeTab === "chart" ? (
-            <ProgressChart data={chartData} exerciseName={exercise.name} />
+            <ProgressChart data={chartData} exerciseName={exercise.name} exerciseType={exercise.type} />
+          ) : activeTab === "stats" ? (
+            <PeriodStats data={chartData} exerciseType={exercise.type} unit={exercise.weight_unit} />
           ) : activeTab === "history" ? (
             <div className="space-y-2">
               {chartData.length === 0 ? (

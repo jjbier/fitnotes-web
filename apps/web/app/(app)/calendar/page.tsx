@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createBrowserClient, createCalendarRepository, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
-import { formatWorkoutDate } from "@fitnotes/core";
+import { formatWorkoutDate, ExerciseType } from "@fitnotes/core";
+import type { Exercise as CoreExercise } from "@fitnotes/core";
 import { readWeekStart } from "@/lib/settings";
+import ExerciseOverview from "@/components/progress/ExerciseOverview";
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
@@ -29,7 +31,10 @@ export default function CalendarPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [listView, setListView] = useState(false);
-  const [history, setHistory] = useState<{id: string; date: string; comment: string | null}[]>([]);
+  const [history, setHistory] = useState<{id: string; date: string; comment: string | null; categories: {id: string; name: string; color: string}[]}[]>([]);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [historyDetail, setHistoryDetail] = useState<Record<string, { exerciseName: string; sets: string[] }[]>>({});
+  const [historyDetailLoading, setHistoryDetailLoading] = useState<string | null>(null);
   const [dayExercises, setDayExercises] = useState<Record<string, {id: string; name: string}[]>>({});
   const [dayExLoading, setDayExLoading] = useState<string | null>(null);
 
@@ -45,6 +50,10 @@ export default function CalendarPage() {
   const [filteredExDates, setFilteredExDates] = useState<Set<string> | null>(null);
   const [filterExLoading, setFilterExLoading] = useState(false);
 
+  const [fullExercises, setFullExercises] = useState<CoreExercise[]>([]);
+  const [userId, setUserId] = useState("");
+  const [overviewExercise, setOverviewExercise] = useState<CoreExercise | null>(null);
+
   useEffect(() => { setWeekStart(readWeekStart()); }, []);
 
   const client = createBrowserClient();
@@ -55,9 +64,18 @@ export default function CalendarPage() {
   // Load categories + exercises once for filter panel
   useEffect(() => {
     async function loadFilterData() {
+      const { data: { user } } = await client.auth.getUser();
+      if (user) setUserId(user.id);
       const [catRes, exRes] = await Promise.all([exRepo.getCategories(), exRepo.getExercises()]);
       if (catRes.data) setCategories(catRes.data.map((c) => ({ id: c.id, name: c.name, color: c.color })));
-      if (exRes.data) setExercises(exRes.data.map((e) => ({ id: e.id, name: e.name })));
+      if (exRes.data) {
+        setExercises(exRes.data.map((e) => ({ id: e.id, name: e.name })));
+        setFullExercises(exRes.data.map((e) => ({
+          id: e.id, name: e.name, category_id: e.category_id ?? "",
+          type: e.type as ExerciseType, weight_unit: e.weight_unit as "kg" | "lb",
+          notes: e.notes ?? undefined, is_favorite: e.is_favorite, created_at: e.created_at,
+        })));
+      }
     }
     loadFilterData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,7 +104,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (listView) {
-      repo.getWorkoutHistory(50).then(({ data }) => { if (data) setHistory(data); });
+      repo.getWorkoutHistoryDetailed(50).then((data) => setHistory(data));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listView]);
@@ -151,6 +169,36 @@ export default function CalendarPage() {
     }).catch(() => setDayExLoading(null));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, workouts]);
+
+  async function toggleHistoryExpand(workoutId: string) {
+    const next = expandedHistoryId === workoutId ? null : workoutId;
+    setExpandedHistoryId(next);
+    if (next && !historyDetail[workoutId]) {
+      setHistoryDetailLoading(workoutId);
+      const { data } = await repo.getWorkoutSetDetail(workoutId);
+      if (data) {
+        type SetRow = { weight: number | null; reps: number | null; distance: number | null; time_seconds: number | null; is_complete: boolean; is_warmup: boolean | null; order_index: number };
+        type WeRow = { order_index: number; exercises: { name: string } | null; sets: SetRow[] | null };
+        const wes = ((data.workout_exercises as WeRow[] | null) ?? []).slice().sort((a, b) => a.order_index - b.order_index);
+        const detail = wes.map((we) => ({
+          exerciseName: we.exercises?.name ?? "Desconocido",
+          sets: (we.sets ?? [])
+            .filter((s) => s.is_complete && !s.is_warmup)
+            .slice().sort((a, b) => a.order_index - b.order_index)
+            .map((s) => {
+              if (s.weight != null && s.reps != null) return `${s.weight} kg × ${s.reps}`;
+              if (s.reps != null) return `${s.reps} reps`;
+              if (s.distance != null && s.time_seconds != null) return `${s.distance} km · ${s.time_seconds}s`;
+              if (s.distance != null) return `${s.distance} km`;
+              if (s.time_seconds != null) return `${s.time_seconds}s`;
+              return "—";
+            }),
+        }));
+        setHistoryDetail((prev) => ({ ...prev, [workoutId]: detail }));
+      }
+      setHistoryDetailLoading(null);
+    }
+  }
 
   function clearFilters() {
     setSelectedCatIds(new Set());
@@ -321,17 +369,53 @@ export default function CalendarPage() {
           {history.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Sin entrenamientos aún.</p>
           ) : (
-            history.map((w) => (
-              <Link
-                key={w.id}
-                href={`/workout/${w.date}`}
-                className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-secondary/50"
-              >
-                <span className="text-sm font-medium">{formatWorkoutDate(w.date)}</span>
-                {w.comment && <span className="text-xs text-muted-foreground truncate max-w-[200px]">{w.comment}</span>}
-                <span className="text-xs text-muted-foreground">→</span>
-              </Link>
-            ))
+            history.map((w) => {
+              const isExpanded = expandedHistoryId === w.id;
+              return (
+                <div key={w.id} className="rounded-lg border bg-card overflow-hidden">
+                  <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50">
+                    <button onClick={() => toggleHistoryExpand(w.id)} className="flex-1 min-w-0 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{formatWorkoutDate(w.date)}</span>
+                        {w.categories.map((c) => (
+                          <span key={c.id} className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: c.color }} title={c.name} />
+                        ))}
+                      </div>
+                      {w.categories.length > 0 && (
+                        <p className="text-xs text-muted-foreground truncate">{w.categories.map((c) => c.name).join(", ")}</p>
+                      )}
+                      {w.comment && <p className="text-xs text-muted-foreground truncate max-w-[280px]">{w.comment}</p>}
+                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <Link href={`/workout/${w.date}`} className="text-xs text-primary hover:underline">
+                        Abrir →
+                      </Link>
+                      <button onClick={() => toggleHistoryExpand(w.id)} className="text-xs text-muted-foreground">
+                        {isExpanded ? "▲" : "▼"}
+                      </button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="border-t px-4 py-3 space-y-2 bg-secondary/20">
+                      {historyDetailLoading === w.id ? (
+                        <p className="text-xs text-muted-foreground">Cargando…</p>
+                      ) : (historyDetail[w.id]?.length ?? 0) === 0 ? (
+                        <p className="text-xs text-muted-foreground">Sin ejercicios registrados.</p>
+                      ) : (
+                        historyDetail[w.id]!.map((ex, i) => (
+                          <div key={i} className="text-xs">
+                            <span className="font-medium">{ex.exerciseName}</span>
+                            {ex.sets.length > 0 && (
+                              <span className="text-muted-foreground"> — {ex.sets.join(", ")}</span>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       ) : (
@@ -339,7 +423,12 @@ export default function CalendarPage() {
           {/* Month nav */}
           <div className="flex items-center gap-3">
             <button onClick={prevMonth} aria-label="Mes anterior" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"><span aria-hidden="true">←</span></button>
-            <h2 className="flex-1 text-center font-semibold capitalize">{monthName}</h2>
+            <div className="flex-1 text-center">
+              <h2 className="font-semibold capitalize">{monthName}</h2>
+              <p className="text-xs text-muted-foreground">
+                {workoutDates.size} entrenamiento{workoutDates.size !== 1 ? "s" : ""}
+              </p>
+            </div>
             <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Hoy</button>
             <button onClick={nextMonth} aria-label="Mes siguiente" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"><span aria-hidden="true">→</span></button>
           </div>
@@ -418,13 +507,16 @@ export default function CalendarPage() {
                   ) : (dayExercises[selectedDate] ?? []).length > 0 ? (
                     <div className="flex gap-2 flex-wrap">
                       {(dayExercises[selectedDate] ?? []).map((ex) => (
-                        <Link
+                        <button
                           key={ex.id}
-                          href={`/exercise/history/${ex.id}`}
+                          onClick={() => {
+                            const full = fullExercises.find((fe) => fe.id === ex.id);
+                            if (full) setOverviewExercise(full);
+                          }}
                           className="rounded-full border bg-secondary/30 px-3 py-1 text-xs font-medium hover:bg-secondary transition-colors"
                         >
                           {ex.name}
-                        </Link>
+                        </button>
                       ))}
                     </div>
                   ) : null}
@@ -435,6 +527,15 @@ export default function CalendarPage() {
             </div>
           )}
         </>
+      )}
+
+      {overviewExercise && (
+        <ExerciseOverview
+          exercise={overviewExercise}
+          exercises={fullExercises}
+          userId={userId}
+          onClose={() => setOverviewExercise(null)}
+        />
       )}
     </div>
   );

@@ -5,22 +5,64 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import type { ChartPoint } from "@fitnotes/database";
+import { ExerciseType, getExerciseFields, estimateRepMax } from "@fitnotes/core";
 
-type ChartMetric = "maxWeight" | "totalVolume" | "maxReps" | "est1RM";
+type ChartMetric =
+  | "maxWeight" | "totalVolume" | "maxReps" | "totalReps" | "est1RM"
+  | "maxDistance" | "totalDistance" | "maxTime" | "totalTime" | "maxSpeed" | "bestPace";
+type ChartMode = ChartMetric | "weightByReps" | "repMaxProgression";
 
 const metricLabel: Record<ChartMetric, string> = {
-  maxWeight: "Peso máx. (kg)",
-  totalVolume: "Volumen total (kg)",
+  maxWeight: "Peso máx.",
+  totalVolume: "Volumen total",
   maxReps: "Reps máx.",
-  est1RM: "1RM estimado (kg)",
+  totalReps: "Reps totales",
+  est1RM: "1RM estimado",
+  maxDistance: "Distancia máx.",
+  totalDistance: "Distancia total",
+  maxTime: "Tiempo máx.",
+  totalTime: "Tiempo total",
+  maxSpeed: "Velocidad máx.",
+  bestPace: "Mejor ritmo",
 };
 
 const metricColor: Record<ChartMetric, string> = {
   maxWeight: "#6366f1",
   totalVolume: "#10b981",
   maxReps: "#f59e0b",
+  totalReps: "#eab308",
   est1RM: "#ec4899",
+  maxDistance: "#0ea5e9",
+  totalDistance: "#0284c7",
+  maxTime: "#8b5cf6",
+  totalTime: "#7c3aed",
+  maxSpeed: "#14b8a6",
+  bestPace: "#f43f5e",
 };
+
+function metricsForExercise(exerciseType?: ExerciseType): ChartMetric[] {
+  if (!exerciseType) return Object.keys(metricLabel) as ChartMetric[];
+  const fields = getExerciseFields(exerciseType);
+  const metrics: ChartMetric[] = [];
+  if (fields.weight) metrics.push("maxWeight");
+  if (fields.weight && fields.reps) metrics.push("totalVolume", "est1RM");
+  if (fields.reps) metrics.push("maxReps", "totalReps");
+  if (fields.distance) metrics.push("maxDistance", "totalDistance");
+  if (fields.time) metrics.push("maxTime", "totalTime");
+  if (fields.distance && fields.time) metrics.push("maxSpeed", "bestPace");
+  return metrics;
+}
+
+function formatSeconds(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.round(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function formatMetricValue(metric: ChartMetric, v: number): string {
+  if (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") return formatSeconds(v);
+  return v.toFixed(1);
+}
 
 function linearRegression(values: number[]): number[] {
   const n = values.length;
@@ -38,12 +80,18 @@ function linearRegression(values: number[]): number[] {
 interface ProgressChartProps {
   data: ChartPoint[];
   exerciseName?: string;
+  exerciseType?: ExerciseType;
   height?: number;
 }
 
-export default function ProgressChart({ data, exerciseName, height = 220 }: ProgressChartProps) {
-  const [metric, setMetric] = useState<ChartMetric>("maxWeight");
+export default function ProgressChart({ data, exerciseName, exerciseType, height = 220 }: ProgressChartProps) {
+  const availableMetrics = metricsForExercise(exerciseType);
+  const fields = exerciseType ? getExerciseFields(exerciseType) : { weight: true, reps: true, distance: true, time: true };
+  const [mode, setMode] = useState<ChartMode>(availableMetrics[0] ?? "maxWeight");
+  const [repTarget, setRepTarget] = useState(5);
   const [showTrend, setShowTrend] = useState(false);
+  const [showDots, setShowDots] = useState(true);
+  const [yDomain, setYDomain] = useState<"auto" | "zero">("auto");
   const [exporting, setExporting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -63,14 +111,37 @@ export default function ProgressChart({ data, exerciseName, height = 220 }: Prog
     );
   }
 
-  const trendValues =
-    showTrend && data.length >= 2
-      ? linearRegression(data.map((p) => p[metric] as number))
-      : null;
+  const isSpecialMode = mode === "weightByReps" || mode === "repMaxProgression";
+  const metric = isSpecialMode ? null : (mode as ChartMetric);
 
-  const plotData = trendValues
-    ? data.map((p, i) => ({ ...p, trend: trendValues[i] }))
-    : data;
+  const specialData = isSpecialMode
+    ? data
+        .map((p) => ({
+          date: p.date,
+          value: mode === "weightByReps"
+            ? p.weightByReps[repTarget]
+            : (p.est1RM > 0 ? estimateRepMax(p.est1RM, repTarget) : undefined),
+        }))
+        .filter((p): p is { date: string; value: number } => p.value != null && p.value > 0)
+    : [];
+
+  const rawSeries = isSpecialMode
+    ? specialData.map((p) => p.value)
+    : data.map((p) => p[metric!] as number);
+
+  const trendValues = showTrend && rawSeries.length >= 2 ? linearRegression(rawSeries) : null;
+
+  const plotData = isSpecialMode
+    ? specialData.map((p, i) => ({ date: p.date, value: p.value, ...(trendValues ? { trend: trendValues[i] } : {}) }))
+    : data.map((p, i) => ({ ...p, ...(trendValues ? { trend: trendValues[i] } : {}) }));
+
+  const dataKey = isSpecialMode ? "value" : metric!;
+  const lineColor = isSpecialMode ? "#6366f1" : metricColor[metric!];
+  const label = mode === "weightByReps"
+    ? `Peso a ${repTarget} reps`
+    : mode === "repMaxProgression"
+    ? `${repTarget}RM estimado`
+    : metricLabel[metric!];
 
   async function exportChart() {
     const container = containerRef.current;
@@ -98,7 +169,7 @@ export default function ProgressChart({ data, exerciseName, height = 220 }: Prog
     titleEl.setAttribute("x", "10"); titleEl.setAttribute("y", "16");
     titleEl.setAttribute("font-size", "12"); titleEl.setAttribute("font-family", "system-ui, sans-serif");
     titleEl.setAttribute("font-weight", "600"); titleEl.setAttribute("fill", "#111");
-    titleEl.textContent = `${exerciseName ?? ""} — ${metricLabel[metric]}`;
+    titleEl.textContent = `${exerciseName ?? ""} — ${label}`;
     svgClone.insertBefore(titleEl, g);
 
     const svgString = new XMLSerializer().serializeToString(svgClone);
@@ -120,7 +191,7 @@ export default function ProgressChart({ data, exerciseName, height = 220 }: Prog
         const pngUrl = URL.createObjectURL(png);
         const a = document.createElement("a");
         a.href = pngUrl;
-        a.download = `${(exerciseName ?? "progreso").replace(/\s+/g, "_")}-${metric}.png`;
+        a.download = `${(exerciseName ?? "progreso").replace(/\s+/g, "_")}-${mode}.png`;
         a.click();
         URL.revokeObjectURL(pngUrl);
         setExporting(false);
@@ -133,19 +204,53 @@ export default function ProgressChart({ data, exerciseName, height = 220 }: Prog
   return (
     <div className="space-y-3">
       <div className="flex gap-2 flex-wrap items-center">
-        {(["maxWeight", "totalVolume", "maxReps", "est1RM"] as ChartMetric[]).map((m) => (
+        {availableMetrics.map((m) => (
           <button
             key={m}
-            onClick={() => setMetric(m)}
+            onClick={() => setMode(m)}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              metric === m ? "text-primary-foreground border-primary" : "hover:bg-secondary"
+              mode === m ? "text-primary-foreground border-primary" : "hover:bg-secondary"
             }`}
-            style={metric === m ? { backgroundColor: metricColor[m], borderColor: metricColor[m] } : {}}
+            style={mode === m ? { backgroundColor: metricColor[m], borderColor: metricColor[m] } : {}}
           >
             {metricLabel[m]}
           </button>
         ))}
+        {fields.weight && fields.reps && (
+          <>
+            <button
+              onClick={() => setMode("weightByReps")}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                mode === "weightByReps" ? "bg-indigo-500 text-white border-indigo-500" : "hover:bg-secondary"
+              }`}
+            >
+              Peso por reps
+            </button>
+            <button
+              onClick={() => setMode("repMaxProgression")}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                mode === "repMaxProgression" ? "bg-indigo-500 text-white border-indigo-500" : "hover:bg-secondary"
+              }`}
+            >
+              Progresión rep max
+            </button>
+          </>
+        )}
         <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => setShowDots((v) => !v)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              !showDots ? "bg-secondary" : "hover:bg-secondary text-muted-foreground"
+            }`}
+          >
+            {showDots ? "Ocultar puntos" : "Mostrar puntos"}
+          </button>
+          <button
+            onClick={() => setYDomain((v) => (v === "auto" ? "zero" : "auto"))}
+            className="rounded-full border px-3 py-1 text-xs font-medium hover:bg-secondary text-muted-foreground"
+          >
+            {yDomain === "auto" ? "Escala desde 0" : "Escala auto"}
+          </button>
           <button
             onClick={() => setShowTrend((v) => !v)}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
@@ -165,39 +270,65 @@ export default function ProgressChart({ data, exerciseName, height = 220 }: Prog
         </div>
       </div>
 
+      {isSpecialMode && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="rep-target" className="text-xs font-medium text-muted-foreground">Repeticiones:</label>
+          <input
+            id="rep-target"
+            type="number"
+            min={1}
+            max={15}
+            value={repTarget}
+            onChange={(e) => setRepTarget(Math.min(15, Math.max(1, parseInt(e.target.value) || 1)))}
+            className="w-16 rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+      )}
+
       <div ref={containerRef} className="rounded-lg border bg-card p-4">
-        <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={plotData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d: string) => d.slice(5)} />
-            <YAxis tick={{ fontSize: 10 }} width={42} />
-            <Tooltip
-              labelFormatter={(l) => String(l)}
-              formatter={(v, name) => [
-                typeof v === "number" ? v.toFixed(1) : String(v),
-                name === "trend" ? "Tendencia" : metricLabel[metric],
-              ]}
-            />
-            <Line
-              type="monotone"
-              dataKey={metric}
-              stroke={metricColor[metric]}
-              strokeWidth={2}
-              dot={{ r: 3, fill: metricColor[metric] }}
-              activeDot={{ r: 5 }}
-            />
-            {trendValues && (
-              <Line
-                type="linear"
-                dataKey="trend"
-                stroke="#f97316"
-                strokeWidth={1.5}
-                strokeDasharray="5 3"
-                dot={false}
-                activeDot={false}
+        {plotData.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-10">
+            Sin sesiones a {repTarget} reps aún.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={height}>
+            <LineChart data={plotData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d: string) => d.slice(5)} />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                width={42}
+                domain={yDomain === "zero" ? [0, "auto"] : ["auto", "auto"]}
+                tickFormatter={(v: number) => (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") ? formatSeconds(v) : String(v)}
               />
-            )}
-          </LineChart>
-        </ResponsiveContainer>
+              <Tooltip
+                labelFormatter={(l) => String(l)}
+                formatter={(v, name) => [
+                  typeof v === "number" ? (metric ? formatMetricValue(metric, v) : v.toFixed(1)) : String(v),
+                  name === "trend" ? "Tendencia" : label,
+                ]}
+              />
+              <Line
+                type="monotone"
+                dataKey={dataKey}
+                stroke={lineColor}
+                strokeWidth={2}
+                dot={showDots ? { r: 3, fill: lineColor } : false}
+                activeDot={{ r: 5 }}
+              />
+              {trendValues && (
+                <Line
+                  type="linear"
+                  dataKey="trend"
+                  stroke="#f97316"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 3"
+                  dot={false}
+                  activeDot={false}
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

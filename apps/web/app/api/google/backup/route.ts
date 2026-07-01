@@ -20,6 +20,33 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
   return data.access_token;
 }
 
+const MAX_DRIVE_BACKUPS = 5;
+
+async function rotateOldBackups(accessToken: string): Promise<void> {
+  const res = await fetch(
+    "https://www.googleapis.com/drive/v3/files?" +
+      new URLSearchParams({
+        q: "name contains 'fitnotes-backup-' and trashed = false",
+        fields: "files(id,createdTime)",
+        orderBy: "createdTime desc",
+        spaces: "drive",
+      }),
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return;
+  const data = (await res.json()) as { files?: { id: string; createdTime: string }[] };
+  const files = data.files ?? [];
+  const toDelete = files.slice(MAX_DRIVE_BACKUPS);
+  await Promise.all(
+    toDelete.map((f) =>
+      fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    )
+  );
+}
+
 async function uploadToDrive(accessToken: string, filename: string, content: string): Promise<string> {
   const boundary = `fitnotes_${Date.now()}`;
   const metadata = JSON.stringify({ name: filename, mimeType: "application/json" });
@@ -115,6 +142,7 @@ export async function POST() {
 
     const filename = `fitnotes-backup-${exportedAt.split("T")[0]}.fitnotes`;
     const fileUrl = await uploadToDrive(accessToken, filename, JSON.stringify(backup, null, 2));
+    await rotateOldBackups(accessToken);
 
     await supabase.auth.updateUser({
       data: { google_drive_last_backup: exportedAt, google_drive_last_backup_url: fileUrl },

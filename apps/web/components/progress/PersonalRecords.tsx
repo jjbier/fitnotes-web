@@ -8,9 +8,10 @@ interface PersonalRecordsProps {
   records: PersonalRecord[];
   exercises: Exercise[];
   selectedExercise?: Exercise;
+  estimatedRepLimit?: number;
 }
 
-export default function PersonalRecords({ records, exercises, selectedExercise }: PersonalRecordsProps) {
+export default function PersonalRecords({ records, exercises, selectedExercise, estimatedRepLimit }: PersonalRecordsProps) {
   const [subTab, setSubTab] = useState<"real" | "estimado">("real");
 
   if (records.length === 0) {
@@ -37,7 +38,12 @@ export default function PersonalRecords({ records, exercises, selectedExercise }
       );
     }
 
-    const best1RM = Math.max(...exPRs.map((pr) => calculate1RM(pr.weight, pr.reps)));
+    const estimationSource = estimatedRepLimit
+      ? exPRs.filter((pr) => pr.reps <= estimatedRepLimit)
+      : exPRs;
+    const best1RM = estimationSource.length > 0
+      ? Math.max(...estimationSource.map((pr) => calculate1RM(pr.weight, pr.reps)))
+      : Math.max(...exPRs.map((pr) => calculate1RM(pr.weight, pr.reps)));
 
     return (
       <div className="space-y-3">
@@ -86,8 +92,11 @@ export default function PersonalRecords({ records, exercises, selectedExercise }
             <p className="text-xs text-muted-foreground mb-2">
               Basado en 1RM estimado de{" "}
               <span className="font-semibold text-foreground">{best1RM.toFixed(1)} kg</span>
+              {estimatedRepLimit && (
+                <> · excluye series de más de {estimatedRepLimit} reps</>
+              )}
             </p>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((reps) => {
+            {Array.from({ length: 15 }, (_, i) => i + 1).map((reps) => {
               const est = estimateRepMax(best1RM, reps);
               const actualPR = exPRs.find((pr) => pr.reps === reps);
               return (

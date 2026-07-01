@@ -10,9 +10,10 @@ interface Props {
   onToggleComplete: (setId: string, current: boolean) => void;
   onComment: (setId: string) => void;
   isPR?: boolean;
+  weightStep?: number;
 }
 
-export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggleComplete, onComment, isPR }: Props) {
+export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggleComplete, onComment, isPR, weightStep = 0.5 }: Props) {
   return (
     <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${set.is_complete ? "bg-primary/5 border-primary/20" : ""}`}>
       <button
@@ -33,7 +34,7 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
               onChange={(e) => onUpdate(set.id, { weight: e.target.value ? parseFloat(e.target.value) : undefined })}
               placeholder="kg"
               min="0"
-              step="0.5"
+              step={weightStep}
               aria-label="Peso en kg"
               className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
             />

@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const addExerciseToWorkout = useWorkoutStore((s) => s.addExerciseToWorkout);
   const finishWorkout = useWorkoutStore((s) => s.finishWorkout);
   const setLoading = useWorkoutStore((s) => s.setLoading);
+  const setWorkoutComment = useWorkoutStore((s) => s.setWorkoutComment);
 
   const exercises = useExerciseStore((s) => s.exercises);
   const loadExercises = useExerciseStore((s) => s.loadExercises);
@@ -41,6 +42,7 @@ export default function DashboardPage() {
   useWakeLock(keepScreenOn && !!activeWorkout);
   const [selectedExId, setSelectedExId] = useState("");
   const [currentDate, setCurrentDate] = useState(today);
+  const [workoutCommentLocal, setWorkoutCommentLocal] = useState("");
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -69,6 +71,10 @@ export default function DashboardPage() {
     if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setWorkoutCommentLocal(activeWorkout?.comment ?? "");
+  }, [activeWorkout?.id, activeWorkout?.comment]);
 
   useEffect(() => {
     async function load() {
@@ -135,6 +141,12 @@ export default function DashboardPage() {
     finishWorkout();
     setActiveWEId(null);
     autoBackupToDriveIfEnabled();
+  }
+
+  async function handleSaveComment() {
+    if (!activeWorkout) return;
+    setWorkoutComment(workoutCommentLocal);
+    await repo.updateWorkout(activeWorkout.id, { comment: workoutCommentLocal || undefined });
   }
 
   async function handleDateChange(delta: number) {
@@ -223,6 +235,21 @@ export default function DashboardPage() {
               <TrainingScreen workoutExerciseId={activeWEId} userId={userId} />
             </div>
           )}
+
+          {/* Workout comment */}
+          <div>
+            <label htmlFor="workout-comment" className="sr-only">Nota del entrenamiento</label>
+            <textarea
+              id="workout-comment"
+              value={workoutCommentLocal}
+              onChange={(e) => setWorkoutCommentLocal(e.target.value)}
+              onBlur={handleSaveComment}
+              disabled={!!activeWorkout.end_time}
+              placeholder="Añadir nota al entrenamiento…"
+              rows={2}
+              className="w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+            />
+          </div>
 
           {/* Share + Copy + Move + Finish */}
           <div className="flex gap-2 flex-wrap">
