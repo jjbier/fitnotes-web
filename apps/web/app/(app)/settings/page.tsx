@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
@@ -945,6 +946,31 @@ export default function SettingsPage() {
             Cerrar todas las sesiones
           </button>
         </div>
+      </section>
+
+      {/* Tools — mismo patrón que la app mobile (Herramientas ya no es una
+          sección de primer nivel, se accede desde aquí) */}
+      <section className="rounded-lg border bg-card p-6 space-y-4">
+        <h2 className="font-semibold">Herramientas</h2>
+        <Link
+          href="/tools"
+          className="flex items-center justify-between rounded-md border px-4 py-3 text-sm font-medium hover:bg-secondary"
+        >
+          Calculadoras de entrenamiento
+          <span aria-hidden="true">→</span>
+        </Link>
+      </section>
+
+      {/* Health — igual que la sección "Salud" de mobile */}
+      <section className="rounded-lg border bg-card p-6 space-y-4">
+        <h2 className="font-semibold">Salud</h2>
+        <Link
+          href="/body-tracker"
+          className="flex items-center justify-between rounded-md border px-4 py-3 text-sm font-medium hover:bg-secondary"
+        >
+          Medidas corporales
+          <span aria-hidden="true">→</span>
+        </Link>
       </section>
 
       {/* Account */}

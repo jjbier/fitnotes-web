@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Mismas 6 tabs que la app mobile.
 const TAB_ITEMS = [
   { href: "/dashboard", label: "Hoy", icon: "🏠" },
   { href: "/calendar", label: "Calendario", icon: "📅" },
+  { href: "/exercise", label: "Ejercicios", icon: "💪" },
   { href: "/progress", label: "Progreso", icon: "📈" },
-  { href: "/tools", label: "Herramientas", icon: "🔧" },
+  { href: "/routines", label: "Rutinas", icon: "📋" },
   { href: "/settings", label: "Configuración", icon: "⚙️" },
 ] as const;
+
+const SETTINGS_SUBROUTES = ["/body-tracker", "/tools"];
 
 export default function MobileNav() {
   const pathname = usePathname();
@@ -17,7 +21,10 @@ export default function MobileNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden border-t bg-card">
       {TAB_ITEMS.map(({ href, label, icon }) => {
-        const active = pathname === href || pathname.startsWith(href + "/");
+        const active =
+          pathname === href ||
+          pathname.startsWith(href + "/") ||
+          (href === "/settings" && SETTINGS_SUBROUTES.some((r) => pathname === r || pathname.startsWith(r + "/")));
         return (
           <Link
             key={href}

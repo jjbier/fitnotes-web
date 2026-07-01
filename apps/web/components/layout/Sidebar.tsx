@@ -4,16 +4,22 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createBrowserClient } from "@fitnotes/database";
 
+// Mismas 6 secciones que las tabs de la app mobile (Hoy/Calendario/Ejercicios/
+// Progreso/Rutinas/Configuración) — Medidas corporales y Herramientas se
+// acceden desde Configuración, igual que en mobile.
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Hoy", icon: "🏠" },
   { href: "/calendar", label: "Calendario", icon: "📅" },
   { href: "/exercise", label: "Ejercicios", icon: "💪" },
   { href: "/progress", label: "Progreso", icon: "📈" },
   { href: "/routines", label: "Rutinas", icon: "📋" },
-  { href: "/body-tracker", label: "Medidas corporales", icon: "⚖️" },
-  { href: "/tools", label: "Herramientas", icon: "🔧" },
   { href: "/settings", label: "Configuración", icon: "⚙️" },
 ] as const;
+
+// Rutas que cuelgan de Configuración (no son ítems propios del nav, pero
+// deben mantener "Configuración" resaltado, igual que en mobile donde son
+// pantallas empujadas desde la tab Configuración).
+const SETTINGS_SUBROUTES = ["/body-tracker", "/tools"];
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -37,7 +43,10 @@ export default function Sidebar() {
       {/* Nav links */}
       <nav aria-label="Navegación principal" className="flex-1 px-3 py-4 space-y-1">
         {NAV_ITEMS.map(({ href, label, icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
+          const active =
+            pathname === href ||
+            pathname.startsWith(href + "/") ||
+            (href === "/settings" && SETTINGS_SUBROUTES.some((r) => pathname === r || pathname.startsWith(r + "/")));
           return (
             <Link
               key={href}

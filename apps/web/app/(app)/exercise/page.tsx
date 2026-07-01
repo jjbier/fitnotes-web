@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
+import { History } from "lucide-react";
 import { useExerciseStore, ExerciseType, filterExercises } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 import ExerciseForm from "@/components/exercises/ExerciseForm";
@@ -196,12 +197,22 @@ export default function ExercisePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Ejercicios</h1>
-        <button
-          onClick={() => { setShowExerciseForm(true); setShowCategoryForm(false); setEditingCategory(null); }}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          + Nuevo ejercicio
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/search"
+            aria-label="Historial de búsqueda"
+            title="Historial de búsqueda"
+            className="rounded-md border p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+          >
+            <History className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          <button
+            onClick={() => { setShowExerciseForm(true); setShowCategoryForm(false); setEditingCategory(null); }}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            + Nuevo ejercicio
+          </button>
+        </div>
       </div>
 
       {/* Global search */}
