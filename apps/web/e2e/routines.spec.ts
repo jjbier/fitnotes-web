@@ -58,8 +58,8 @@ test.describe("Rutinas CRUD", () => {
     for (const name of [`${ROUTINE_NAME}-v2`, `Copia de ${ROUTINE_NAME}`]) {
       const row = routineRowByName(page, name);
       if (await row.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        page.once("dialog", (d) => d.accept());
         await row.getByRole("button", { name: "Eliminar" }).click();
+        await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar" }).click();
         await page.waitForTimeout(500);
       }
     }

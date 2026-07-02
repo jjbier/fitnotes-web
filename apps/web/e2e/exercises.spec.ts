@@ -56,8 +56,8 @@ test.describe("Ejercicios CRUD", () => {
 
     // ── Eliminar ejercicio ───────────────────────────────────────────────────
     await page.getByRole("button", { name: "Opciones" }).first().click();
-    page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("menuitem", { name: "Eliminar" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar" }).click();
 
     await expect(page.getByText(updatedName)).not.toBeVisible({ timeout: 8_000 });
 
@@ -65,8 +65,8 @@ test.describe("Ejercicios CRUD", () => {
     await page.goto("/exercise");
     const catRow = page.locator("p", { hasText: CAT_NAME }).locator("xpath=ancestor::div[contains(@class,'bg-card')][1]");
     await catRow.hover();
-    page.once("dialog", (dialog) => dialog.accept());
     await catRow.getByRole("button", { name: "Eliminar" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar" }).click();
 
     await expect(page.getByText(CAT_NAME)).not.toBeVisible({ timeout: 8_000 });
   });
