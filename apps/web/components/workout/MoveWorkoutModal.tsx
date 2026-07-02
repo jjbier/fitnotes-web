@@ -88,7 +88,7 @@ export default function MoveWorkoutModal({ workoutId, currentDate, onMoved, onCl
               value={targetDate}
               max={today}
               onChange={(e) => setTargetDate(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
@@ -103,14 +103,14 @@ export default function MoveWorkoutModal({ workoutId, currentDate, onMoved, onCl
         <div className="flex gap-2 justify-end px-5 pb-5">
           <button
             onClick={onClose}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+            className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
           >
             Cancelar
           </button>
           <button
             onClick={handleMove}
             disabled={saving || targetDate === currentDate || conflict || !targetDate}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {saving ? "Moviendo…" : "Mover"}
           </button>

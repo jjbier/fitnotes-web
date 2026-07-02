@@ -54,7 +54,7 @@ export default function RegisterPage() {
           <p className="text-muted-foreground mt-2">Empieza a registrar tu progreso fitness</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-8 shadow-sm space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl border bg-card p-8 shadow-sm space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="email">Correo electrónico</label>
             <input
@@ -65,7 +65,7 @@ export default function RegisterPage() {
               placeholder="you@example.com"
               required
               autoComplete="email"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -79,7 +79,7 @@ export default function RegisterPage() {
               placeholder="Mínimo 8 caracteres"
               required
               autoComplete="new-password"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -93,18 +93,18 @@ export default function RegisterPage() {
               placeholder="Repite la contraseña"
               required
               autoComplete="new-password"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-destructive rounded-md bg-destructive/10 px-3 py-2">{error}</p>
+            <p className="text-sm text-destructive rounded-xl bg-destructive/10 px-3 py-2">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? "Creando cuenta…" : "Crear cuenta"}
           </button>

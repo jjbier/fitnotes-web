@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import Link from "next/link";
 import type { Exercise, PersonalRecord } from "@fitnotes/core";
@@ -250,7 +251,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
           <button
             onClick={onClose}
             aria-label="Cerrar"
-            className="shrink-0 rounded-md p-1.5 hover:bg-secondary text-muted-foreground hover:text-foreground"
+            className="shrink-0 rounded-xl p-1.5 hover:bg-secondary text-muted-foreground hover:text-foreground"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5" aria-hidden="true">
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
@@ -281,7 +282,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
             <div className="space-y-3 py-4">
-              {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-lg bg-secondary/30 animate-pulse" />)}
+              {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-2xl bg-secondary/30 animate-pulse" />)}
             </div>
           ) : activeTab === "records" ? (
             <PersonalRecords records={records} exercises={exercises} selectedExercise={exercise} estimatedRepLimit={estimatedRepLimit} />
@@ -302,7 +303,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   const wasCopied = copiedDates.has(point.date);
                   const isToday = point.date === today;
                   return (
-                    <div key={point.date} className="rounded-md border text-sm overflow-hidden">
+                    <div key={point.date} className="rounded-xl border text-sm overflow-hidden">
                       {/* Row header — restructured to allow nested link */}
                       <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/20">
                         <button
@@ -338,7 +339,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                               {sets.map((s, idx) => (
                                 <div
                                   key={s.id}
-                                  className={`flex items-center gap-2 rounded-md px-3 py-2 ${s.is_complete ? "bg-primary/5" : "bg-secondary/30"}`}
+                                  className={`flex items-center gap-2 rounded-xl px-3 py-2 ${s.is_complete ? "bg-primary/5" : "bg-secondary/30"}`}
                                 >
                                   <span className="text-xs text-muted-foreground w-5 shrink-0">{idx + 1}</span>
                                   <span className="flex-1 text-xs">
@@ -349,7 +350,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                                     {s.time_seconds != null && ` · ${s.time_seconds} s`}
                                     {s.is_warmup && <span className="ml-1 text-muted-foreground">(calent.)</span>}
                                   </span>
-                                  {s.is_complete && <span className="text-xs text-primary shrink-0">✓</span>}
+                                  {s.is_complete && <Check className="text-primary shrink-0" size={13} aria-hidden="true" />}
                                 </div>
                               ))}
                               {/* Copy sets footer */}
@@ -382,7 +383,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
             /* Goals tab */
             <div className="space-y-4">
               {goal && !showGoalForm ? (
-                <div className="rounded-lg border bg-card p-5 space-y-4">
+                <div className="rounded-2xl border bg-card p-5 space-y-4">
                   {goal.achieved_at && (
                     <div className="flex items-center gap-2 text-sm font-medium text-green-600">
                       <span>🏆</span>
@@ -444,32 +445,32 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   <div className="flex gap-2 pt-1 flex-wrap">
                     <button
                       onClick={() => openGoalForm(goal)}
-                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"
+                      className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"
                     >
                       Editar
                     </button>
                     {!goal.achieved_at && (
                       <button
                         onClick={handleMarkAchieved}
-                        className="rounded-md border border-green-600 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                        className="rounded-xl border border-green-600 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
                       >
                         Marcar conseguido
                       </button>
                     )}
                     <button
                       onClick={handleDeleteGoal}
-                      className="ml-auto rounded-md border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                      className="ml-auto rounded-xl border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                     >
                       Eliminar
                     </button>
                   </div>
                 </div>
               ) : !showGoalForm ? (
-                <div className="rounded-lg border border-dashed p-10 text-center space-y-3">
+                <div className="rounded-2xl border border-dashed p-10 text-center space-y-3">
                   <p className="text-sm text-muted-foreground">Sin objetivo para este ejercicio.</p>
                   <button
                     onClick={() => openGoalForm()}
-                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     Crear objetivo
                   </button>
@@ -477,7 +478,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
               ) : null}
 
               {showGoalForm && (
-                <div className="rounded-lg border bg-card p-5 space-y-4">
+                <div className="rounded-2xl border bg-card p-5 space-y-4">
                   <h3 className="font-semibold text-sm">{goal ? "Editar objetivo" : "Nuevo objetivo"}</h3>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -491,7 +492,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                         value={goalForm.target_weight}
                         onChange={(e) => setGoalForm((f) => ({ ...f, target_weight: e.target.value }))}
                         placeholder="ej. 100"
-                        className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                     <div>
@@ -504,7 +505,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                         value={goalForm.target_reps}
                         onChange={(e) => setGoalForm((f) => ({ ...f, target_reps: e.target.value }))}
                         placeholder="ej. 10"
-                        className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                   </div>
@@ -518,7 +519,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                       type="date"
                       value={goalForm.target_date}
                       onChange={(e) => setGoalForm((f) => ({ ...f, target_date: e.target.value }))}
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
@@ -532,21 +533,21 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                       onChange={(e) => setGoalForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={2}
                       placeholder="Motivación, contexto…"
-                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                      className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                     />
                   </div>
 
                   <div className="flex gap-2 justify-end">
                     <button
                       onClick={() => setShowGoalForm(false)}
-                      className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+                      className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={handleSaveGoal}
                       disabled={goalSaving || (!goalForm.target_weight && !goalForm.target_reps)}
-                      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       {goalSaving ? "Guardando…" : "Guardar objetivo"}
                     </button>

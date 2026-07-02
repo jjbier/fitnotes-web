@@ -119,7 +119,7 @@ export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodS
             type="date"
             value={customFrom}
             onChange={(e) => setCustomFrom(e.target.value)}
-            className="rounded-md border px-2 py-1 text-sm"
+            className="rounded-xl border px-2 py-1 text-sm"
           />
           <label htmlFor="stats-to" className="text-xs text-muted-foreground">Hasta</label>
           <input
@@ -127,7 +127,7 @@ export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodS
             type="date"
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
-            className="rounded-md border px-2 py-1 text-sm"
+            className="rounded-xl border px-2 py-1 text-sm"
           />
         </div>
       )}
@@ -137,7 +137,7 @@ export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodS
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {stats.map((s) => (
-            <div key={s.label} className="rounded-lg border bg-card p-4">
+            <div key={s.label} className="rounded-2xl border bg-card p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">{s.label}</p>
               <p className="text-xl font-bold mt-1">{s.value}</p>
             </div>

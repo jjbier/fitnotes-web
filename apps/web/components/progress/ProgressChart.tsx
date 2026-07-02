@@ -99,7 +99,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
     return (
       <div
         style={{ height }}
-        className="flex flex-col items-center justify-center rounded-md border border-dashed gap-2"
+        className="flex flex-col items-center justify-center rounded-xl border border-dashed gap-2"
       >
         <p className="text-sm text-muted-foreground">Sin datos aún</p>
         {exerciseName && (
@@ -280,12 +280,12 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
             max={15}
             value={repTarget}
             onChange={(e) => setRepTarget(Math.min(15, Math.max(1, parseInt(e.target.value) || 1)))}
-            className="w-16 rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-16 rounded-xl border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
       )}
 
-      <div ref={containerRef} className="rounded-lg border bg-card p-4">
+      <div ref={containerRef} className="rounded-2xl border bg-card p-4">
         {plotData.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-10">
             Sin sesiones a {repTarget} reps aún.

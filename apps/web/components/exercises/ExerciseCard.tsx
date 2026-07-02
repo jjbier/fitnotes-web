@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Star, Dumbbell, MoreVertical } from "lucide-react";
 import { ExerciseType } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
 
@@ -91,9 +92,12 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
   }, [menuOpen]);
 
   return (
-    <div className="relative flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-secondary/30 transition-colors group">
+    <div className="relative flex items-center justify-between rounded-2xl border bg-card px-4 py-3 hover:bg-secondary/30 transition-colors group">
       {/* Left */}
-      <div className="flex-1 min-w-0">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <Dumbbell className="text-primary" size={18} aria-hidden="true" />
+      </div>
+      <div className="flex-1 min-w-0 ml-3">
         <p className="font-medium text-sm truncate">{exercise.name}</p>
         <span className="inline-block mt-0.5 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
           {TYPE_BADGE[exercise.type]}
@@ -114,13 +118,13 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
         {/* Favorite */}
         <button
           onClick={() => onToggleFavorite(exercise.id, exercise.is_favorite)}
-          className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+          className="p-1.5 rounded-xl hover:bg-secondary transition-colors"
           aria-label={exercise.is_favorite ? "Quitar de favoritos" : "Añadir a favoritos"}
         >
           {exercise.is_favorite ? (
-            <span className="text-primary text-base" aria-hidden="true">★</span>
+            <Star className="text-primary" size={16} fill="currentColor" aria-hidden="true" />
           ) : (
-            <span className="text-muted-foreground text-base" aria-hidden="true">☆</span>
+            <Star className="text-muted-foreground" size={16} aria-hidden="true" />
           )}
         </button>
 
@@ -129,12 +133,12 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
           <button
             ref={triggerRef}
             onClick={handleMenuToggle}
-            className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground"
+            className="p-1.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground"
             aria-label="Opciones"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            <span aria-hidden="true">⋯</span>
+            <MoreVertical size={16} aria-hidden="true" />
           </button>
 
           {menuOpen && menuPos && (
@@ -149,7 +153,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
                 role="menu"
                 aria-label={`Opciones para ${exercise.name}`}
                 style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 50 }}
-                className="w-40 rounded-md border bg-card shadow-lg py-1"
+                className="w-40 rounded-xl border bg-card shadow-lg py-1"
               >
                 <Link
                   href={`/exercise/history/${exercise.id}`}

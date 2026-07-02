@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
@@ -553,7 +554,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
 
       {/* Profile */}
-      <section className="rounded-lg border bg-card p-6 space-y-4">
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Perfil</h2>
         {email && <p className="text-sm text-muted-foreground">{email}</p>}
         <form onSubmit={handleSaveProfile} className="space-y-3">
@@ -564,14 +565,14 @@ export default function SettingsPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Tu nombre"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
             />
           </div>
           <button
             type="submit"
             disabled={saveStatus === "saving"}
             aria-live="polite"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {saveStatus === "saving" ? "Guardando…" : saveStatus === "saved" ? "¡Guardado!" : saveStatus === "error" ? "Error — intentar de nuevo" : "Guardar cambios"}
           </button>
@@ -579,7 +580,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Preferences */}
-      <section className="rounded-lg border bg-card p-6 space-y-5">
+      <section className="rounded-2xl border bg-card p-6 space-y-5">
         <h2 className="font-semibold">Preferencias</h2>
 
         {/* Weight unit */}
@@ -588,7 +589,7 @@ export default function SettingsPage() {
             <p className="text-sm font-medium">Unidad de peso predeterminada</p>
             <p className="text-xs text-muted-foreground">Usada en toda la app para mostrar el peso</p>
           </div>
-          <div role="group" aria-label="Unidad de peso" className="flex rounded-md border overflow-hidden">
+          <div role="group" aria-label="Unidad de peso" className="flex rounded-xl border overflow-hidden">
             <button
               onClick={() => handleWeightUnit("kg")}
               aria-pressed={weightUnit === "kg"}
@@ -613,7 +614,7 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">Claro, oscuro o seguir preferencia del sistema</p>
           </div>
           {mounted && (
-            <div role="group" aria-label="Tema de la aplicación" className="flex rounded-md border overflow-hidden">
+            <div role="group" aria-label="Tema de la aplicación" className="flex rounded-xl border overflow-hidden">
               {themeOptions.map(({ value, label }) => (
                 <button
                   key={value}
@@ -630,7 +631,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Workout behaviour */}
-      <section className="rounded-lg border bg-card p-6 space-y-5">
+      <section className="rounded-2xl border bg-card p-6 space-y-5">
         <h2 className="font-semibold">Comportamiento del entrenamiento</h2>
 
         {/* Track PRs */}
@@ -671,7 +672,7 @@ export default function SettingsPage() {
             <p className="text-sm font-medium">Inicio de semana</p>
             <p className="text-xs text-muted-foreground">Primer día mostrado en el calendario</p>
           </div>
-          <div className="flex rounded-md border overflow-hidden">
+          <div className="flex rounded-xl border overflow-hidden">
             <button
               onClick={() => handleWeekStart(1)}
               className={`px-3 py-1.5 text-sm font-medium ${weekStart === 1 ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
@@ -702,7 +703,7 @@ export default function SettingsPage() {
               min="0.5"
               value={defaultWeightIncrement}
               onChange={(e) => handleDefaultWeightIncrement(e.target.value)}
-              className="w-20 rounded-md border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              className="w-20 rounded-xl border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
             />
             <span className="text-sm text-muted-foreground">{weightUnit}</span>
           </div>
@@ -724,7 +725,7 @@ export default function SettingsPage() {
               placeholder="Sin límite"
               value={estimatedRecordsRepLimit}
               onChange={(e) => handleEstimatedRecordsRepLimit(e.target.value)}
-              className="w-24 rounded-md border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+              className="w-24 rounded-xl border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
             />
             <span className="text-sm text-muted-foreground">reps</span>
           </div>
@@ -738,7 +739,7 @@ export default function SettingsPage() {
           <button
             onClick={handleRecalcPRs}
             disabled={recalcPRs === "running"}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             {recalcPRs === "running" ? "Calculando…" : recalcPRs === "done" ? "¡Listo!" : recalcPRs === "error" ? "Error — reintentar" : "Recalcular PRs"}
           </button>
@@ -746,7 +747,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Home screen */}
-      <section className="rounded-lg border bg-card p-6 space-y-4">
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Pantalla de inicio</h2>
 
         <div className="flex items-center justify-between">
@@ -787,7 +788,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Data */}
-      <section className="rounded-lg border bg-card p-6 space-y-4">
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Datos</h2>
 
         {/* Backup */}
@@ -799,7 +800,7 @@ export default function SettingsPage() {
           <button
             onClick={handleBackup}
             disabled={backingUp}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             {backingUp ? "Exportando…" : "Exportar .fitnotes"}
           </button>
@@ -813,7 +814,7 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
           >
             Seleccionar archivo…
           </button>
@@ -845,7 +846,7 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground">Conecta tu Google Drive para hacer copias automáticas</p>
               <a
                 href="/api/google/auth"
-                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+                className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
               >
                 Conectar Google Drive
               </a>
@@ -887,7 +888,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleDriveBackup}
                   disabled={driveBacking}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {driveBacking ? "Subiendo…" : "Hacer copia ahora"}
                 </button>
@@ -913,7 +914,7 @@ export default function SettingsPage() {
           <button
             onClick={handleExportWorkouts}
             disabled={exportingWorkouts}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             {exportingWorkouts ? "Exportando…" : "Exportar CSV"}
           </button>
@@ -927,7 +928,7 @@ export default function SettingsPage() {
           <button
             onClick={handleExportBodyTracker}
             disabled={exportingBody}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             {exportingBody ? "Exportando…" : "Exportar CSV"}
           </button>
@@ -941,7 +942,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSignOutAll}
             disabled={signOutLoading}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             Cerrar todas las sesiones
           </button>
@@ -950,31 +951,31 @@ export default function SettingsPage() {
 
       {/* Tools — mismo patrón que la app mobile (Herramientas ya no es una
           sección de primer nivel, se accede desde aquí) */}
-      <section className="rounded-lg border bg-card p-6 space-y-4">
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Herramientas</h2>
         <Link
           href="/tools"
-          className="flex items-center justify-between rounded-md border px-4 py-3 text-sm font-medium hover:bg-secondary"
+          className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium hover:bg-secondary"
         >
           Calculadoras de entrenamiento
-          <span aria-hidden="true">→</span>
+          <ChevronRight size={16} aria-hidden="true" />
         </Link>
       </section>
 
       {/* Health — igual que la sección "Salud" de mobile */}
-      <section className="rounded-lg border bg-card p-6 space-y-4">
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Salud</h2>
         <Link
           href="/body-tracker"
-          className="flex items-center justify-between rounded-md border px-4 py-3 text-sm font-medium hover:bg-secondary"
+          className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium hover:bg-secondary"
         >
           Medidas corporales
-          <span aria-hidden="true">→</span>
+          <ChevronRight size={16} aria-hidden="true" />
         </Link>
       </section>
 
       {/* Account */}
-      <section className="rounded-lg border bg-card p-6 space-y-4">
+      <section className="rounded-2xl border bg-card p-6 space-y-4">
         <h2 className="font-semibold">Cuenta</h2>
         <div className="flex items-center justify-between">
           <div>
@@ -984,7 +985,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSignOut}
             disabled={signOutLoading}
-            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             {signOutLoading ? "Cerrando sesión…" : "Cerrar sesión"}
           </button>
@@ -992,7 +993,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Danger Zone */}
-      <section className="rounded-lg border border-destructive/50 bg-card p-6 space-y-4">
+      <section className="rounded-2xl border border-destructive/50 bg-card p-6 space-y-4">
         <h2 className="font-semibold text-destructive">Zona de peligro</h2>
 
         {/* Delete workout history */}
@@ -1010,7 +1011,7 @@ export default function SettingsPage() {
                   type="date"
                   value={deleteHistoryFrom}
                   onChange={(e) => setDeleteHistoryFrom(e.target.value)}
-                  className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                  className="rounded-xl border px-2 py-1.5 text-sm bg-background"
                 />
               </div>
               <div>
@@ -1020,7 +1021,7 @@ export default function SettingsPage() {
                   type="date"
                   value={deleteHistoryTo}
                   onChange={(e) => setDeleteHistoryTo(e.target.value)}
-                  className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                  className="rounded-xl border px-2 py-1.5 text-sm bg-background"
                 />
               </div>
               <div>
@@ -1029,7 +1030,7 @@ export default function SettingsPage() {
                   id="del-hist-ex"
                   value={deleteHistoryExerciseId}
                   onChange={(e) => setDeleteHistoryExerciseId(e.target.value)}
-                  className="rounded-md border px-2 py-1.5 text-sm bg-background"
+                  className="rounded-xl border px-2 py-1.5 text-sm bg-background"
                 >
                   <option value="">Todos</option>
                   {exerciseOptions.map((ex) => (
@@ -1042,17 +1043,17 @@ export default function SettingsPage() {
           <div className="flex justify-end gap-2">
             {deleteHistoryConfirm ? (
               <>
-                <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
+                <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
                 <button
                   onClick={handleDeleteHistory}
                   disabled={deleteHistoryLoading}
-                  className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground disabled:opacity-50"
+                  className="rounded-xl bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground disabled:opacity-50"
                 >
                   {deleteHistoryLoading ? "Eliminando…" : "Confirmar"}
                 </button>
               </>
             ) : (
-              <button onClick={() => setDeleteHistoryConfirm(true)} className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
+              <button onClick={() => setDeleteHistoryConfirm(true)} className="rounded-xl border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
                 Eliminar historial
               </button>
             )}
@@ -1067,11 +1068,11 @@ export default function SettingsPage() {
           </div>
           {deleteAccountConfirm ? (
             <div className="flex gap-2">
-              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
-              <button onClick={handleDeleteAccount} className="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirmar eliminación</button>
+              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
+              <button onClick={handleDeleteAccount} className="rounded-xl bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirmar eliminación</button>
             </div>
           ) : (
-            <button onClick={() => setDeleteAccountConfirm(true)} className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
+            <button onClick={() => setDeleteAccountConfirm(true)} className="rounded-xl border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
               Eliminar cuenta
             </button>
           )}
@@ -1084,7 +1085,7 @@ export default function SettingsPage() {
           <div className="w-full max-w-md rounded-xl border bg-card shadow-xl p-6 space-y-5">
             <h3 className="text-lg font-semibold">Restaurar copia de seguridad</h3>
 
-            <div className="rounded-lg bg-secondary/50 p-4 space-y-2">
+            <div className="rounded-2xl bg-secondary/50 p-4 space-y-2">
               <p className="text-xs text-muted-foreground">
                 Exportada: {new Date(restoreData.exported_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })}
               </p>
@@ -1105,7 +1106,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm space-y-1">
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm space-y-1">
               <p className="font-medium text-destructive">Atención</p>
               <p className="text-xs text-muted-foreground">
                 Esta acción eliminará todos tus datos actuales y los reemplazará con los del archivo. No se puede deshacer.
@@ -1113,7 +1114,7 @@ export default function SettingsPage() {
             </div>
 
             {restoreError && (
-              <p className="text-sm text-destructive rounded-md bg-destructive/10 px-3 py-2">{restoreError}</p>
+              <p className="text-sm text-destructive rounded-xl bg-destructive/10 px-3 py-2">{restoreError}</p>
             )}
 
             {restoring ? (
@@ -1126,7 +1127,7 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-green-600">¡Restauración completada con éxito!</p>
                 <button
                   onClick={() => { setRestoreData(null); setRestoreDone(false); router.refresh(); }}
-                  className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   Cerrar y recargar
                 </button>
@@ -1135,13 +1136,13 @@ export default function SettingsPage() {
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => { setRestoreData(null); setRestoreError(null); }}
-                  className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+                  className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={executeRestore}
-                  className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
+                  className="rounded-xl bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
                 >
                   Restaurar datos
                 </button>

@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell } from "lucide-react";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, todayISO, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
+import NavigationPanel from "@/components/workout/NavigationPanel";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
+import WeekStrip from "@/components/workout/WeekStrip";
+import FinishSummaryModal from "@/components/workout/FinishSummaryModal";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
+import EmptyState from "@/components/EmptyState";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { readBool, SETTING_KEYS, readHiddenCategories } from "@/lib/settings";
 import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
@@ -25,12 +31,16 @@ export default function DashboardPage() {
   const loadWorkouts = useWorkoutStore((s) => s.loadWorkouts);
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const addExerciseToWorkout = useWorkoutStore((s) => s.addExerciseToWorkout);
+  const removeExerciseFromWorkout = useWorkoutStore((s) => s.removeExerciseFromWorkout);
+  const reorderExercisesStore = useWorkoutStore((s) => s.reorderExercises);
   const finishWorkout = useWorkoutStore((s) => s.finishWorkout);
   const setLoading = useWorkoutStore((s) => s.setLoading);
   const setWorkoutComment = useWorkoutStore((s) => s.setWorkoutComment);
 
   const exercises = useExerciseStore((s) => s.exercises);
   const loadExercises = useExerciseStore((s) => s.loadExercises);
+
+  const confirmDelete = useConfirm();
 
   const [userId, setUserId] = useState("");
   const [activeWEId, setActiveWEId] = useState<string | null>(null);
@@ -45,6 +55,10 @@ export default function DashboardPage() {
   const [workoutCommentLocal, setWorkoutCommentLocal] = useState("");
   const [showSetCount, setShowSetCount] = useState(true);
   const [hiddenCategoryIds, setHiddenCategoryIds] = useState<string[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [summaryStats, setSummaryStats] = useState<{ duration: number; exercises: number; sets: number; volume: number } | null>(null);
+  const elapsedRef = useRef(0);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -85,6 +99,11 @@ export default function DashboardPage() {
   }, [activeWorkout?.id, activeWorkout?.comment]);
 
   useEffect(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, [activeWorkout?.id]);
+
+  useEffect(() => {
     async function load() {
       setLoading(true);
       const { data: { user } } = await client.auth.getUser();
@@ -93,7 +112,7 @@ export default function DashboardPage() {
       const [catRes, exRes, recentRes] = await Promise.all([
         exRepo.getCategories(),
         exRepo.getExercises(),
-        repo.getWorkouts(10),
+        repo.getWorkouts(60),
       ]);
       if (catRes.data && exRes.data) {
         loadExercises(catRes.data, exRes.data.map((ex) => ({
@@ -156,9 +175,49 @@ export default function DashboardPage() {
     setShowExPicker(false);
   }
 
+  async function handleReorderExercises(orderedIds: string[]) {
+    reorderExercisesStore(orderedIds);
+    await repo.reorderExercises(orderedIds.map((id, i) => ({ id, order_index: i })));
+  }
+
+  async function handleDeleteExercise(workoutExerciseId: string, exerciseName: string) {
+    if (!(await confirmDelete({ message: `¿Eliminar "${exerciseName}"? Se eliminarán también todas sus series.` }))) return;
+    removeExerciseFromWorkout(workoutExerciseId);
+    if (activeWEId === workoutExerciseId) setActiveWEId(null);
+    await repo.removeExercise(workoutExerciseId);
+  }
+
+  function toggleSelectMode() {
+    setSelectMode((v) => !v);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedIds.size === 0) return;
+    if (!(await confirmDelete({ message: `¿Eliminar ${selectedIds.size} ejercicio(s)? Se eliminarán también todas sus series.` }))) return;
+    for (const id of selectedIds) {
+      removeExerciseFromWorkout(id);
+      await repo.removeExercise(id);
+    }
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
   async function handleFinish() {
     if (!activeWorkout) return;
-    await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString() });
+    const allSets = Object.values(sets).flat();
+    const totalSets = allSets.filter((s) => s.is_complete && !s.is_warmup).length;
+    const totalVolume = allSets.filter((s) => !s.is_warmup).reduce((acc, s) => acc + (s.weight && s.reps ? s.weight * s.reps : 0), 0);
+    await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString(), duration_minutes: Math.round(elapsedRef.current / 60) });
+    setSummaryStats({ duration: elapsedRef.current, exercises: workoutExercises.length, sets: totalSets, volume: totalVolume });
     finishWorkout();
     setActiveWEId(null);
     autoBackupToDriveIfEnabled();
@@ -183,64 +242,128 @@ export default function DashboardPage() {
     setLoading(false);
   }
 
+  async function handleSelectDate(date: string) {
+    if (date === currentDate) return;
+    setLoading(true);
+    setCurrentDate(date);
+    await loadWorkoutForDate(date, userId);
+    setLoading(false);
+  }
+
+  const workoutDates = new Set(workouts.map((w) => w.date));
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header with date nav */}
       <div className="flex items-center gap-3">
-        <button onClick={() => handleDateChange(-1)} disabled={isLoading} aria-label="Día anterior" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">←</span></button>
+        <button onClick={() => handleDateChange(-1)} disabled={isLoading} aria-label="Día anterior" className="rounded-xl border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><ChevronLeft size={16} aria-hidden="true" /></button>
         <div className="flex-1">
           <div className="flex items-baseline gap-3">
             <h1 className="text-2xl font-bold tracking-tight">
               {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
             </h1>
-            {activeWorkout && <WorkoutTimer startTime={activeWorkout.start_time} />}
+            {activeWorkout && activeWorkout.id && !activeWorkout.end_time && (
+              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
+            )}
           </div>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(currentDate)}</p>
         </div>
-        <button onClick={() => handleDateChange(1)} disabled={isLoading || currentDate >= today} aria-label="Día siguiente" className="rounded-md border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><span aria-hidden="true">→</span></button>
+        <button onClick={() => handleDateChange(1)} disabled={isLoading || currentDate >= today} aria-label="Día siguiente" className="rounded-xl border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><ChevronRight size={16} aria-hidden="true" /></button>
       </div>
+
+      {/* Weekly summary strip */}
+      {!isLoading && (
+        <WeekStrip workoutDates={workoutDates} currentDate={currentDate} today={today} onSelectDate={handleSelectDate} />
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2].map((i) => <div key={i} className="h-16 rounded-lg border bg-secondary/30 animate-pulse" />)}
+          {[1, 2].map((i) => <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />)}
         </div>
       ) : !activeWorkout || !activeWorkout.id ? (
-        <div className="rounded-lg border bg-card p-10 text-center space-y-4">
-          <p className="text-muted-foreground text-sm">Sin entrenamiento para este día.</p>
-          <button onClick={handleStartWorkout} className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-            Iniciar entrenamiento
-          </button>
-        </div>
+        <EmptyState
+          icon={Dumbbell}
+          title="Sin entrenamiento aún"
+          description="Inicia un entrenamiento para registrar tus series y hacer seguimiento del progreso."
+          action={{ label: "Iniciar entrenamiento", onClick: handleStartWorkout }}
+        />
       ) : (
         <div className="space-y-4">
-          {/* Exercise tabs */}
-          <div role="tablist" aria-label="Ejercicios del entrenamiento" className="flex gap-2 flex-wrap">
-            {workoutExercises.map((we) => {
-              const ex = exercises.find((e) => e.id === we.exercise_id);
-              const weSets = sets[we.id] ?? [];
-              const completedCount = weSets.filter((s) => s.is_complete).length;
-              return (
-                <button
-                  key={we.id}
-                  role="tab"
-                  aria-selected={activeWEId === we.id}
-                  onClick={() => setActiveWEId(we.id)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${activeWEId === we.id ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"}`}
-                >
-                  {ex?.name ?? we.exercise_id}
-                  {showSetCount && weSets.length > 0 && (
-                    <span className="ml-1 opacity-70">({completedCount}/{weSets.length})</span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowShare(true)}
+              className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              <Share2 size={14} aria-hidden="true" /> Compartir
+            </button>
+            <button
+              onClick={() => setShowCopy(true)}
+              className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              Copiar de…
+            </button>
+            <button
+              onClick={() => setShowMove(true)}
+              className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              <CalendarDays size={14} aria-hidden="true" /> Mover
+            </button>
+            {workoutExercises.length > 0 && (
+              <button
+                onClick={toggleSelectMode}
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium ${selectMode ? "border-primary text-primary" : "hover:bg-secondary"}`}
+                aria-pressed={selectMode}
+              >
+                <CheckSquare size={14} aria-hidden="true" /> {selectMode ? "Cancelar" : "Seleccionar"}
+              </button>
+            )}
+            {!activeWorkout.end_time && (
+              <button
+                onClick={handleFinish}
+                className="ml-auto rounded-xl border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
+              >
+                Finalizar
+              </button>
+            )}
+          </div>
+
+          {selectMode && (
+            <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2">
+              <span className="text-sm font-medium text-primary">{selectedIds.size} seleccionado(s)</span>
+              <button
+                onClick={handleDeleteSelected}
+                disabled={selectedIds.size === 0}
+                className="text-sm font-semibold text-destructive disabled:opacity-40"
+              >
+                Eliminar seleccionados
+              </button>
+            </div>
+          )}
+
+          {/* Exercise list */}
+          {workoutExercises.length > 0 ? (
+            <NavigationPanel
+              workoutExercises={workoutExercises}
+              exercises={exercises}
+              sets={sets}
+              activeExerciseId={activeWEId}
+              onSelectExercise={setActiveWEId}
+              onAddExercise={() => setShowExPicker((v) => !v)}
+              onReorderExercises={activeWorkout.end_time ? undefined : handleReorderExercises}
+              onDeleteExercise={activeWorkout.end_time ? undefined : handleDeleteExercise}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
+          ) : (
             <button
               onClick={() => setShowExPicker(true)}
-              className="rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground hover:bg-secondary"
+              className="w-full rounded-2xl border border-dashed py-3.5 text-sm text-muted-foreground hover:bg-secondary"
             >
-              + Ejercicio
+              + Añadir ejercicio
             </button>
-          </div>
+          )}
 
           {/* Exercise picker */}
           {showExPicker && (
@@ -250,19 +373,19 @@ export default function DashboardPage() {
                 id="exercise-picker"
                 value={selectedExId}
                 onChange={(e) => setSelectedExId(e.target.value)}
-                className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Seleccionar ejercicio…</option>
                 {exercises.filter((ex) => !hiddenCategoryIds.includes(ex.category_id)).map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
               </select>
-              <button onClick={handleAddExercise} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
-              <button onClick={() => setShowExPicker(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
+              <button onClick={handleAddExercise} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
+              <button onClick={() => setShowExPicker(false)} className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
             </div>
           )}
 
           {/* Active exercise sets */}
-          {activeWEId && (
-            <div className="rounded-lg border bg-card p-4">
+          {activeWEId && !selectMode && (
+            <div className="rounded-2xl border bg-card p-4">
               <TrainingScreen workoutExerciseId={activeWEId} userId={userId} />
             </div>
           )}
@@ -278,36 +401,8 @@ export default function DashboardPage() {
               disabled={!!activeWorkout.end_time}
               placeholder="Añadir nota al entrenamiento…"
               rows={2}
-              className="w-full resize-none rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+              className="w-full resize-none rounded-2xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
             />
-          </div>
-
-          {/* Share + Copy + Move + Finish */}
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setShowShare(true)}
-              className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
-            >
-              Compartir
-            </button>
-            <button
-              onClick={() => setShowCopy(true)}
-              className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
-            >
-              Copiar de…
-            </button>
-            <button
-              onClick={() => setShowMove(true)}
-              className="flex-1 rounded-lg border py-2 text-sm font-medium hover:bg-secondary"
-            >
-              Mover a…
-            </button>
-            <button
-              onClick={handleFinish}
-              className="flex-1 rounded-lg border border-destructive py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
-            >
-              Finalizar
-            </button>
           </div>
         </div>
       )}
@@ -344,6 +439,10 @@ export default function DashboardPage() {
         />
       )}
 
+      {summaryStats && (
+        <FinishSummaryModal stats={summaryStats} onClose={() => setSummaryStats(null)} />
+      )}
+
       {/* Recent workouts */}
       {workouts.length > 0 && (
         <section>
@@ -353,10 +452,10 @@ export default function DashboardPage() {
               <Link
                 key={w.id}
                 href={`/workout/${w.date}`}
-                className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-secondary/50"
+                className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 hover:bg-secondary/50"
               >
                 <span className="text-sm font-medium">{formatWorkoutDate(w.date)}</span>
-                <span className="text-xs text-muted-foreground">→</span>
+                <ChevronRight className="text-muted-foreground" size={14} aria-hidden="true" />
               </Link>
             ))}
           </div>

@@ -5,6 +5,7 @@ import { Play, Pause } from "lucide-react";
 
 interface Props {
   startTime: string | undefined;
+  onElapsedChange?: (elapsed: number) => void;
 }
 
 function formatElapsed(totalSeconds: number): string {
@@ -17,7 +18,7 @@ function formatElapsed(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function WorkoutTimer({ startTime }: Props) {
+export default function WorkoutTimer({ startTime, onElapsedChange }: Props) {
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
   const elapsedBaseRef = useRef(0);
@@ -41,7 +42,9 @@ export default function WorkoutTimer({ startTime }: Props) {
     segmentStartRef.current = Date.now();
     function tick() {
       const segMs = segmentStartRef.current !== null ? Date.now() - segmentStartRef.current : 0;
-      setElapsed(elapsedBaseRef.current + Math.floor(segMs / 1000));
+      const total = elapsedBaseRef.current + Math.floor(segMs / 1000);
+      setElapsed(total);
+      onElapsedChange?.(total);
     }
     tick();
     intervalRef.current = setInterval(tick, 1000);
@@ -56,6 +59,7 @@ export default function WorkoutTimer({ startTime }: Props) {
       }
       segmentStartRef.current = null;
       setRunning(false);
+      onElapsedChange?.(elapsedBaseRef.current);
     } else {
       segmentStartRef.current = Date.now();
       setRunning(true);

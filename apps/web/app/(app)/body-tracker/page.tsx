@@ -232,18 +232,18 @@ export default function BodyTrackerPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/body-tracker/settings"
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"
+            className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"
           >
             Configuración
           </Link>
-          <div role="tablist" aria-label="Secciones de medidas" className="flex gap-1 rounded-lg border p-1">
+          <div role="tablist" aria-label="Secciones de medidas" className="flex gap-1 rounded-2xl border p-1">
             {(["track", "history", "chart"] as const).map((t) => (
               <button
                 key={t}
                 role="tab"
                 aria-selected={tab === t}
                 onClick={() => { setTab(t); if (t === "history") loadHistory(); }}
-                className={`rounded-md px-3 py-1 text-sm font-medium ${tab === t ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+                className={`rounded-xl px-3 py-1 text-sm font-medium ${tab === t ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
               >
                 {t === "track" ? "Registrar" : t === "history" ? "Historial" : "Gráfica"}
               </button>
@@ -257,10 +257,10 @@ export default function BodyTrackerPage() {
         <>
           {isLoading ? (
             <div className="grid gap-3 md:grid-cols-2">
-              {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 rounded-lg border bg-secondary/30 animate-pulse" />)}
+              {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 rounded-2xl border bg-secondary/30 animate-pulse" />)}
             </div>
           ) : enabledMeasurements.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
+            <div className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground text-sm">
               No hay medidas activas.{" "}
               <Link href="/body-tracker/settings" className="underline text-primary">
                 Añade algunas en la configuración.
@@ -271,7 +271,7 @@ export default function BodyTrackerPage() {
               {enabledMeasurements.map((m) => {
                 const latest = latestEntries[m.id];
                 return (
-                  <div key={m.id} className="rounded-lg border bg-card p-5">
+                  <div key={m.id} className="rounded-2xl border bg-card p-5">
                     <div className="flex items-center justify-between mb-1">
                       <h2 className="font-semibold text-sm">{m.name}</h2>
                       <span className="text-xs text-muted-foreground">{m.unit}</span>
@@ -293,7 +293,7 @@ export default function BodyTrackerPage() {
                     })()}
                     <button
                       onClick={() => { setLogMeasurementId(m.id); setLogDate(new Date().toISOString().split("T")[0]!); }}
-                      className="mt-3 rounded-md border px-3 py-1 text-xs hover:bg-secondary"
+                      className="mt-3 rounded-xl border px-3 py-1 text-xs hover:bg-secondary"
                     >
                       Registrar
                     </button>
@@ -304,7 +304,7 @@ export default function BodyTrackerPage() {
           )}
 
           {logMeasurementId && (
-            <div className="rounded-lg border bg-card p-5">
+            <div className="rounded-2xl border bg-card p-5">
               <h2 className="text-sm font-semibold mb-4">
                 Registrar {measurements.find((m) => m.id === logMeasurementId)?.name}
               </h2>
@@ -321,7 +321,7 @@ export default function BodyTrackerPage() {
                     placeholder={measurements.find((m) => m.id === logMeasurementId)?.unit ?? "Valor"}
                     step="0.1"
                     autoFocus
-                    className="w-32 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-32 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <label htmlFor="log-comment" className="sr-only">Comentario (opcional)</label>
                   <input
@@ -330,7 +330,7 @@ export default function BodyTrackerPage() {
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}
                     placeholder="Comentario (opcional)"
-                    className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <label htmlFor="log-date" className="sr-only">Fecha</label>
                   <input
@@ -338,12 +338,12 @@ export default function BodyTrackerPage() {
                     type="date"
                     value={logDate}
                     onChange={(e) => setLogDate(e.target.value)}
-                    className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setLogMeasurementId("")} className="rounded-md border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
-                  <button type="submit" disabled={saving} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                  <button type="button" onClick={() => setLogMeasurementId("")} className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
+                  <button type="submit" disabled={saving} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                     {saving ? "Guardando…" : "Guardar"}
                   </button>
                 </div>
@@ -362,7 +362,7 @@ export default function BodyTrackerPage() {
               id="history-filter"
               value={historyFilterId}
               onChange={(e) => setHistoryFilterId(e.target.value)}
-              className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
+              className="rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
             >
               <option value="">Todas las medidas</option>
               {measurements.map((m) => (
@@ -387,7 +387,7 @@ export default function BodyTrackerPage() {
                     const prev = idx >= 0 ? list[idx + 1] : undefined;
                     const delta = prev ? entry.value - prev.value : null;
                     return (
-                      <div key={entry.id} className="flex items-center justify-between rounded-lg border px-4 py-3">
+                      <div key={entry.id} className="flex items-center justify-between rounded-2xl border px-4 py-3">
                         <div>
                           <p className="text-sm font-medium">{m?.name ?? "—"}</p>
                           {entry.comment && <p className="text-xs text-muted-foreground">{entry.comment}</p>}
@@ -417,7 +417,7 @@ export default function BodyTrackerPage() {
               id="chart-measure"
               value={chartMeasurementId}
               onChange={(e) => { setChartMeasurementId(e.target.value); setClickedChartDate(null); }}
-              className="rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
+              className="rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 max-w-xs"
             >
               <option value="">Seleccionar medida…</option>
               {enabledMeasurements.map((m) => (
@@ -427,17 +427,17 @@ export default function BodyTrackerPage() {
           </div>
 
           {!chartMeasurementId ? (
-            <div className="rounded-lg border border-dashed p-16 text-center text-muted-foreground text-sm">
+            <div className="rounded-2xl border border-dashed p-16 text-center text-muted-foreground text-sm">
               Selecciona una medida para ver la gráfica.
             </div>
           ) : chartLoading ? (
-            <div className="h-64 rounded-lg border bg-secondary/30 animate-pulse" />
+            <div className="h-64 rounded-2xl border bg-secondary/30 animate-pulse" />
           ) : chartPoints.length < 2 ? (
-            <div className="rounded-lg border border-dashed p-16 text-center text-muted-foreground text-sm">
+            <div className="rounded-2xl border border-dashed p-16 text-center text-muted-foreground text-sm">
               {chartPoints.length === 0 ? "Sin datos registrados para esta medida." : "Necesitas al menos 2 registros para ver la gráfica."}
             </div>
           ) : (
-            <div className="rounded-lg border bg-card p-5">
+            <div className="rounded-2xl border bg-card p-5">
               <p className="text-sm font-semibold mb-4">
                 {selectedMeasurement?.name} ({selectedMeasurement?.unit})
               </p>
@@ -478,7 +478,7 @@ export default function BodyTrackerPage() {
               </ResponsiveContainer>
 
               {clickedChartDate && (
-                <div className="mt-4 rounded-lg border bg-secondary/20 p-4">
+                <div className="mt-4 rounded-2xl border bg-secondary/20 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-semibold">Medidas del {new Date(clickedChartDate).toLocaleDateString("es-ES", { dateStyle: "long" })}</p>
                     <button onClick={() => setClickedChartDate(null)} className="text-xs text-muted-foreground hover:text-foreground">Cerrar ✕</button>

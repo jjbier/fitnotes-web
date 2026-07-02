@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useRef, useState, use } from "react";
 import Link from "next/link";
+import { ChevronLeft, Share2, CalendarDays, CheckSquare, Dumbbell } from "lucide-react";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
 import NavigationPanel from "@/components/workout/NavigationPanel";
 import WorkoutTimer from "@/components/workout/WorkoutTimer";
+import FinishSummaryModal from "@/components/workout/FinishSummaryModal";
 import ShareWorkoutModal from "@/components/workout/ShareWorkoutModal";
 import CopyWorkoutModal from "@/components/workout/CopyWorkoutModal";
 import MoveWorkoutModal from "@/components/workout/MoveWorkoutModal";
+import EmptyState from "@/components/EmptyState";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { readBool, SETTING_KEYS } from "@/lib/settings";
 import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
@@ -28,12 +32,15 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const loadWorkout = useWorkoutStore((s) => s.loadWorkout);
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const addExerciseToWorkout = useWorkoutStore((s) => s.addExerciseToWorkout);
+  const removeExerciseFromWorkout = useWorkoutStore((s) => s.removeExerciseFromWorkout);
   const reorderExercisesStore = useWorkoutStore((s) => s.reorderExercises);
   const finishWorkout = useWorkoutStore((s) => s.finishWorkout);
   const setLoading = useWorkoutStore((s) => s.setLoading);
 
   const exercises = useExerciseStore((s) => s.exercises);
   const loadExercises = useExerciseStore((s) => s.loadExercises);
+
+  const confirmDelete = useConfirm();
 
   const [userId, setUserId] = useState("");
   const [activeWEId, setActiveWEId] = useState<string | null>(null);
@@ -44,10 +51,19 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const [showMove, setShowMove] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = useState(false);
   useWakeLock(keepScreenOn && !!activeWorkout);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [summaryStats, setSummaryStats] = useState<{ duration: number; exercises: number; sets: number; volume: number } | null>(null);
+  const elapsedRef = useRef(0);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
   const exRepo = createExerciseRepository(client);
+
+  useEffect(() => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }, [activeWorkout?.id]);
 
   useEffect(() => {
     async function load() {
@@ -156,9 +172,44 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     await repo.reorderExercises(updates);
   }
 
+  async function handleDeleteExercise(workoutExerciseId: string, exerciseName: string) {
+    if (!(await confirmDelete({ message: `¿Eliminar "${exerciseName}"? Se eliminarán también todas sus series.` }))) return;
+    removeExerciseFromWorkout(workoutExerciseId);
+    if (activeWEId === workoutExerciseId) setActiveWEId(null);
+    await repo.removeExercise(workoutExerciseId);
+  }
+
+  function toggleSelectMode() {
+    setSelectMode((v) => !v);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedIds.size === 0) return;
+    if (!(await confirmDelete({ message: `¿Eliminar ${selectedIds.size} ejercicio(s)? Se eliminarán también todas sus series.` }))) return;
+    for (const id of selectedIds) {
+      removeExerciseFromWorkout(id);
+      await repo.removeExercise(id);
+    }
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  }
+
   async function handleFinish() {
     if (!activeWorkout) return;
-    await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString() });
+    const allSets = Object.values(sets).flat();
+    const totalSets = allSets.filter((s) => s.is_complete && !s.is_warmup).length;
+    const totalVolume = allSets.filter((s) => !s.is_warmup).reduce((acc, s) => acc + (s.weight && s.reps ? s.weight * s.reps : 0), 0);
+    await repo.updateWorkout(activeWorkout.id, { end_time: new Date().toISOString(), duration_minutes: Math.round(elapsedRef.current / 60) });
+    setSummaryStats({ duration: elapsedRef.current, exercises: workoutExercises.length, sets: totalSets, volume: totalVolume });
     finishWorkout();
     setActiveWEId(null);
     autoBackupToDriveIfEnabled();
@@ -171,43 +222,56 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
         <Link
           href="/calendar"
           aria-label="Volver al calendario"
-          className="rounded-md border px-2 py-1 text-sm hover:bg-secondary"
+          className="rounded-xl border px-2 py-1 text-sm hover:bg-secondary"
         >
-          <span aria-hidden="true">←</span>
+          <ChevronLeft size={16} aria-hidden="true" />
         </Link>
         <div className="flex-1">
           <div className="flex items-baseline gap-3">
             <h1 className="text-2xl font-bold tracking-tight">Entrenamiento</h1>
-            {activeWorkout && <WorkoutTimer startTime={activeWorkout.start_time} />}
+            {activeWorkout && activeWorkout.id && !activeWorkout.end_time && (
+              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
+            )}
           </div>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(date)}</p>
         </div>
-        {activeWorkout && (
-          <div className="flex gap-2">
+        {activeWorkout && activeWorkout.id && (
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowShare(true)}
-              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+              className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
             >
-              Compartir
+              <Share2 size={14} aria-hidden="true" /> Compartir
             </button>
             <button
               onClick={() => setShowCopy(true)}
-              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+              className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
             >
               Copiar de…
             </button>
             <button
               onClick={() => setShowMove(true)}
-              className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+              className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
             >
-              Mover a…
+              <CalendarDays size={14} aria-hidden="true" /> Mover
             </button>
-            <button
-              onClick={handleFinish}
-              className="rounded-md border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
-            >
-              Finalizar
-            </button>
+            {workoutExercises.length > 0 && (
+              <button
+                onClick={toggleSelectMode}
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium ${selectMode ? "border-primary text-primary" : "hover:bg-secondary"}`}
+                aria-pressed={selectMode}
+              >
+                <CheckSquare size={14} aria-hidden="true" /> {selectMode ? "Cancelar" : "Seleccionar"}
+              </button>
+            )}
+            {!activeWorkout.end_time && (
+              <button
+                onClick={handleFinish}
+                className="rounded-xl border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
+              >
+                Finalizar
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -215,23 +279,32 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 rounded-lg border bg-secondary/30 animate-pulse" />
+            <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />
           ))}
         </div>
       ) : !activeWorkout || !activeWorkout.id ? (
-        <div className="rounded-lg border bg-card p-10 text-center space-y-4">
-          <p className="text-muted-foreground text-sm">Sin entrenamiento para este día.</p>
-          <button
-            onClick={handleStartWorkout}
-            className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Iniciar entrenamiento
-          </button>
-        </div>
+        <EmptyState
+          icon={Dumbbell}
+          title="Sin entrenamiento aún"
+          description="Inicia un entrenamiento para registrar tus series y hacer seguimiento del progreso."
+          action={{ label: "Iniciar entrenamiento", onClick: handleStartWorkout }}
+        />
       ) : (
         <div className="flex gap-5 items-start">
           {/* NavigationPanel — sidebar */}
-          <aside className="w-52 shrink-0 rounded-lg border bg-card p-3 sticky top-4 hidden md:block">
+          <aside className="w-56 shrink-0 rounded-2xl border bg-card p-3 sticky top-4 hidden md:block">
+            {selectMode && (
+              <div className="mb-2 flex items-center justify-between rounded-xl bg-primary/10 px-2 py-1.5">
+                <span className="text-xs font-medium text-primary">{selectedIds.size} sel.</span>
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={selectedIds.size === 0}
+                  className="text-xs font-semibold text-destructive disabled:opacity-40"
+                >
+                  Eliminar
+                </button>
+              </div>
+            )}
             <NavigationPanel
               workoutExercises={workoutExercises}
               exercises={exercises}
@@ -239,36 +312,43 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
               activeExerciseId={activeWEId}
               onSelectExercise={setActiveWEId}
               onAddExercise={() => setShowExPicker((v) => !v)}
-              onReorderExercises={handleReorderExercises}
+              onReorderExercises={activeWorkout.end_time ? undefined : handleReorderExercises}
+              onDeleteExercise={activeWorkout.end_time ? undefined : handleDeleteExercise}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
             />
           </aside>
 
           {/* Main content */}
           <div className="flex-1 space-y-4 min-w-0">
-            {/* Mobile: exercise tabs (same pattern as dashboard) */}
-            <div className="flex gap-2 flex-wrap md:hidden">
-              {workoutExercises.map((we) => {
-                const ex = exercises.find((e) => e.id === we.exercise_id);
-                return (
+            {/* Mobile: exercise list (same pattern as sidebar) */}
+            <div className="md:hidden">
+              {selectMode && (
+                <div className="mb-2 flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2">
+                  <span className="text-sm font-medium text-primary">{selectedIds.size} seleccionado(s)</span>
                   <button
-                    key={we.id}
-                    onClick={() => setActiveWEId(we.id)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                      activeWEId === we.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "hover:bg-secondary"
-                    }`}
+                    onClick={handleDeleteSelected}
+                    disabled={selectedIds.size === 0}
+                    className="text-sm font-semibold text-destructive disabled:opacity-40"
                   >
-                    {ex?.name ?? we.exercise_id}
+                    Eliminar seleccionados
                   </button>
-                );
-              })}
-              <button
-                onClick={() => setShowExPicker((v) => !v)}
-                className="rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground hover:bg-secondary"
-              >
-                + Ejercicio
-              </button>
+                </div>
+              )}
+              <NavigationPanel
+                workoutExercises={workoutExercises}
+                exercises={exercises}
+                sets={sets}
+                activeExerciseId={activeWEId}
+                onSelectExercise={setActiveWEId}
+                onAddExercise={() => setShowExPicker((v) => !v)}
+                onReorderExercises={activeWorkout.end_time ? undefined : handleReorderExercises}
+                onDeleteExercise={activeWorkout.end_time ? undefined : handleDeleteExercise}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+              />
             </div>
 
             {/* Exercise picker */}
@@ -278,7 +358,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
                   value={selectedExId}
                   onChange={(e) => setSelectedExId(e.target.value)}
                   aria-label="Seleccionar ejercicio"
-                  className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
                   <option value="">Seleccionar ejercicio…</option>
                   {exercises.map((ex) => (
@@ -287,13 +367,13 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
                 </select>
                 <button
                   onClick={handleAddExercise}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   Añadir
                 </button>
                 <button
                   onClick={() => { setShowExPicker(false); setSelectedExId(""); }}
-                  className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+                  className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
                 >
                   Cancelar
                 </button>
@@ -301,12 +381,12 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             )}
 
             {/* TrainingScreen */}
-            {activeWEId ? (
-              <div className="rounded-lg border bg-card p-4">
+            {selectMode ? null : activeWEId ? (
+              <div className="rounded-2xl border bg-card p-4">
                 <TrainingScreen workoutExerciseId={activeWEId} userId={userId} />
               </div>
             ) : (
-              <div className="rounded-lg border bg-card p-10 text-center">
+              <div className="rounded-2xl border bg-card p-10 text-center">
                 <p className="text-sm text-muted-foreground">
                   Selecciona un ejercicio para ver sus series.
                 </p>
@@ -366,6 +446,10 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           }}
           onClose={() => setShowMove(false)}
         />
+      )}
+
+      {summaryStats && (
+        <FinishSummaryModal stats={summaryStats} onClose={() => setSummaryStats(null)} />
       )}
     </div>
   );

@@ -33,7 +33,7 @@ export default function SetList({
   }
 
   return (
-    <div className="rounded-md border divide-y">
+    <div className="rounded-xl border divide-y">
       {sets.map((set, idx) => (
         <div key={set.id} className="flex items-center gap-3 px-4 py-3 text-sm">
           <span className="w-6 text-center text-muted-foreground text-xs">

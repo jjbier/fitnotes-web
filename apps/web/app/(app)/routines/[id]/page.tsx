@@ -11,8 +11,11 @@ import {
   createExerciseRepository,
   createWorkoutRepository,
 } from "@fitnotes/database";
+import { CalendarDays } from "lucide-react";
 import DaySection from "@/components/routines/DaySection";
 import PredefinedSetsModal from "@/components/routines/PredefinedSetsModal";
+import EmptyState from "@/components/EmptyState";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -27,6 +30,7 @@ export default function RoutineDetailPage({ params }: Props) {
   const routineDayExercises = useRoutineStore((s) => s.routineDayExercises);
   const predefinedSets = useRoutineStore((s) => s.predefinedSets);
   const isLoading = useRoutineStore((s) => s.isLoading);
+  const confirmDelete = useConfirm();
 
   const loadRoutines = useRoutineStore((s) => s.loadRoutines);
   const loadRoutineDays = useRoutineStore((s) => s.loadRoutineDays);
@@ -164,7 +168,7 @@ export default function RoutineDetailPage({ params }: Props) {
   }
 
   async function handleDeleteDay(dayId: string) {
-    if (!confirm("¿Eliminar este día y todos sus ejercicios?")) return;
+    if (!(await confirmDelete("¿Eliminar este día y todos sus ejercicios?"))) return;
     const { error } = await repo.deleteDay(dayId);
     if (error) return;
     deleteRoutineDay(routineId, dayId);
@@ -440,7 +444,7 @@ export default function RoutineDetailPage({ params }: Props) {
         </h1>
         <button
           onClick={() => setEditMode((v) => !v)}
-          className={`rounded-md border px-4 py-2 text-sm font-medium ${
+          className={`rounded-xl border px-4 py-2 text-sm font-medium ${
             editMode ? "bg-primary text-primary-foreground" : "hover:bg-secondary"
           }`}
         >
@@ -449,7 +453,7 @@ export default function RoutineDetailPage({ params }: Props) {
         {editMode && (
           <button
             onClick={() => setShowNewDay(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             + Añadir día
           </button>
@@ -472,17 +476,17 @@ export default function RoutineDetailPage({ params }: Props) {
             onChange={(e) => setNewDayName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddDay()}
             placeholder="Nombre del día (p. ej. Empuje, Tirón, Piernas)"
-            className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <button
             onClick={handleAddDay}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Añadir
           </button>
           <button
             onClick={() => setShowNewDay(false)}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+            className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
           >
             Cancelar
           </button>
@@ -493,13 +497,16 @@ export default function RoutineDetailPage({ params }: Props) {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 rounded-lg border bg-secondary/30 animate-pulse" />
+            <div key={i} className="h-24 rounded-2xl border bg-secondary/30 animate-pulse" />
           ))}
         </div>
       ) : days.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-          Sin días aún. Activa Editar y añade tu primer día.
-        </div>
+        <EmptyState
+          icon={CalendarDays}
+          title="Sin días aún"
+          description="Añade el primer día de esta rutina para empezar a planificar ejercicios."
+          action={{ label: "Añadir día", onClick: () => { setEditMode(true); setShowNewDay(true); } }}
+        />
       ) : (
         <div className="space-y-3">
           {days.map((day) => (
@@ -512,7 +519,7 @@ export default function RoutineDetailPage({ params }: Props) {
               className={[
                 "transition-opacity",
                 dragDayId === day.id ? "opacity-40" : "",
-                dragOverDayId === day.id && dragDayId !== day.id ? "ring-2 ring-primary rounded-lg" : "",
+                dragOverDayId === day.id && dragDayId !== day.id ? "ring-2 ring-primary rounded-2xl" : "",
                 editMode ? "cursor-grab active:cursor-grabbing" : "",
               ].join(" ")}
             >

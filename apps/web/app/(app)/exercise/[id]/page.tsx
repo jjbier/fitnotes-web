@@ -6,8 +6,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useExerciseStore, filterExercises, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
+import { Dumbbell } from "lucide-react";
 import ExerciseCard from "@/components/exercises/ExerciseCard";
 import ExerciseForm from "@/components/exercises/ExerciseForm";
+import EmptyState from "@/components/EmptyState";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { Exercise, Category } from "@fitnotes/core";
 
 function useDebounce<T>(value: T, delay = 300): T {
@@ -32,6 +35,7 @@ export default function ExerciseCategoryPage() {
   const deleteExercise = useExerciseStore((s) => s.deleteExercise);
   const toggleFavorite = useExerciseStore((s) => s.toggleFavorite);
   const setLoading = useExerciseStore((s) => s.setLoading);
+  const confirmDelete = useConfirm();
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Exercise | null>(null);
@@ -163,7 +167,7 @@ export default function ExerciseCategoryPage() {
   }, [editing]);
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar este ejercicio y todo su historial?")) return;
+    if (!(await confirmDelete("¿Eliminar este ejercicio y todo su historial?"))) return;
     const saved = exercises.find((e) => e.id === id);
     deleteExercise(id);
     const { error } = await repo.deleteExercise(id);
@@ -196,7 +200,7 @@ export default function ExerciseCategoryPage() {
         {!isFavoritesView && (
           <button
             onClick={() => setShowForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             + Nuevo ejercicio
           </button>
@@ -211,12 +215,12 @@ export default function ExerciseCategoryPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Buscar ejercicios… (p. ej. &quot;press manc&quot;)"
-        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
       {/* New form */}
       {showForm && (
-        <div className="rounded-lg border bg-card p-5">
+        <div className="rounded-2xl border bg-card p-5">
           <h2 className="text-sm font-semibold mb-4">Nuevo ejercicio</h2>
           <ExerciseForm
             categories={categories}
@@ -231,7 +235,7 @@ export default function ExerciseCategoryPage() {
 
       {/* Edit form */}
       {editing && (
-        <div className="rounded-lg border bg-card p-5">
+        <div className="rounded-2xl border bg-card p-5">
           <h2 className="text-sm font-semibold mb-4">Editar ejercicio</h2>
           <ExerciseForm
             categories={categories}
@@ -248,13 +252,22 @@ export default function ExerciseCategoryPage() {
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-14 rounded-lg border bg-secondary/30 animate-pulse" />
+            <div key={i} className="h-14 rounded-2xl border bg-secondary/30 animate-pulse" />
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-          {search ? `Sin ejercicios que coincidan con "${search}"` : "Sin ejercicios aún. ¡Añade el primero!"}
-        </div>
+        search ? (
+          <div className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground text-sm">
+            {`Sin ejercicios que coincidan con "${search}"`}
+          </div>
+        ) : (
+          <EmptyState
+            icon={Dumbbell}
+            title="Sin ejercicios aún"
+            description="Añade el primer ejercicio de esta categoría."
+            action={{ label: "Añadir ejercicio", onClick: () => setShowForm(true) }}
+          />
+        )
       ) : (
         <div ref={listRef} style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
           {rowVirtualizer.getVirtualItems().map((virtualItem) => {

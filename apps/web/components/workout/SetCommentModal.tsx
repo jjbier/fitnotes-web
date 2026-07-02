@@ -43,27 +43,27 @@ export default function SetCommentModal({ initialComment, onSave, onClose }: Pro
           onChange={(e) => setValue(e.target.value)}
           rows={3}
           placeholder="Añade una nota sobre esta serie…"
-          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+          className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
         />
 
         <div className="flex gap-2 justify-end">
           {value && (
             <button
               onClick={() => { onSave(""); onClose(); }}
-              className="rounded-md border px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
+              className="rounded-xl border px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
             >
               Borrar
             </button>
           )}
           <button
             onClick={onClose}
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"
+            className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"
           >
             Cancelar
           </button>
           <button
             onClick={() => { onSave(value.trim()); onClose(); }}
-            className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="rounded-xl bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Guardar
           </button>

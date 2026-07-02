@@ -38,13 +38,13 @@ export default function RootPage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/login"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Iniciar sesión
           </Link>
           <Link
             href="/register"
-            className="inline-flex items-center justify-center rounded-lg border border-input bg-background px-6 py-3 text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+            className="inline-flex items-center justify-center rounded-2xl border border-input bg-background px-6 py-3 text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
           >
             Registrarse
           </Link>

@@ -52,7 +52,7 @@ export default function Sidebar() {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "bg-primary text-primary-foreground"
                   : "text-foreground hover:bg-secondary"

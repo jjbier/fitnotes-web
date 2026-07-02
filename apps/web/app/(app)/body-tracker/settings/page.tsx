@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft, GripVertical } from "lucide-react";
 import { GoalType } from "@fitnotes/core";
 import { createBrowserClient, createBodyTrackerRepository } from "@fitnotes/database";
 
@@ -155,16 +156,16 @@ export default function BodyTrackerSettingsPage() {
         <Link
           href="/body-tracker"
           aria-label="Volver"
-          className="rounded-md border px-2 py-1 text-sm hover:bg-secondary"
+          className="rounded-xl border px-2 py-1 text-sm hover:bg-secondary"
         >
-          <span aria-hidden="true">←</span>
+          <ChevronLeft size={16} aria-hidden="true" />
         </Link>
         <h1 className="text-2xl font-bold tracking-tight">Configuración de medidas</h1>
       </div>
 
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-lg border bg-secondary/30 animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />)}
         </div>
       ) : (
         <>
@@ -184,12 +185,14 @@ export default function BodyTrackerSettingsPage() {
                     onDrop={() => handleMeasurementDrop(m.id)}
                     onDragEnd={() => { setDraggedId(null); setDragOverId(null); }}
                     className={[
-                      "flex items-center gap-2 rounded-lg transition-colors",
+                      "flex items-center gap-2 rounded-2xl transition-colors",
                       draggedId === m.id ? "opacity-40" : "",
                       dragOverId === m.id && draggedId !== m.id ? "ring-2 ring-primary" : "",
                     ].join(" ")}
                   >
-                    <span className="text-muted-foreground select-none opacity-30 hover:opacity-70 cursor-grab active:cursor-grabbing shrink-0" title="Arrastrar para reordenar">⠿</span>
+                    <span className="shrink-0" title="Arrastrar para reordenar">
+                      <GripVertical className="text-muted-foreground select-none opacity-30 hover:opacity-70 cursor-grab active:cursor-grabbing" size={16} aria-hidden="true" />
+                    </span>
                     <div className="flex-1">
                       <MeasurementRow
                         m={m}
@@ -260,13 +263,13 @@ export default function BodyTrackerSettingsPage() {
             {!showCreateForm ? (
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="flex items-center gap-2 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground hover:bg-secondary w-full"
+                className="flex items-center gap-2 rounded-2xl border border-dashed px-4 py-3 text-sm text-muted-foreground hover:bg-secondary w-full"
               >
                 <span className="text-lg leading-none">+</span>
                 Nueva medida
               </button>
             ) : (
-              <div className="rounded-lg border bg-card p-5 space-y-4">
+              <div className="rounded-2xl border bg-card p-5 space-y-4">
                 <h2 className="text-sm font-semibold">Nueva medida</h2>
                 <form onSubmit={handleCreate} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
@@ -279,7 +282,7 @@ export default function BodyTrackerSettingsPage() {
                         placeholder="Ej. Cintura"
                         autoFocus
                         required
-                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                     <div className="space-y-1">
@@ -290,7 +293,7 @@ export default function BodyTrackerSettingsPage() {
                         onChange={(e) => setNewUnit(e.target.value)}
                         placeholder="Ej. cm, kg, %"
                         required
-                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                   </div>
@@ -300,7 +303,7 @@ export default function BodyTrackerSettingsPage() {
                       <select
                         value={newGoalType}
                         onChange={(e) => setNewGoalType(e.target.value as GoalType)}
-                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       >
                         <option value={GoalType.DECREASE}>Reducir</option>
                         <option value={GoalType.INCREASE}>Aumentar</option>
@@ -315,7 +318,7 @@ export default function BodyTrackerSettingsPage() {
                         value={newGoalValue}
                         onChange={(e) => setNewGoalValue(e.target.value)}
                         placeholder="Ej. 80"
-                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                   </div>
@@ -323,14 +326,14 @@ export default function BodyTrackerSettingsPage() {
                     <button
                       type="button"
                       onClick={() => { setShowCreateForm(false); setNewName(""); setNewUnit(""); setNewGoalValue(""); }}
-                      className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+                      className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={creating || !newName.trim() || !newUnit.trim()}
-                      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       {creating ? "Creando…" : "Crear medida"}
                     </button>
@@ -362,7 +365,7 @@ function MeasurementRow({
   onAskEdit: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
+    <div className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3">
       <div className="flex items-center gap-3">
         <button
           onClick={onToggle}
@@ -390,13 +393,13 @@ function MeasurementRow({
           <button
             onClick={onDelete}
             disabled={saving}
-            className="rounded-md bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            className="rounded-xl bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
           >
             Sí
           </button>
           <button
             onClick={onCancelDelete}
-            className="rounded-md border px-2 py-1 text-xs hover:bg-secondary"
+            className="rounded-xl border px-2 py-1 text-xs hover:bg-secondary"
           >
             No
           </button>
@@ -407,13 +410,13 @@ function MeasurementRow({
           <button
             onClick={onReset}
             disabled={saving}
-            className="rounded-md bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            className="rounded-xl bg-destructive px-2 py-1 text-xs text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
           >
             Sí
           </button>
           <button
             onClick={onCancelReset}
-            className="rounded-md border px-2 py-1 text-xs hover:bg-secondary"
+            className="rounded-xl border px-2 py-1 text-xs hover:bg-secondary"
           >
             No
           </button>
@@ -469,7 +472,7 @@ function EditMeasurementForm({
   onCancel: () => void;
 }) {
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border bg-card p-4 space-y-3 ml-4">
+    <form onSubmit={onSubmit} className="rounded-2xl border bg-card p-4 space-y-3 ml-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground uppercase tracking-wide">Nombre</label>
@@ -478,7 +481,7 @@ function EditMeasurementForm({
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
             required
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
         <div className="space-y-1">
@@ -488,7 +491,7 @@ function EditMeasurementForm({
             value={unit}
             onChange={(e) => onUnitChange(e.target.value)}
             required
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
       </div>
@@ -498,7 +501,7 @@ function EditMeasurementForm({
           <select
             value={goalType}
             onChange={(e) => onGoalTypeChange(e.target.value as GoalType)}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value={GoalType.DECREASE}>Reducir</option>
             <option value={GoalType.INCREASE}>Aumentar</option>
@@ -512,7 +515,7 @@ function EditMeasurementForm({
             step="any"
             value={goalValue}
             onChange={(e) => onGoalValueChange(e.target.value)}
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
       </div>
@@ -520,14 +523,14 @@ function EditMeasurementForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+          className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={saving || !name.trim() || !unit.trim()}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {saving ? "Guardando…" : "Guardar cambios"}
         </button>

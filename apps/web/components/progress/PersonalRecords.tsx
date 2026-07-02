@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trophy } from "lucide-react";
 import type { PersonalRecord, Exercise } from "@fitnotes/core";
 import { calculate1RM, estimateRepMax } from "@fitnotes/core";
 
@@ -16,9 +17,10 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
 
   if (records.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-8 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
+        <Trophy className="text-muted-foreground" size={32} aria-hidden="true" />
         <p className="text-sm text-muted-foreground">Sin récords personales aún.</p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground">
           Completa series para registrar tus récords automáticamente.
         </p>
       </div>
@@ -47,12 +49,12 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
 
     return (
       <div className="space-y-3">
-        <div className="flex rounded-lg border bg-secondary/20 p-0.5 w-fit">
+        <div className="flex rounded-2xl border bg-secondary/20 p-0.5 w-fit">
           {(["real", "estimado"] as const).map((sub) => (
             <button
               key={sub}
               onClick={() => setSubTab(sub)}
-              className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-xl px-4 py-1.5 text-xs font-medium transition-colors ${
                 subTab === sub
                   ? "bg-white shadow-sm dark:bg-secondary"
                   : "text-muted-foreground hover:text-foreground"
@@ -66,7 +68,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
         {subTab === "real" ? (
           <div className="space-y-2">
             {exPRs.map((pr) => (
-              <div key={pr.id} className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
+              <div key={pr.id} className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm">
                 <div>
                   <span className="font-medium">{pr.reps} rep{pr.reps !== 1 ? "s" : ""}</span>
                   <span className="ml-2 font-semibold text-muted-foreground">{pr.weight} kg</span>
@@ -102,7 +104,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
               return (
                 <div
                   key={reps}
-                  className={`flex items-center justify-between rounded-md border px-4 py-2.5 text-sm ${
+                  className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm ${
                     actualPR ? "border-primary/30 bg-primary/5" : ""
                   }`}
                 >
@@ -137,7 +139,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
   }, {});
 
   return (
-    <div className="rounded-md border overflow-hidden">
+    <div className="rounded-xl border overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-secondary/50">
           <tr>

@@ -43,7 +43,7 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="p.ej. Pecho"
-          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />
       </div>
@@ -73,7 +73,7 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
             onChange={(e) => setColor(e.target.value)}
             placeholder="#6366f1"
             aria-label="Color personalizado (hex)"
-            className="w-28 rounded-md border px-2 py-1 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-28 rounded-xl border px-2 py-1 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       </div>
@@ -84,14 +84,14 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+          className="flex-1 rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? "Guardando…" : initial?.id ? "Actualizar" : "Crear"}
         </button>

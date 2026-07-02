@@ -98,7 +98,7 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
         role="dialog"
         aria-modal="true"
         aria-labelledby="predefined-sets-title"
-        className="bg-background rounded-lg border shadow-lg w-full max-w-sm mx-4 p-5"
+        className="bg-background rounded-2xl border shadow-lg w-full max-w-sm mx-4 p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="predefined-sets-title" className="font-semibold text-base mb-0.5">Series predefinidas</h2>

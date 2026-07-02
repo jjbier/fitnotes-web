@@ -54,7 +54,7 @@ export default function SetForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-end gap-3 rounded-md border bg-secondary/30 px-4 py-3">
+    <form onSubmit={handleSubmit} className="flex items-end gap-3 rounded-xl border bg-secondary/30 px-4 py-3">
       {showWeight && (
         <div className="flex flex-col gap-1">
           <label htmlFor="sf-weight" className="text-xs text-muted-foreground">Peso (kg)</label>
@@ -65,7 +65,7 @@ export default function SetForm({
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             placeholder="0"
-            className="w-24 rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-24 rounded-xl border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       )}
@@ -80,7 +80,7 @@ export default function SetForm({
             value={reps}
             onChange={(e) => setReps(e.target.value)}
             placeholder="0"
-            className="w-20 rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-20 rounded-xl border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       )}
@@ -95,7 +95,7 @@ export default function SetForm({
             value={distance}
             onChange={(e) => setDistance(e.target.value)}
             placeholder="0"
-            className="w-28 rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-28 rounded-xl border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       )}
@@ -110,7 +110,7 @@ export default function SetForm({
             value={timeSeconds}
             onChange={(e) => setTimeSeconds(e.target.value)}
             placeholder="0"
-            className="w-24 rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-24 rounded-xl border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       )}
@@ -120,14 +120,14 @@ export default function SetForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"
+            className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"
           >
             Cancelar
           </button>
         )}
         <button
           type="submit"
-          className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="rounded-xl bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           Registrar serie
         </button>

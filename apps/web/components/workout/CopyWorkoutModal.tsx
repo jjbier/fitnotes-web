@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { formatWorkoutDate } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
 import type { WorkoutExercise, Workout } from "@fitnotes/core";
@@ -98,7 +99,7 @@ export default function CopyWorkoutModal({
           {loading ? (
             <div className="space-y-2 p-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 rounded-lg bg-secondary/40 animate-pulse" />
+                <div key={i} className="h-12 rounded-2xl bg-secondary/40 animate-pulse" />
               ))}
             </div>
           ) : workouts.length === 0 ? (
@@ -111,7 +112,7 @@ export default function CopyWorkoutModal({
                 key={w.id}
                 onClick={() => handleCopy(w.id)}
                 disabled={copying}
-                className="w-full flex items-center gap-3 rounded-lg border px-4 py-3 text-sm text-left hover:bg-secondary/50 disabled:opacity-50 transition-colors"
+                className="w-full flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm text-left hover:bg-secondary/50 disabled:opacity-50 transition-colors"
               >
                 <span className="text-primary">📅</span>
                 <span className="flex-1 font-medium">{formatWorkoutDate(w.date)}</span>
@@ -120,7 +121,7 @@ export default function CopyWorkoutModal({
                     {w.comment}
                   </span>
                 )}
-                <span className="text-muted-foreground text-xs">→</span>
+                <ChevronRight className="text-muted-foreground" size={14} aria-hidden="true" />
               </button>
             ))
           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, MessageCircle, Trash2, Trophy } from "lucide-react";
 import type { Set, ExerciseType } from "@fitnotes/core";
 
 interface Props {
@@ -15,14 +16,14 @@ interface Props {
 
 export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggleComplete, onComment, isPR, weightStep = 0.5 }: Props) {
   return (
-    <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${set.is_complete ? "bg-primary/5 border-primary/20" : ""}`}>
+    <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${set.is_complete ? "bg-primary/5 border-primary/20" : ""}`}>
       <button
         onClick={() => onToggleComplete(set.id, set.is_complete)}
         className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center ${set.is_complete ? "bg-primary border-primary text-white" : "border-muted-foreground/40"}`}
         aria-label={set.is_complete ? "Marcar serie como pendiente" : "Marcar serie como completada"}
         aria-pressed={set.is_complete}
       >
-        {set.is_complete && <span className="text-xs" aria-hidden="true">✓</span>}
+        {set.is_complete && <Check size={12} aria-hidden="true" />}
       </button>
 
       <div className="flex-1 flex items-center gap-2 flex-wrap">
@@ -100,23 +101,27 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
         )}
       </div>
 
-      {isPR && <span title="Récord personal" className="text-amber-500 shrink-0" aria-label="Récord personal">🏆</span>}
+      {isPR && (
+        <span title="Récord personal" className="shrink-0 text-amber-500" aria-label="Récord personal">
+          <Trophy size={14} fill="currentColor" aria-hidden="true" />
+        </span>
+      )}
 
       <button
         onClick={() => onComment(set.id)}
         aria-label={set.comment ? `Comentario: ${set.comment}` : "Añadir comentario"}
         title={set.comment || "Añadir comentario"}
-        className={`shrink-0 text-sm leading-none ${set.comment ? "text-blue-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+        className={`shrink-0 ${set.comment ? "text-blue-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
       >
-        💬
+        <MessageCircle size={15} aria-hidden="true" />
       </button>
 
       <button
         onClick={() => onDelete(set.id)}
-        className="text-muted-foreground hover:text-destructive text-xs shrink-0"
+        className="shrink-0 text-muted-foreground hover:text-destructive"
         aria-label="Eliminar serie"
       >
-        <span aria-hidden="true">✕</span>
+        <Trash2 size={14} aria-hidden="true" />
       </button>
     </div>
   );

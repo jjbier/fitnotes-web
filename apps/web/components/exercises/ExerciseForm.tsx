@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ExerciseType } from "@fitnotes/core";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { Category, Exercise } from "@fitnotes/core";
 
 const TYPE_LABELS: Record<ExerciseType, string> = {
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndNew, onCancel, onCreateCategory, onConvertWeights }: Props) {
+  const confirm = useConfirm();
   const [form, setForm] = useState<FormData>({
     name: initial?.name ?? "",
     category_id: initial?.category_id ?? (categories[0]?.id ?? ""),
@@ -85,9 +87,11 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
 
     // Warn if type changed when editing
     if (initial?.id && form.type !== initial.type) {
-      const ok = window.confirm(
-        "Cambiar el tipo eliminará los campos que no existen en el nuevo tipo del historial de este ejercicio. ¿Continuar?"
-      );
+      const ok = await confirm({
+        title: "Cambiar tipo de ejercicio",
+        message: "Cambiar el tipo eliminará los campos que no existen en el nuevo tipo del historial de este ejercicio. ¿Continuar?",
+        confirmLabel: "Continuar",
+      });
       if (!ok) return;
     }
 
@@ -96,13 +100,23 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
     const unitChanged = initial?.id && isWeightType && initial.weight_unit && form.weight_unit !== initial.weight_unit;
     let shouldConvert = false;
     if (unitChanged) {
-      const ok = window.confirm(`¿Cambiar la unidad de peso a ${form.weight_unit}?`);
+      const ok = await confirm({
+        title: "Cambiar unidad de peso",
+        message: `¿Cambiar la unidad de peso a ${form.weight_unit}?`,
+        confirmLabel: "Cambiar",
+        destructive: false,
+      });
       if (!ok) return;
-      shouldConvert = window.confirm(
-        `¿Convertir los valores históricos automáticamente?\n\n` +
-        `Ejemplo: 100 ${initial.weight_unit} → ${Math.round(100 * (initial.weight_unit === "kg" ? 2.20462 : 0.453592) * 10) / 10} ${form.weight_unit}\n\n` +
-        `Acepta para convertir. Cancela para solo cambiar la etiqueta.`
-      );
+      shouldConvert = await confirm({
+        title: "Convertir historial",
+        message:
+          `¿Convertir los valores históricos automáticamente?\n\n` +
+          `Ejemplo: 100 ${initial.weight_unit} → ${Math.round(100 * (initial.weight_unit === "kg" ? 2.20462 : 0.453592) * 10) / 10} ${form.weight_unit}\n\n` +
+          `Acepta para convertir. Cancela para solo cambiar la etiqueta.`,
+        confirmLabel: "Convertir",
+        cancelLabel: "Solo cambiar etiqueta",
+        destructive: false,
+      });
     }
 
     setLoading(true);
@@ -140,7 +154,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
           value={form.name}
           onChange={(e) => patch("name", e.target.value)}
           placeholder="p.ej. Press de banca"
-          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />
       </div>
@@ -153,7 +167,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
             id="ex-category"
             value={form.category_id}
             onChange={(e) => patch("category_id", e.target.value)}
-            className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+            className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
           >
             {localCategories.length === 0 && (
               <option value="" disabled>— sin categorías todavía —</option>
@@ -166,7 +180,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
             <button
               type="button"
               onClick={() => setShowNewCat((v) => !v)}
-              className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-secondary"
+              className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-secondary"
               title="Crear nueva categoría"
             >
               {showNewCat ? "✕" : "+ Nueva"}
@@ -176,7 +190,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
 
         {/* Inline new-category form */}
         {showNewCat && onCreateCategory && (
-          <div className="rounded-md border bg-secondary/20 p-3 space-y-3">
+          <div className="rounded-xl border bg-secondary/20 p-3 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nueva categoría</p>
             <label htmlFor="new-cat-name" className="sr-only">Nombre de la nueva categoría</label>
             <input
@@ -184,7 +198,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder="Nombre de categoría"
-              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               autoFocus
             />
             <div className="flex gap-1.5 flex-wrap">
@@ -204,7 +218,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
               type="button"
               onClick={handleCreateCategory}
               disabled={catLoading || !newCatName.trim()}
-              className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="w-full rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {catLoading ? "Creando…" : "Crear categoría"}
             </button>
@@ -221,7 +235,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
               key={t}
               type="button"
               onClick={() => patch("type", t)}
-              className={`rounded-md border px-3 py-2 text-xs font-medium text-left transition-colors ${
+              className={`rounded-xl border px-3 py-2 text-xs font-medium text-left transition-colors ${
                 form.type === t
                   ? "border-primary bg-primary text-primary-foreground"
                   : "hover:bg-secondary"
@@ -243,7 +257,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
                 key={unit}
                 type="button"
                 onClick={() => patch("weight_unit", unit)}
-                className={`flex-1 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+                className={`flex-1 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
                   form.weight_unit === unit
                     ? "border-primary bg-primary text-primary-foreground"
                     : "hover:bg-secondary"
@@ -267,7 +281,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
           onChange={(e) => patch("notes", e.target.value)}
           placeholder="Indicaciones, tiempo de descanso, configuración de discos…"
           rows={2}
-          className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
       </div>
 
@@ -277,7 +291,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded-md border px-4 py-2 text-sm font-medium hover:bg-secondary"
+          className="flex-1 rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
         >
           Cancelar
         </button>
@@ -286,7 +300,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
             type="button"
             onClick={() => performSave(true)}
             disabled={loading}
-            className="flex-1 rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+            className="flex-1 rounded-xl border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
           >
             Guardar y nuevo
           </button>
@@ -294,7 +308,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? "Guardando…" : initial?.id ? "Actualizar" : "Crear"}
         </button>

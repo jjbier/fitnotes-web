@@ -127,7 +127,7 @@ export default function ShareWorkoutModal({
               return (
                 <label
                   key={we.id}
-                  className="flex items-center gap-3 rounded-md border px-3 py-2 cursor-pointer hover:bg-secondary/50"
+                  className="flex items-center gap-3 rounded-xl border px-3 py-2 cursor-pointer hover:bg-secondary/50"
                 >
                   <input
                     type="checkbox"
@@ -147,7 +147,7 @@ export default function ShareWorkoutModal({
           {/* Text preview */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vista previa</p>
-            <pre className="rounded-md bg-secondary/50 px-3 py-2.5 text-xs font-mono whitespace-pre-wrap break-words leading-relaxed">
+            <pre className="rounded-xl bg-secondary/50 px-3 py-2.5 text-xs font-mono whitespace-pre-wrap break-words leading-relaxed">
               {selected.size === 0 ? "Selecciona al menos un ejercicio." : text}
             </pre>
           </div>
@@ -157,14 +157,14 @@ export default function ShareWorkoutModal({
         <div className="flex gap-2 justify-end px-5 py-4 border-t shrink-0">
           <button
             onClick={onClose}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-secondary"
+            className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
           >
             Cancelar
           </button>
           <button
             onClick={handleCopy}
             disabled={selected.size === 0}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 min-w-[120px]"
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 min-w-[120px]"
           >
             {copied ? "¡Copiado! ✓" : "Copiar texto"}
           </button>

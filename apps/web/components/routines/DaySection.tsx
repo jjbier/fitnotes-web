@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 import type { RoutineDay, RoutineDayExercise, Exercise, PredefinedSet } from "@fitnotes/core";
 
 interface Props {
@@ -96,7 +97,7 @@ export default function DaySection({
   }
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-2xl border bg-card">
       {/* Day header */}
       <div className="flex items-center gap-2 p-3 border-b">
         <button
@@ -135,7 +136,7 @@ export default function DaySection({
           <button
             onClick={() => onLogAll(day.id)}
             disabled={isLoggingAll || sortedExercises.length === 0}
-            className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shrink-0"
+            className="rounded-xl bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shrink-0"
           >
             {isLoggingAll ? "Registrando…" : "Registrar todo"}
           </button>
@@ -217,7 +218,7 @@ export default function DaySection({
                     onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
                     onDragEnd={handleExDragEnd}
                     className={[
-                      "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-opacity",
+                      "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-opacity",
                       isBeingDragged ? "opacity-40" : "",
                       isDragTarget ? "ring-2 ring-primary" : "",
                       editMode ? "cursor-grab active:cursor-grabbing" : "",
@@ -285,10 +286,10 @@ export default function DaySection({
                         {/* Remove exercise */}
                         <button
                           onClick={() => onRemoveExercise(rde.id)}
-                          className="text-destructive hover:text-destructive/70 text-xs"
+                          className="text-destructive hover:text-destructive/70"
                           aria-label={`Quitar ${ex?.name ?? "ejercicio"} del día`}
                         >
-                          <span aria-hidden="true">✕</span>
+                          <X size={14} aria-hidden="true" />
                         </button>
                       </div>
                     )}
@@ -305,7 +306,7 @@ export default function DaySection({
                   <select
                     value={selectedExId}
                     onChange={(e) => setSelectedExId(e.target.value)}
-                    className="flex-1 rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="flex-1 rounded-xl border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   >
                     <option value="">Seleccionar ejercicio…</option>
                     {allExercises.map((ex) => (
@@ -316,13 +317,13 @@ export default function DaySection({
                   </select>
                   <button
                     onClick={handleAddExercise}
-                    className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    className="rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     Añadir
                   </button>
                   <button
                     onClick={() => setShowAddEx(false)}
-                    className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary"
+                    className="rounded-xl border px-3 py-1.5 text-xs hover:bg-secondary"
                   >
                     Cancelar
                   </button>
@@ -330,7 +331,7 @@ export default function DaySection({
               ) : (
                 <button
                   onClick={() => setShowAddEx(true)}
-                  className="w-full rounded-md border border-dashed py-2 text-xs text-muted-foreground hover:bg-secondary/50"
+                  className="w-full rounded-xl border border-dashed py-2 text-xs text-muted-foreground hover:bg-secondary/50"
                 >
                   + Añadir ejercicio
                 </button>

@@ -2,9 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { useRoutineStore } from "@fitnotes/core";
 import { createBrowserClient, createRoutineRepository } from "@fitnotes/database";
 import RoutineForm from "@/components/routines/RoutineForm";
+import EmptyState from "@/components/EmptyState";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { Routine } from "@fitnotes/core";
 
 export default function RoutinesPage() {
@@ -15,6 +18,7 @@ export default function RoutinesPage() {
   const updateRoutine = useRoutineStore((s) => s.updateRoutine);
   const deleteRoutine = useRoutineStore((s) => s.deleteRoutine);
   const setLoading = useRoutineStore((s) => s.setLoading);
+  const confirmDelete = useConfirm();
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Routine | null>(null);
@@ -64,7 +68,7 @@ export default function RoutinesPage() {
   }, [editing]);
 
   async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar esta rutina y todos sus días?")) return;
+    if (!(await confirmDelete("¿Eliminar esta rutina y todos sus días?"))) return;
     const { error } = await repo.deleteRoutine(id);
     if (error) return;
     deleteRoutine(id);
@@ -83,21 +87,21 @@ export default function RoutinesPage() {
         <h1 className="text-2xl font-bold tracking-tight">Rutinas</h1>
         <button
           onClick={() => setShowForm(true)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           + Nueva rutina
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-lg border bg-card p-5">
+        <div className="rounded-2xl border bg-card p-5">
           <h2 className="text-sm font-semibold mb-4">Nueva rutina</h2>
           <RoutineForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
         </div>
       )}
 
       {editing && (
-        <div className="rounded-lg border bg-card p-5">
+        <div className="rounded-2xl border bg-card p-5">
           <h2 className="text-sm font-semibold mb-4">Editar rutina</h2>
           <RoutineForm initial={editing} onSubmit={handleUpdate} onCancel={() => setEditing(null)} />
         </div>
@@ -105,29 +109,35 @@ export default function RoutinesPage() {
 
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-lg border bg-secondary/30 animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />)}
         </div>
       ) : routines.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-          Sin rutinas aún. Crea una para guardar tus plantillas de entrenamiento favoritas.
-        </div>
+        <EmptyState
+          icon={ClipboardList}
+          title="Sin rutinas aún"
+          description="Crea una rutina para guardar tus plantillas de entrenamiento favoritas."
+          action={{ label: "Nueva rutina", onClick: () => setShowForm(true) }}
+        />
       ) : (
         <div className="space-y-2">
           {routines.map((r) => (
-            <div key={r.id} className="flex items-center gap-3 rounded-lg border bg-card p-4">
+            <div key={r.id} className="flex items-center gap-3 rounded-2xl border bg-card p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <ClipboardList className="text-primary" size={18} aria-hidden="true" />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{r.name}</p>
                 {r.notes && <p className="text-xs text-muted-foreground truncate">{r.notes}</p>}
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={() => handleCopy(r)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Copiar</button>
-                <button onClick={() => setEditing(r)} className="rounded-md border px-3 py-1.5 text-xs hover:bg-secondary">Editar</button>
-                <Link href={`/routines/${r.id}`} className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                <button onClick={() => handleCopy(r)} className="rounded-xl border px-3 py-1.5 text-xs hover:bg-secondary">Copiar</button>
+                <button onClick={() => setEditing(r)} className="rounded-xl border px-3 py-1.5 text-xs hover:bg-secondary">Editar</button>
+                <Link href={`/routines/${r.id}`} className="rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
                   Abrir
                 </Link>
                 <button
                   onClick={() => handleDelete(r.id)}
-                  className="rounded-md border px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
+                  className="rounded-xl border px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10"
                 >
                   Eliminar
                 </button>

@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 test.describe("Registro de entrenamiento", () => {
   test.beforeEach(async () => {
     if (!process.env["PLAYWRIGHT_USER_EMAIL"]) test.skip();
@@ -13,8 +9,11 @@ test.describe("Registro de entrenamiento", () => {
     await page.goto("/dashboard");
     await expect(page.locator("h1", { hasText: /Entrenamiento/ })).toBeVisible();
 
-    // ── Ir a ayer para evitar conflictos con entrenamientos activos ──────────
-    await page.getByRole("button", { name: "Día anterior" }).click();
+    // ── Ir a un día lejano para evitar conflictos con entrenamientos activos
+    // o ya finalizados de ejecuciones anteriores (cuenta de test compartida) ──
+    for (let i = 0; i < 10; i++) {
+      await page.getByRole("button", { name: "Día anterior" }).click();
+    }
 
     // Esperar a que termine de cargar el día (evita la carrera entre el fetch
     // de getWorkoutByDate y comprobar si el botón de iniciar está visible)
@@ -32,7 +31,7 @@ test.describe("Registro de entrenamiento", () => {
     await expect(finishBtn).toBeVisible({ timeout: 5_000 });
 
     // ── Añadir ejercicio ─────────────────────────────────────────────────────
-    const addExTab = page.locator("button", { hasText: "+ Ejercicio" });
+    const addExTab = page.locator("button", { hasText: /^\+ (Agregar|Añadir) ejercicio$/ });
     if (await addExTab.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await addExTab.click();
 
@@ -56,17 +55,10 @@ test.describe("Registro de entrenamiento", () => {
       await picker.selectOption({ index: pickIndex });
       await page.getByRole("button", { name: "Añadir", exact: true }).click();
 
-      // El nuevo ejercicio se añade siempre al final de la tablist — usar la
-      // ÚLTIMA tab por posición (no por nombre) evita ambigüedad si ya existe
-      // otro ejercicio con el mismo nombre de una ejecución anterior.
+      // El ejercicio recién añadido se activa automáticamente — confirmar que
+      // el panel de entrenamiento activo es realmente el suyo.
       if (firstExName) {
-        const newTab = page.getByRole("tablist", { name: "Ejercicios del entrenamiento" }).getByRole("tab").last();
-        await expect(newTab).toBeVisible({ timeout: 8_000 });
-        await expect(newTab).toHaveAccessibleName(new RegExp(escapeRegExp(firstExName.trim())));
-        await newTab.click();
-        // Confirmar que el panel de entrenamiento activo es realmente el del
-        // ejercicio recién añadido.
-        await expect(page.getByRole("heading", { level: 2, name: firstExName.trim(), exact: true })).toBeVisible({ timeout: 5_000 });
+        await expect(page.getByRole("heading", { level: 2, name: firstExName.trim(), exact: true })).toBeVisible({ timeout: 8_000 });
       }
     }
 

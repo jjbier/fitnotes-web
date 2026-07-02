@@ -182,7 +182,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
       </div>
 
       {networkError && (
-        <p className="text-xs text-destructive bg-destructive/10 rounded-md px-3 py-1.5" role="alert">
+        <p className="text-xs text-destructive bg-destructive/10 rounded-xl px-3 py-1.5" role="alert">
           Error de red — cambio no guardado
         </p>
       )}
@@ -210,7 +210,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
 
       <button
         onClick={handleCreateSet}
-        className="w-full rounded-lg border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50"
+        className="w-full rounded-2xl border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50"
       >
         + Agregar serie
       </button>

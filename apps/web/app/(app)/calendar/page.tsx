@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createBrowserClient, createCalendarRepository, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
 import { formatWorkoutDate, ExerciseType } from "@fitnotes/core";
 import type { Exercise as CoreExercise } from "@fitnotes/core";
@@ -259,7 +260,7 @@ export default function CalendarPage() {
         <h1 className="text-2xl font-bold tracking-tight flex-1">Calendario</h1>
         <button
           onClick={() => setShowFilters((v) => !v)}
-          className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium ${showFilters || activeFilterCount > 0 ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"}`}
+          className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium ${showFilters || activeFilterCount > 0 ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"}`}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5" aria-hidden="true"><path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" /></svg>
           Filtros
@@ -278,7 +279,7 @@ export default function CalendarPage() {
               onClick={toggleShowCategoryDots}
               title={showCategoryDots ? "Mostrar indicador único" : "Mostrar puntos de categoría"}
               aria-pressed={showCategoryDots}
-              className={`rounded-md border px-2.5 py-1.5 text-sm ${showCategoryDots ? "bg-secondary" : "hover:bg-secondary"}`}
+              className={`rounded-xl border px-2.5 py-1.5 text-sm ${showCategoryDots ? "bg-secondary" : "hover:bg-secondary"}`}
             >
               {showCategoryDots ? "●●●" : "●"}
             </button>
@@ -286,7 +287,7 @@ export default function CalendarPage() {
               onClick={toggleShowDayPanel}
               title={showDayPanel ? "Ocultar panel del día" : "Mostrar panel del día"}
               aria-pressed={showDayPanel}
-              className={`rounded-md border px-2.5 py-1.5 text-sm ${showDayPanel ? "bg-secondary" : "hover:bg-secondary"}`}
+              className={`rounded-xl border px-2.5 py-1.5 text-sm ${showDayPanel ? "bg-secondary" : "hover:bg-secondary"}`}
             >
               ▾
             </button>
@@ -294,7 +295,7 @@ export default function CalendarPage() {
         )}
         <button
           onClick={() => setListView((v) => !v)}
-          className={`rounded-md border px-3 py-1.5 text-sm ${listView ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+          className={`rounded-xl border px-3 py-1.5 text-sm ${listView ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
         >
           {listView ? "Mes" : "Lista"}
         </button>
@@ -302,12 +303,12 @@ export default function CalendarPage() {
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="rounded-lg border bg-card p-4 space-y-4">
+        <div className="rounded-2xl border bg-card p-4 space-y-4">
           {/* Category filter */}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categorías musculares</span>
-              <div className="ml-auto flex rounded-md border bg-secondary/30 p-0.5 text-xs">
+              <div className="ml-auto flex rounded-xl border bg-secondary/30 p-0.5 text-xs">
                 {(["any", "all"] as const).map((mode) => (
                   <button
                     key={mode}
@@ -350,7 +351,7 @@ export default function CalendarPage() {
               <select
                 value={filterExId}
                 onChange={(e) => { setFilterExId(e.target.value); setFilteredExDates(null); }}
-                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Seleccionar ejercicio…</option>
                 {exercises.map((ex) => (
@@ -366,7 +367,7 @@ export default function CalendarPage() {
                       type="number" min="0" step="0.5" value={filterMinWeight}
                       onChange={(e) => setFilterMinWeight(e.target.value)}
                       placeholder="—"
-                      className="w-24 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-24 rounded-xl border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
                   <div>
@@ -375,13 +376,13 @@ export default function CalendarPage() {
                       type="number" min="0" value={filterMinReps}
                       onChange={(e) => setFilterMinReps(e.target.value)}
                       placeholder="—"
-                      className="w-24 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-24 rounded-xl border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
                   <button
                     onClick={applyExerciseFilter}
                     disabled={filterExLoading}
-                    className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    className="rounded-xl bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                   >
                     {filterExLoading ? "Buscando…" : "Aplicar"}
                   </button>
@@ -406,7 +407,7 @@ export default function CalendarPage() {
             history.map((w) => {
               const isExpanded = expandedHistoryId === w.id;
               return (
-                <div key={w.id} className="rounded-lg border bg-card overflow-hidden">
+                <div key={w.id} className="rounded-2xl border bg-card overflow-hidden">
                   <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50">
                     <button onClick={() => toggleHistoryExpand(w.id)} className="flex-1 min-w-0 text-left">
                       <div className="flex items-center gap-2">
@@ -456,15 +457,15 @@ export default function CalendarPage() {
         <>
           {/* Month nav */}
           <div className="flex items-center gap-3">
-            <button onClick={prevMonth} aria-label="Mes anterior" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"><span aria-hidden="true">←</span></button>
+            <button onClick={prevMonth} aria-label="Mes anterior" className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"><ChevronLeft size={16} aria-hidden="true" /></button>
             <div className="flex-1 text-center">
               <h2 className="font-semibold capitalize">{monthName}</h2>
               <p className="text-xs text-muted-foreground">
                 {workoutDates.size} entrenamiento{workoutDates.size !== 1 ? "s" : ""}
               </p>
             </div>
-            <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary">Hoy</button>
-            <button onClick={nextMonth} aria-label="Mes siguiente" className="rounded-md border px-3 py-1.5 text-sm hover:bg-secondary"><span aria-hidden="true">→</span></button>
+            <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">Hoy</button>
+            <button onClick={nextMonth} aria-label="Mes siguiente" className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"><ChevronRight size={16} aria-hidden="true" /></button>
           </div>
 
           {/* Day-of-week headers */}
@@ -490,7 +491,7 @@ export default function CalendarPage() {
                 <button
                   key={day}
                   onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-colors
+                  className={`aspect-square flex flex-col items-center justify-center rounded-2xl text-sm font-medium transition-colors
                     ${isSelected ? "bg-primary text-primary-foreground" : isToday ? "border-2 border-primary text-primary" : "hover:bg-secondary"}
                     ${!hasWorkout && !isToday && !isSelected ? "text-muted-foreground" : ""}
                     ${dimmed ? "opacity-25" : ""}
@@ -520,7 +521,7 @@ export default function CalendarPage() {
 
           {/* Selected day popup */}
           {showDayPanel && selectedDate && (
-            <div className="rounded-lg border bg-card p-4 space-y-3">
+            <div className="rounded-2xl border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">{formatWorkoutDate(selectedDate)}</h3>
                 {selectedWorkout && (

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, X, Clock } from "lucide-react";
+import { ArrowLeft, Search, X, Clock, ChevronRight } from "lucide-react";
 import { useExerciseStore, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
 
@@ -103,7 +103,7 @@ export default function SearchPage() {
         <Link
           href="/exercise"
           aria-label="Volver"
-          className="rounded-md border p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+          className="rounded-xl border p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Link>
@@ -117,7 +117,7 @@ export default function SearchPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar ejercicio…"
-            className="w-full rounded-md border bg-background py-2 pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-xl border bg-background py-2 pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           {query.length > 0 && (
             <button
@@ -145,7 +145,7 @@ export default function SearchPage() {
           <p className="pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {sorted.length} ejercicio{sorted.length !== 1 ? "s" : ""}
           </p>
-          <div className="divide-y rounded-lg border">
+          <div className="divide-y rounded-2xl border">
             {sorted.map((ex) => {
               const lw = lastWorkouts[ex.id];
               const cat = catMap[ex.category_id ?? ""];
@@ -179,7 +179,7 @@ export default function SearchPage() {
                       <p className="text-xs text-muted-foreground/60">Sin registros</p>
                     )}
                   </div>
-                  <span aria-hidden="true" className="text-muted-foreground">›</span>
+                  <ChevronRight className="text-muted-foreground" size={16} aria-hidden="true" />
                 </Link>
               );
             })}

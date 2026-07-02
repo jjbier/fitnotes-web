@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { History } from "lucide-react";
 import { useExerciseStore, ExerciseType, getExerciseFields } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 
@@ -129,18 +130,18 @@ export default function ExerciseHistoryPage() {
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 rounded-lg border bg-secondary/30 animate-pulse" />
+            <div key={i} className="h-32 rounded-2xl border bg-secondary/30 animate-pulse" />
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-6 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-sm text-destructive">
           {error}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-16 text-center">
-          <p className="text-2xl mb-3">🕒</p>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-16 text-center">
+          <History className="text-muted-foreground" size={40} aria-hidden="true" />
           <p className="font-medium text-muted-foreground">Sin historial todavía</p>
-          <p className="text-sm text-muted-foreground mt-1">Este ejercicio no tiene series registradas.</p>
+          <p className="text-sm text-muted-foreground">Este ejercicio no tiene series registradas.</p>
         </div>
       ) : (
         <div ref={parentRef} className="overflow-auto" style={{ maxHeight: "70vh" }}>
@@ -155,7 +156,7 @@ export default function ExerciseHistoryPage() {
                   style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}
                   className="pb-4"
                 >
-                  <div className="rounded-lg border bg-card overflow-hidden">
+                  <div className="rounded-2xl border bg-card overflow-hidden">
                     <div className="bg-secondary/30 px-5 py-3 border-b flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-sm capitalize">{formatDate(session.date)}</p>
