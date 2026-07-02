@@ -1,10 +1,10 @@
 # apps/web — Next.js 15
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-02_
 
 ## Config
 - `next.config.ts` → `transpilePackages`, **security headers** (CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy), `async headers()`
-- Tailwind v4 via `@tailwindcss/postcss` (no `tailwind.config.js`)
+- Tailwind v4 via `@tailwindcss/postcss` (no `tailwind.config.js`) — **requiere `@theme inline` en `globals.css`** mapeando `--color-primary: hsl(var(--primary))` etc. Sin esto Tailwind v4 no genera NINGUNA regla para `bg-primary`/`text-muted-foreground`/`bg-secondary`/`border-destructive`/etc. (bug presente desde el scaffold inicial hasta 2026-07-02, ver CLAUDE.md)
 - `middleware.ts` → guard server-side, redirige a `/login` si no hay sesión
 - ESLint v9 flat config en `eslint.config.mjs`
 - `vercel.json` → duplica CSP headers para Vercel edge
@@ -21,11 +21,12 @@ app/
 ├── (auth)/register/
 └── (app)/
     ├── layout.tsx          AppLayout — skip link + <main id="main-content"> + Sidebar + MobileNav
-    ├── dashboard/          workout del día, optimistic sets CRUD, WorkoutTimer (pausa/reanudar), WakeLock, contador series opcional
-    ├── exercise/           virtualización useWindowVirtualizer, CRUD, drag-to-reorder categorías
+    ├── dashboard/          "Hoy" — franja semanal+racha (WeekStrip), lista de ejercicios con progress bar+drag&drop (NavigationPanel), multi-select+borrado masivo, WorkoutTimer (pausa/reanudar), resumen al finalizar (FinishSummaryModal: duración/ejercicios/series/volumen), WakeLock
+    ├── exercise/           virtualización useWindowVirtualizer, CRUD, drag-to-reorder categorías, icon-circle avatars, EmptyState
     ├── exercise/[id]/      virtualización, ExerciseCard dropdown fijo via getBoundingClientRect
     ├── exercise/history/[exerciseId]/  historial virtualizado, "Ver workout →" link, copy sets
-    ├── workout/[date]/     NavigationPanel sidebar, drag-to-reorder, TrainingScreen optimistic
+    ├── search/             búsqueda global de ejercicios (paridad con mobile `search/index.tsx`) — accesible desde icono historial en /exercise
+    ├── workout/[date]/     mismo patrón que dashboard (NavigationPanel sidebar desktop + lista mobile, drag-to-reorder, multi-select, finish summary), TrainingScreen optimistic
     ├── progress/           PRs, Recharts LineChart (métricas ampliadas), tab Estadísticas (PeriodStats), ExerciseOverview (focus trap + Escape), goals
     ├── calendar/           grid + lista, dots por categoría (toggle vs. círculo), toggle panel día, filtros avanzados, list view con detalle expandible
     ├── routines/           lista CRUD
@@ -37,6 +38,19 @@ app/
 ```
 
 **Per-route layout.tsx** en todas las rutas de `(app)/` — exportan `metadata: Metadata` estático para que las páginas `"use client"` tengan title en el browser.
+
+## Navegación (paridad con mobile, 2026-07)
+- `Sidebar.tsx` (desktop) / `MobileNav.tsx` (móvil web): **6 secciones**, idénticas a las tabs de mobile — Hoy/Calendario/Ejercicios/Progreso/Rutinas/Configuración
+- `/body-tracker` y `/tools` NO son ítems de nav de primer nivel — se acceden desde secciones "Salud"/"Herramientas" dentro de `/settings`
+
+## Componentes de diseño compartido (2026-07-02, paridad visual con mobile)
+- `components/EmptyState.tsx` — icono (lucide) + título + descripción + CTA + acción secundaria opcional; usado en dashboard/routines/exercises/history sin datos
+- `components/ConfirmDialog.tsx` — `ConfirmProvider` + hook `useConfirm()`, sustituye `window.confirm()` nativo por un modal `role="alertdialog"` propio (botones Cancelar/confirmar personalizables). Montado en `app/(app)/layout.tsx`. **Tests E2E que antes usaban `page.once("dialog", ...)` deben clicar el botón real del alertdialog ahora**
+- `components/workout/WeekStrip.tsx` — franja L-D con puntos de entrenamiento + racha (flame badge), usado solo en dashboard (paridad con "Hoy" de mobile)
+- `components/workout/FinishSummaryModal.tsx` — modal de 4 stat tiles (duración/ejercicios/series/volumen) al finalizar un entrenamiento
+- `components/workout/NavigationPanel.tsx` — lista de ejercicios del workout con progress bar, drag&drop (HTML5 draggable), botón eliminar (hover), modo multi-select con checkboxes; usado en dashboard (full-width) y workout/[date] (sidebar desktop + lista mobile)
+- Iconos: migrados de glifos unicode sueltos (★, ›, ⠿, ←, →, ✓, ✕, ⋯) a `lucide-react` en toda la app — no reintroducir literales unicode como iconos
+- Radios de borde aumentados (`rounded-md→rounded-xl`, `rounded-lg→rounded-2xl`) para matchear el estilo más redondeado de mobile
 
 ## Rendimiento
 - `useWindowVirtualizer` (scroll en window, NO overflow container):
