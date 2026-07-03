@@ -36,13 +36,12 @@ interface Props {
   categories: Category[];
   initial?: Partial<Exercise>;
   onSubmit: (data: FormData) => Promise<void>;
-  onSaveAndNew?: (data: FormData) => Promise<void>;
   onCancel: () => void;
   onCreateCategory?: (data: { name: string; color: string }) => Promise<Category>;
   onConvertWeights?: (factor: number) => Promise<void>;
 }
 
-export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndNew, onCancel, onCreateCategory, onConvertWeights }: Props) {
+export default function ExerciseForm({ categories, initial, onSubmit, onCancel, onCreateCategory, onConvertWeights }: Props) {
   const confirm = useConfirm();
   const [form, setForm] = useState<FormData>({
     name: initial?.name ?? "",
@@ -81,7 +80,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
     }
   }
 
-  async function performSave(andNew: boolean) {
+  async function performSave() {
     if (!form.name.trim()) { setError("El nombre es obligatorio"); return; }
     if (!form.category_id) { setError("Selecciona o crea una categoría"); return; }
 
@@ -122,12 +121,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
     setLoading(true);
     setError("");
     try {
-      if (andNew && onSaveAndNew) {
-        await onSaveAndNew({ ...form, name: form.name.trim() });
-        setForm((prev) => ({ ...prev, name: "", notes: "" }));
-      } else {
-        await onSubmit({ ...form, name: form.name.trim() });
-      }
+      await onSubmit({ ...form, name: form.name.trim() });
       if (shouldConvert && onConvertWeights && initial?.weight_unit) {
         const factor = initial.weight_unit === "kg" ? 2.20462 : 0.453592;
         await onConvertWeights(factor);
@@ -141,7 +135,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    performSave(false);
+    performSave();
   }
 
   return (
@@ -295,16 +289,6 @@ export default function ExerciseForm({ categories, initial, onSubmit, onSaveAndN
         >
           Cancelar
         </button>
-        {!initial?.id && onSaveAndNew && (
-          <button
-            type="button"
-            onClick={() => performSave(true)}
-            disabled={loading}
-            className="flex-1 rounded-xl border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
-          >
-            Guardar y nuevo
-          </button>
-        )}
         <button
           type="submit"
           disabled={loading}

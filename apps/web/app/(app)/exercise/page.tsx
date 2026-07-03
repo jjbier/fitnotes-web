@@ -106,13 +106,6 @@ export default function ExercisePage() {
     setShowExerciseForm(false);
   }
 
-  async function handleCreateExerciseAndNew(data: {
-    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
-  }) {
-    await doCreateExercise(data);
-    // form stays open — ExerciseForm resets itself
-  }
-
   async function handleCreateCategory(data: { name: string; color: string }): Promise<Category> {
     const uid = await resolveUserId();
     const { data: created, error } = await repo.createCategory(data, uid);
@@ -279,7 +272,6 @@ export default function ExercisePage() {
           <ExerciseForm
             categories={categories}
             onSubmit={handleCreateExercise}
-            onSaveAndNew={handleCreateExerciseAndNew}
             onCancel={() => setShowExerciseForm(false)}
             onCreateCategory={handleCreateCategory}
           />

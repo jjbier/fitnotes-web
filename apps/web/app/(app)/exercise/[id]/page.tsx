@@ -126,14 +126,6 @@ export default function ExerciseCategoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doCreate]);
 
-  const handleCreateAndNew = useCallback(async (data: {
-    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
-  }) => {
-    await doCreate(data);
-    // form stays open — ExerciseForm resets itself
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doCreate]);
-
   const handleCreateCategory = useCallback(async (data: { name: string; color: string }): Promise<Category> => {
     const { data: created, error } = await repo.createCategory(data, userId);
     if (error) throw new Error(error.message);
@@ -226,7 +218,6 @@ export default function ExerciseCategoryPage() {
             categories={categories}
             initial={{ category_id: isFavoritesView ? undefined : categoryId }}
             onSubmit={handleCreate}
-            onSaveAndNew={handleCreateAndNew}
             onCancel={() => setShowForm(false)}
             onCreateCategory={handleCreateCategory}
           />
