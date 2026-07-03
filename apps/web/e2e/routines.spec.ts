@@ -2,16 +2,10 @@ import { test, expect, type Page } from "@playwright/test";
 
 const ROUTINE_NAME = `E2E-Rutina-${Date.now()}`;
 
-function escapeRegex(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Localiza la fila de una rutina por su nombre exacto (evita que "Copia de X"
-// o "X-v2" hagan match por substring con el nombre base X).
+// Localiza la fila de una rutina por su data-testid (routine-row-${name}),
+// que ya identifica el nombre exacto sin ambigüedad de substring.
 function routineRowByName(page: Page, exactName: string) {
-  return page
-    .locator("p", { hasText: new RegExp(`^${escapeRegex(exactName)}$`) })
-    .locator("xpath=ancestor::div[contains(@class,'bg-card')][1]");
+  return page.locator(`[data-testid="routine-row-${exactName}"]`);
 }
 
 test.describe("Rutinas CRUD", () => {

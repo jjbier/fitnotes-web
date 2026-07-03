@@ -121,7 +121,7 @@ export default function RoutinesPage() {
       ) : (
         <div className="space-y-2">
           {routines.map((r) => (
-            <div key={r.id} className="flex items-center gap-3 rounded-2xl border bg-card p-4">
+            <div key={r.id} data-testid={`routine-row-${r.name}`} className="flex items-center gap-3 rounded-2xl border bg-card p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <ClipboardList className="text-primary" size={18} aria-hidden="true" />
               </div>

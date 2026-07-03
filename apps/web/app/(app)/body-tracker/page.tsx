@@ -271,7 +271,7 @@ export default function BodyTrackerPage() {
               {enabledMeasurements.map((m) => {
                 const latest = latestEntries[m.id];
                 return (
-                  <div key={m.id} className="rounded-2xl border bg-card p-5">
+                  <div key={m.id} data-testid={`bodytracker-card-${m.name}`} className="rounded-2xl border bg-card p-5">
                     <div className="flex items-center justify-between mb-1">
                       <h2 className="font-semibold text-sm">{m.name}</h2>
                       <span className="text-xs text-muted-foreground">{m.unit}</span>
@@ -293,6 +293,7 @@ export default function BodyTrackerPage() {
                     })()}
                     <button
                       onClick={() => { setLogMeasurementId(m.id); setLogDate(new Date().toISOString().split("T")[0]!); }}
+                      data-testid={`bodytracker-log-${m.name}`}
                       className="mt-3 rounded-xl border px-3 py-1 text-xs hover:bg-secondary"
                     >
                       Registrar

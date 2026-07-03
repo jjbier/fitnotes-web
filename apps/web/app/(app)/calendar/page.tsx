@@ -323,7 +323,7 @@ export default function CalendarPage() {
             {categories.length === 0 ? (
               <p className="text-xs text-muted-foreground">Cargando…</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div data-testid="calendar-category-filters" className="flex flex-wrap gap-2">
                 {categories.map((cat) => {
                   const active = selectedCatIds.has(cat.id);
                   return (
@@ -521,7 +521,7 @@ export default function CalendarPage() {
 
           {/* Selected day popup */}
           {showDayPanel && selectedDate && (
-            <div className="rounded-2xl border bg-card p-4 space-y-3">
+            <div data-testid="calendar-day-panel" className="rounded-2xl border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">{formatWorkoutDate(selectedDate)}</h3>
                 {selectedWorkout && (

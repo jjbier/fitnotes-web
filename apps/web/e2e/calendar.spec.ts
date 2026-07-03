@@ -58,7 +58,7 @@ test.describe("Calendario", () => {
     const openLink = page.getByRole("link", { name: "Abrir entrenamiento →" });
     await expect(openLink).toBeVisible({ timeout: 5_000 });
 
-    const dayPanel = openLink.locator("xpath=ancestor::div[contains(@class,'space-y-3')][1]");
+    const dayPanel = page.locator('[data-testid="calendar-day-panel"]');
     const exerciseChip = dayPanel.getByRole("button").first();
     if (await exerciseChip.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await exerciseChip.click();
@@ -70,8 +70,7 @@ test.describe("Calendario", () => {
   test("abre filtros y activa un filtro de categoría [T5.x]", async ({ page }) => {
     await page.getByRole("button", { name: "Filtros" }).click();
     await expect(page.getByText("Categorías musculares")).toBeVisible({ timeout: 5_000 });
-    const firstCategory = page.getByText("Categorías musculares")
-      .locator("xpath=ancestor::div[1]/following-sibling::div[1]")
+    const firstCategory = page.locator('[data-testid="calendar-category-filters"]')
       .getByRole("button")
       .first();
     await expect(firstCategory).toBeVisible();

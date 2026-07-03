@@ -44,7 +44,7 @@ test.describe("Ejercicios CRUD", () => {
     await expect(page.getByRole("button", { name: "Añadir a favoritos" })).toBeVisible({ timeout: 5_000 });
 
     // ── Editar ejercicio ─────────────────────────────────────────────────────
-    await page.getByRole("button", { name: "Opciones" }).first().click();
+    await page.locator(`[data-testid="exercise-options-${EX_NAME}"]`).click();
     await page.getByRole("menuitem", { name: "Editar" }).click();
 
     const updatedName = `${EX_NAME}-ed`;
@@ -55,7 +55,7 @@ test.describe("Ejercicios CRUD", () => {
     await expect(page.getByText(updatedName)).toBeVisible({ timeout: 8_000 });
 
     // ── Eliminar ejercicio ───────────────────────────────────────────────────
-    await page.getByRole("button", { name: "Opciones" }).first().click();
+    await page.locator(`[data-testid="exercise-options-${updatedName}"]`).click();
     await page.getByRole("menuitem", { name: "Eliminar" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar" }).click();
 
@@ -63,7 +63,7 @@ test.describe("Ejercicios CRUD", () => {
 
     // ── Eliminar categoría ───────────────────────────────────────────────────
     await page.goto("/exercise");
-    const catRow = page.locator("p", { hasText: CAT_NAME }).locator("xpath=ancestor::div[contains(@class,'bg-card')][1]");
+    const catRow = page.locator(`[data-testid="category-row-${CAT_NAME}"]`);
     await catRow.hover();
     await catRow.getByRole("button", { name: "Eliminar" }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Eliminar" }).click();

@@ -5,11 +5,6 @@ import { test, expect } from "@playwright/test";
 // confirman ninguna de ellas — solo verifican que los paneles se abren y se
 // pueden cancelar. Tampoco se toca Google Drive (requiere OAuth real).
 
-function switchFor(page: import("@playwright/test").Page, label: string) {
-  return page.getByText(label, { exact: true })
-    .locator("xpath=../following-sibling::button[@role='switch']");
-}
-
 test.describe("Configuración", () => {
   test.beforeEach(async ({ page }) => {
     const email = process.env["PLAYWRIGHT_USER_EMAIL"];
@@ -37,7 +32,7 @@ test.describe("Configuración", () => {
   });
 
   test("activa y restaura el toggle de récords personales [T7.x]", async ({ page }) => {
-    const toggle = switchFor(page, "Registrar récords personales");
+    const toggle = page.locator('[data-testid="toggle-registrar-records-personales"]');
     await expect(toggle).toBeVisible();
     const before = await toggle.getAttribute("aria-checked");
     await toggle.click();
@@ -55,7 +50,7 @@ test.describe("Configuración", () => {
   });
 
   test("home screen: alterna contador de series y una categoría [T7.x]", async ({ page }) => {
-    const setCountToggle = switchFor(page, "Mostrar contador de series");
+    const setCountToggle = page.locator('[data-testid="toggle-show-set-count-home"]');
     await expect(setCountToggle).toBeVisible();
     const before = await setCountToggle.getAttribute("aria-checked");
     await setCountToggle.click();

@@ -92,7 +92,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
   }, [menuOpen]);
 
   return (
-    <div className="relative flex items-center justify-between rounded-2xl border bg-card px-4 py-3 hover:bg-secondary/30 transition-colors group">
+    <div data-testid={`exercise-row-${exercise.name}`} className="relative flex items-center justify-between rounded-2xl border bg-card px-4 py-3 hover:bg-secondary/30 transition-colors group">
       {/* Left */}
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <Dumbbell className="text-primary" size={18} aria-hidden="true" />
@@ -133,6 +133,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
           <button
             ref={triggerRef}
             onClick={handleMenuToggle}
+            data-testid={`exercise-options-${exercise.name}`}
             className="p-1.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground"
             aria-label="Opciones"
             aria-haspopup="menu"

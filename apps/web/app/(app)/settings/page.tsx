@@ -525,6 +525,12 @@ export default function SettingsPage() {
   }
 
   function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: () => void }) {
+    const slug = label
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
     return (
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
@@ -535,6 +541,7 @@ export default function SettingsPage() {
           role="switch"
           aria-checked={checked}
           onClick={onChange}
+          data-testid={`toggle-${slug}`}
           className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${checked ? "bg-primary" : "bg-secondary border"}`}
         >
           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-1"}`} />
@@ -759,6 +766,7 @@ export default function SettingsPage() {
             role="switch"
             aria-checked={showSetCountHome}
             onClick={() => handleShowSetCountHome(!showSetCountHome)}
+            data-testid="toggle-show-set-count-home"
             className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${showSetCountHome ? "bg-primary" : "bg-secondary border"}`}
           >
             <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${showSetCountHome ? "translate-x-5" : "translate-x-1"}`} />

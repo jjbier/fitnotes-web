@@ -355,6 +355,7 @@ export default function ExercisePage() {
             return (
               <div
                 key={cat.id}
+                data-testid={`category-row-${cat.name}`}
                 draggable
                 onDragStart={() => setDraggedId(cat.id)}
                 onDragOver={(e) => { e.preventDefault(); setDragOverId(cat.id); }}
