@@ -287,17 +287,6 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2">
-            {!activeWorkout.end_time ? (
-              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5">
-                <Clock size={16} className="text-primary" aria-hidden="true" />
-                <span className="font-mono text-sm font-semibold tabular-nums text-primary">
-                  {activeWorkout.duration_minutes != null ? `${activeWorkout.duration_minutes} min` : "—"}
-                </span>
-                <span className="text-xs text-muted-foreground">finalizado</span>
-              </span>
-            )}
             <button
               onClick={() => setShowShare(true)}
               className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
@@ -325,14 +314,27 @@ export default function DashboardPage() {
                 <CheckSquare size={14} aria-hidden="true" /> {selectMode ? "Cancelar" : "Seleccionar"}
               </button>
             )}
-            {!activeWorkout.end_time && (
-              <button
-                onClick={handleFinish}
-                className="ml-auto rounded-xl border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
-              >
-                Finalizar
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {!activeWorkout.end_time ? (
+                <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5">
+                  <Clock size={16} className="text-primary" aria-hidden="true" />
+                  <span className="font-mono text-sm font-semibold tabular-nums text-primary">
+                    {activeWorkout.duration_minutes != null ? `${activeWorkout.duration_minutes} min` : "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">finalizado</span>
+                </span>
+              )}
+              {!activeWorkout.end_time && (
+                <button
+                  onClick={handleFinish}
+                  className="rounded-xl border border-destructive px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10"
+                >
+                  Finalizar
+                </button>
+              )}
+            </div>
           </div>
 
           {selectMode && (
