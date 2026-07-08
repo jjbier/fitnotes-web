@@ -2,20 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause } from "lucide-react";
+import { formatClockDuration } from "@fitnotes/core";
 
 interface Props {
   startTime: string | undefined;
   onElapsedChange?: (elapsed: number) => void;
-}
-
-function formatElapsed(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export default function WorkoutTimer({ startTime, onElapsedChange }: Props) {
@@ -77,10 +68,10 @@ export default function WorkoutTimer({ startTime, onElapsedChange }: Props) {
         {running ? <Pause size={14} /> : <Play size={14} />}
       </button>
       <span
-        aria-label={`Duración del entrenamiento: ${formatElapsed(elapsed)}`}
+        aria-label={`Duración del entrenamiento: ${formatClockDuration(elapsed)}`}
         className="font-mono text-sm tabular-nums text-muted-foreground"
       >
-        {formatElapsed(elapsed)}
+        {formatClockDuration(elapsed)}
       </span>
       {!running && <span className="text-xs text-muted-foreground">pausado</span>}
     </span>

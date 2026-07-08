@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { History } from "lucide-react";
-import { useExerciseStore, ExerciseType, getExerciseFields } from "@fitnotes/core";
+import { useExerciseStore, ExerciseType, formatFullDate, formatSetDisplay } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 
 type SetRow = {
@@ -25,30 +25,6 @@ type Session = {
   comment?: string;
   sets: SetRow[];
 };
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("es-ES", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
-}
-
-function formatDuration(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  if (m === 0) return `${s}s`;
-  return s === 0 ? `${m}min` : `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function formatSet(set: SetRow, type: ExerciseType, unit: string): string {
-  const f = getExerciseFields(type);
-  const parts: string[] = [];
-  if (f.weight && set.weight != null) parts.push(`${set.weight} ${unit}`);
-  if (f.reps && set.reps != null) parts.push(`${set.reps} reps`);
-  if (f.distance && set.distance != null) parts.push(`${set.distance} km`);
-  if (f.time && set.time_seconds != null) parts.push(formatDuration(set.time_seconds));
-  return parts.join(" × ") || "—";
-}
 
 export default function ExerciseHistoryPage() {
   const { exerciseId } = useParams<{ exerciseId: string }>();
@@ -159,7 +135,7 @@ export default function ExerciseHistoryPage() {
                   <div className="rounded-2xl border bg-card overflow-hidden">
                     <div className="bg-secondary/30 px-5 py-3 border-b flex items-center justify-between">
                       <div>
-                        <p className="font-semibold text-sm capitalize">{formatDate(session.date)}</p>
+                        <p className="font-semibold text-sm capitalize">{formatFullDate(session.date)}</p>
                         {session.comment && (
                           <p className="text-xs text-muted-foreground mt-0.5">{session.comment}</p>
                         )}
@@ -182,7 +158,7 @@ export default function ExerciseHistoryPage() {
                             }`}>
                               {idx + 1}
                             </span>
-                            <span className="text-sm flex-1">{formatSet(set, exerciseType, unit)}</span>
+                            <span className="text-sm flex-1">{formatSetDisplay(set, exerciseType, unit)}</span>
                             {set.comment && (
                               <span className="text-xs text-muted-foreground truncate max-w-[160px]">{set.comment}</span>
                             )}

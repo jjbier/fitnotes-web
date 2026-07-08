@@ -6,10 +6,11 @@ import {
   estimateRepMax,
   calculateSetWeight,
   calculatePlates,
+  formatMinutesSeconds,
+  DEFAULT_PLATES,
 } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository, createProgressRepository, createWorkoutRepository } from "@fitnotes/database";
 
-const DEFAULT_PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
 const PERCENTAGES = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
 type Tab = "1rm" | "set" | "plates" | "timer";
@@ -371,12 +372,6 @@ function SetCalculator() {
 
 const PRESET_DURATIONS = [30, 60, 90, 120, 180, 300];
 
-function formatTimerDisplay(s: number) {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-}
-
 function playBeep() {
   try {
     const ctx = new AudioContext();
@@ -485,7 +480,7 @@ function RestTimerSection() {
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <span className={`text-3xl font-mono font-bold tabular-nums ${finished ? "text-green-600" : running ? "text-primary" : "text-foreground"}`}>
-              {formatTimerDisplay(remaining)}
+              {formatMinutesSeconds(remaining)}
             </span>
           </div>
         </div>

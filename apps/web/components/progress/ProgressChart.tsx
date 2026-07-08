@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import type { ChartPoint } from "@fitnotes/database";
-import { ExerciseType, getExerciseFields, estimateRepMax } from "@fitnotes/core";
+import { ExerciseType, getExerciseFields, estimateRepMax, formatChartDuration, ALL_EXERCISE_FIELDS } from "@fitnotes/core";
 
 type ChartMetric =
   | "maxWeight" | "totalVolume" | "maxReps" | "totalReps" | "est1RM"
@@ -53,14 +53,8 @@ function metricsForExercise(exerciseType?: ExerciseType): ChartMetric[] {
   return metrics;
 }
 
-function formatSeconds(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = Math.round(s % 60);
-  return `${m}:${String(sec).padStart(2, "0")}`;
-}
-
 function formatMetricValue(metric: ChartMetric, v: number): string {
-  if (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") return formatSeconds(v);
+  if (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") return formatChartDuration(v);
   return v.toFixed(1);
 }
 
@@ -86,7 +80,7 @@ interface ProgressChartProps {
 
 export default function ProgressChart({ data, exerciseName, exerciseType, height = 220 }: ProgressChartProps) {
   const availableMetrics = metricsForExercise(exerciseType);
-  const fields = exerciseType ? getExerciseFields(exerciseType) : { weight: true, reps: true, distance: true, time: true };
+  const fields = exerciseType ? getExerciseFields(exerciseType) : ALL_EXERCISE_FIELDS;
   const [mode, setMode] = useState<ChartMode>(availableMetrics[0] ?? "maxWeight");
   const [repTarget, setRepTarget] = useState(5);
   const [showTrend, setShowTrend] = useState(false);
@@ -298,7 +292,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
                 tick={{ fontSize: 10 }}
                 width={42}
                 domain={yDomain === "zero" ? [0, "auto"] : ["auto", "auto"]}
-                tickFormatter={(v: number) => (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") ? formatSeconds(v) : String(v)}
+                tickFormatter={(v: number) => (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") ? formatChartDuration(v) : String(v)}
               />
               <Tooltip
                 labelFormatter={(l) => String(l)}

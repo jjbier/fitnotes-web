@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Star, Dumbbell, MoreVertical } from "lucide-react";
-import { ExerciseType } from "@fitnotes/core";
+import { ExerciseType, formatLastUsedLabel } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
 
 const TYPE_BADGE: Record<ExerciseType, string> = {
@@ -18,17 +18,6 @@ const TYPE_BADGE: Record<ExerciseType, string> = {
   [ExerciseType.REPS_TIME]: "Reps + Tiempo",
   [ExerciseType.DISTANCE_ONLY]: "Distancia",
 };
-
-function formatLastUsed(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Hoy";
-  if (diffDays === 1) return "Ayer";
-  if (diffDays < 7) return `Hace ${diffDays} días`;
-  return date.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
 
 interface Props {
   exercise: Exercise;
@@ -108,7 +97,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
         {stats && (
           <p className="text-xs text-muted-foreground mt-1">
             {stats.workout_count} {stats.workout_count === 1 ? "sesión" : "sesiones"}
-            {stats.last_used ? ` · ${formatLastUsed(stats.last_used)}` : ""}
+            {stats.last_used ? ` · ${formatLastUsedLabel(stats.last_used)}` : ""}
           </p>
         )}
       </div>

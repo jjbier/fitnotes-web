@@ -1,5 +1,7 @@
 "use client";
 
+import { formatClockDuration } from "@fitnotes/core";
+
 interface FinishStats {
   duration: number;
   exercises: number;
@@ -12,17 +14,9 @@ interface FinishSummaryModalProps {
   onClose: () => void;
 }
 
-function formatDuration(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 export default function FinishSummaryModal({ stats, onClose }: FinishSummaryModalProps) {
   const tiles = [
-    { label: "Duración", value: formatDuration(stats.duration) },
+    { label: "Duración", value: formatClockDuration(stats.duration) },
     { label: "Ejercicios", value: String(stats.exercises) },
     { label: "Series", value: String(stats.sets) },
     { label: "Volumen", value: `${Math.round(stats.volume).toLocaleString("es-ES")} kg` },

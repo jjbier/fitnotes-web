@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ChartPoint } from "@fitnotes/database";
-import { ExerciseType, getExerciseFields } from "@fitnotes/core";
+import { ExerciseType, getExerciseFields, formatChartDuration, ALL_EXERCISE_FIELDS } from "@fitnotes/core";
 
 type Period = "workout" | "week" | "month" | "year" | "all" | "custom";
 
@@ -20,12 +20,6 @@ function daysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
-}
-
-function formatSeconds(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = Math.round(s % 60);
-  return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
 interface PeriodStatsProps {
@@ -61,7 +55,7 @@ export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodS
     filtered = sorted.filter((p) => p.date >= cutoff);
   }
 
-  const fields = exerciseType ? getExerciseFields(exerciseType) : { weight: true, reps: true, distance: true, time: true };
+  const fields = exerciseType ? getExerciseFields(exerciseType) : ALL_EXERCISE_FIELDS;
 
   const sessions = filtered.length;
   const totalVolume = filtered.reduce((s, p) => s + p.totalVolume, 0);
@@ -91,8 +85,8 @@ export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodS
     stats.push({ label: "Distancia máx.", value: maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "—" });
   }
   if (fields.time) {
-    stats.push({ label: "Tiempo total", value: totalTime > 0 ? formatSeconds(totalTime) : "—" });
-    stats.push({ label: "Tiempo máx.", value: maxTime > 0 ? formatSeconds(maxTime) : "—" });
+    stats.push({ label: "Tiempo total", value: totalTime > 0 ? formatChartDuration(totalTime) : "—" });
+    stats.push({ label: "Tiempo máx.", value: maxTime > 0 ? formatChartDuration(maxTime) : "—" });
   }
 
   return (

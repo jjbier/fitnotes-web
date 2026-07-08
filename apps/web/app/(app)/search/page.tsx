@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Search, X, Clock, ChevronRight } from "lucide-react";
-import { useExerciseStore, ExerciseType } from "@fitnotes/core";
+import { useExerciseStore, ExerciseType, formatShortDate, formatDaysAgo } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
 
 type LastWorkout = { date: string; maxWeight: number; maxReps: number; setCount: number };
@@ -20,22 +20,6 @@ const TYPE_LABELS: Partial<Record<ExerciseType, string>> = {
   [ExerciseType.REPS_TIME]: "Reps+Tiempo",
   [ExerciseType.DISTANCE_ONLY]: "Distancia",
 };
-
-function formatDate(iso: string) {
-  return new Date(iso + "T12:00:00").toLocaleDateString("es-ES", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
-
-function daysAgo(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso + "T12:00:00").getTime()) / 86400000);
-  if (diff === 0) return "hoy";
-  if (diff === 1) return "ayer";
-  if (diff < 7) return `hace ${diff} días`;
-  if (diff < 30) return `hace ${Math.floor(diff / 7)} sem`;
-  if (diff < 365) return `hace ${Math.floor(diff / 30)} mes`;
-  return `hace ${Math.floor(diff / 365)} año`;
-}
 
 export default function SearchPage() {
   const exercises = useExerciseStore((s) => s.exercises);
@@ -165,7 +149,7 @@ export default function SearchPage() {
                     {lw ? (
                       <div className="flex items-center gap-1.5 text-xs text-primary">
                         <Clock className="h-3 w-3" aria-hidden="true" />
-                        <span>{daysAgo(lw.date)} · {formatDate(lw.date)}</span>
+                        <span>{formatDaysAgo(lw.date)} · {formatShortDate(lw.date)}</span>
                         {lw.setCount > 0 && (
                           <>
                             <span className="text-muted-foreground">·</span>
