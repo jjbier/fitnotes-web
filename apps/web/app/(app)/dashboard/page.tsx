@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const setWorkoutComment = useWorkoutStore((s) => s.setWorkoutComment);
 
   const exercises = useExerciseStore((s) => s.exercises);
+  const categories = useExerciseStore((s) => s.categories);
   const loadExercises = useExerciseStore((s) => s.loadExercises);
 
   const confirmDelete = useConfirm();
@@ -376,7 +377,22 @@ export default function DashboardPage() {
                 className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="">Seleccionar ejercicio…</option>
-                {exercises.filter((ex) => !hiddenCategoryIds.includes(ex.category_id)).map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                {categories
+                  .filter((cat) => !hiddenCategoryIds.includes(cat.id))
+                  .slice()
+                  .sort((a, b) => a.order_index - b.order_index)
+                  .map((cat) => {
+                    const catExercises = exercises
+                      .filter((ex) => ex.category_id === cat.id)
+                      .slice()
+                      .sort((a, b) => a.name.localeCompare(b.name));
+                    if (catExercises.length === 0) return null;
+                    return (
+                      <optgroup key={cat.id} label={cat.name}>
+                        {catExercises.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                      </optgroup>
+                    );
+                  })}
               </select>
               <button onClick={handleAddExercise} className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Añadir</button>
               <button onClick={() => setShowExPicker(false)} className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>

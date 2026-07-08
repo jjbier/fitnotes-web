@@ -3,21 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Star, Dumbbell, MoreVertical } from "lucide-react";
-import { ExerciseType, formatLastUsedLabel } from "@fitnotes/core";
+import { formatLastUsedLabel, EXERCISE_TYPE_LABELS } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
-
-const TYPE_BADGE: Record<ExerciseType, string> = {
-  [ExerciseType.WEIGHT_REPS]: "Peso × Reps",
-  [ExerciseType.DISTANCE_TIME]: "Dist / Tiempo",
-  [ExerciseType.REPS_ONLY]: "Reps",
-  [ExerciseType.WEIGHT_ONLY]: "Peso",
-  [ExerciseType.TIME_ONLY]: "Tiempo",
-  [ExerciseType.WEIGHT_DISTANCE]: "Peso + Dist",
-  [ExerciseType.WEIGHT_TIME]: "Peso + Tiempo",
-  [ExerciseType.REPS_DISTANCE]: "Reps + Dist",
-  [ExerciseType.REPS_TIME]: "Reps + Tiempo",
-  [ExerciseType.DISTANCE_ONLY]: "Distancia",
-};
 
 interface Props {
   exercise: Exercise;
@@ -89,7 +76,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
       <div className="flex-1 min-w-0 ml-3">
         <p className="font-medium text-sm truncate">{exercise.name}</p>
         <span className="inline-block mt-0.5 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-          {TYPE_BADGE[exercise.type]}
+          {EXERCISE_TYPE_LABELS[exercise.type]}
         </span>
         {exercise.notes && (
           <p className="text-xs text-muted-foreground mt-1 truncate">{exercise.notes}</p>

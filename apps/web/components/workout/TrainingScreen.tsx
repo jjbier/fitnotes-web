@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useWorkoutStore, useExerciseStore } from "@fitnotes/core";
+import { useWorkoutStore, useExerciseStore, EXERCISE_TYPE_LABELS } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createProgressRepository } from "@fitnotes/database";
 import SetRow from "./SetRow";
 import SetCommentModal from "./SetCommentModal";
@@ -174,7 +174,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
       <div className="flex items-center gap-2">
         <h2 className="font-semibold text-base">{exercise.name}</h2>
         <span className="text-xs text-muted-foreground rounded-full border px-2 py-0.5">
-          {exerciseType.replace(/_/g, " ").toLowerCase()}
+          {EXERCISE_TYPE_LABELS[exerciseType]}
         </span>
         <span className="ml-auto text-xs text-muted-foreground">
           {exerciseSets.filter((s) => s.is_complete).length}/{exerciseSets.length} completadas

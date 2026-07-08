@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, MessageCircle, Trash2, Trophy } from "lucide-react";
+import { getExerciseFields } from "@fitnotes/core";
 import type { Set, ExerciseType } from "@fitnotes/core";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggleComplete, onComment, isPR, weightStep = 0.5 }: Props) {
+  const fields = getExerciseFields(exerciseType);
   return (
     <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${set.is_complete ? "bg-primary/5 border-primary/20" : ""}`}>
       <button
@@ -27,7 +29,7 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
       </button>
 
       <div className="flex-1 flex items-center gap-2 flex-wrap">
-        {(exerciseType === "WEIGHT_REPS" || exerciseType === "WEIGHT_ONLY") && (
+        {fields.weight && (
           <div className="flex items-center gap-1">
             <input
               type="number"
@@ -42,7 +44,7 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
             <span className="text-xs text-muted-foreground" aria-hidden="true">kg</span>
           </div>
         )}
-        {(exerciseType === "WEIGHT_REPS" || exerciseType === "REPS_ONLY") && (
+        {fields.reps && (
           <div className="flex items-center gap-1">
             <input
               type="number"
@@ -56,36 +58,22 @@ export default function SetRow({ set, exerciseType, onUpdate, onDelete, onToggle
             <span className="text-xs text-muted-foreground" aria-hidden="true">reps</span>
           </div>
         )}
-        {(exerciseType === "DISTANCE_TIME") && (
-          <>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                value={set.distance ?? ""}
-                onChange={(e) => onUpdate(set.id, { distance: e.target.value ? parseFloat(e.target.value) : undefined })}
-                placeholder="km"
-                min="0"
-                step="0.1"
-                aria-label="Distancia en km"
-                className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <span className="text-xs text-muted-foreground" aria-hidden="true">km</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                value={set.time_seconds ?? ""}
-                onChange={(e) => onUpdate(set.id, { time_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
-                placeholder="seg"
-                min="0"
-                aria-label="Tiempo en segundos"
-                className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <span className="text-xs text-muted-foreground" aria-hidden="true">s</span>
-            </div>
-          </>
+        {fields.distance && (
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              value={set.distance ?? ""}
+              onChange={(e) => onUpdate(set.id, { distance: e.target.value ? parseFloat(e.target.value) : undefined })}
+              placeholder="km"
+              min="0"
+              step="0.1"
+              aria-label="Distancia en km"
+              className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-xs text-muted-foreground" aria-hidden="true">km</span>
+          </div>
         )}
-        {exerciseType === "TIME_ONLY" && (
+        {fields.time && (
           <div className="flex items-center gap-1">
             <input
               type="number"

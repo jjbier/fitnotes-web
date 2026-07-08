@@ -30,7 +30,7 @@ export default function RootPage() {
             FitNotes App
           </h1>
           <p className="mt-3 text-lg text-muted-foreground">
-            Track your workouts, PRs and progress — all in one place.
+            Registra tus entrenamientos, récords y progreso — todo en un solo lugar.
           </p>
         </div>
 
@@ -52,9 +52,9 @@ export default function RootPage() {
 
         {/* Feature bullets */}
         <ul className="text-sm text-muted-foreground space-y-1 pt-2">
-          <li>Workout logging with sets, reps and weight</li>
-          <li>Personal records tracked automatically</li>
-          <li>Progress charts and body tracker</li>
+          <li>Registro de entrenamientos con series, repeticiones y peso</li>
+          <li>Récords personales calculados automáticamente</li>
+          <li>Gráficas de progreso y seguimiento corporal</li>
         </ul>
       </div>
     </main>
