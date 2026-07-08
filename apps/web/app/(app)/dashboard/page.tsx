@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell, Clock } from "lucide-react";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, todayISO, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
@@ -259,14 +259,9 @@ export default function DashboardPage() {
       <div className="flex items-center gap-3">
         <button onClick={() => handleDateChange(-1)} disabled={isLoading} aria-label="Día anterior" className="rounded-xl border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><ChevronLeft size={16} aria-hidden="true" /></button>
         <div className="flex-1">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
-            </h1>
-            {activeWorkout && activeWorkout.id && !activeWorkout.end_time && (
-              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
-            )}
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {currentDate === today ? "Entrenamiento de hoy" : "Entrenamiento"}
+          </h1>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(currentDate)}</p>
         </div>
         <button onClick={() => handleDateChange(1)} disabled={isLoading || currentDate >= today} aria-label="Día siguiente" className="rounded-xl border px-2 py-1 text-sm hover:bg-secondary disabled:opacity-40"><ChevronRight size={16} aria-hidden="true" /></button>
@@ -292,6 +287,17 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2">
+            {!activeWorkout.end_time ? (
+              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5">
+                <Clock size={16} className="text-primary" aria-hidden="true" />
+                <span className="font-mono text-sm font-semibold tabular-nums text-primary">
+                  {activeWorkout.duration_minutes != null ? `${activeWorkout.duration_minutes} min` : "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">finalizado</span>
+              </span>
+            )}
             <button
               onClick={() => setShowShare(true)}
               className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"

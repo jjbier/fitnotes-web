@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, use } from "react";
 import Link from "next/link";
-import { ChevronLeft, Share2, CalendarDays, CheckSquare, Dumbbell } from "lucide-react";
+import { ChevronLeft, Share2, CalendarDays, CheckSquare, Dumbbell, Clock } from "lucide-react";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
@@ -227,16 +227,22 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           <ChevronLeft size={16} aria-hidden="true" />
         </Link>
         <div className="flex-1">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">Entrenamiento</h1>
-            {activeWorkout && activeWorkout.id && !activeWorkout.end_time && (
-              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
-            )}
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Entrenamiento</h1>
           <p className="text-sm text-muted-foreground">{formatWorkoutDate(date)}</p>
         </div>
         {activeWorkout && activeWorkout.id && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {!activeWorkout.end_time ? (
+              <WorkoutTimer startTime={activeWorkout.start_time} onElapsedChange={(s) => { elapsedRef.current = s; }} />
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5">
+                <Clock size={16} className="text-primary" aria-hidden="true" />
+                <span className="font-mono text-sm font-semibold tabular-nums text-primary">
+                  {activeWorkout.duration_minutes != null ? `${activeWorkout.duration_minutes} min` : "—"}
+                </span>
+                <span className="text-xs text-muted-foreground">finalizado</span>
+              </span>
+            )}
             <button
               onClick={() => setShowShare(true)}
               className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"

@@ -58,18 +58,18 @@ export default function WorkoutTimer({ startTime, onElapsedChange }: Props) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-1.5">
       <button
         type="button"
         onClick={handleToggle}
         aria-label={running ? "Pausar temporizador" : "Reanudar temporizador"}
-        className="text-muted-foreground hover:text-foreground"
+        className="text-primary hover:text-primary/80"
       >
-        {running ? <Pause size={14} /> : <Play size={14} />}
+        {running ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
       </button>
       <span
         aria-label={`Duración del entrenamiento: ${formatClockDuration(elapsed)}`}
-        className="font-mono text-sm tabular-nums text-muted-foreground"
+        className="font-mono text-sm font-semibold tabular-nums text-primary"
       >
         {formatClockDuration(elapsed)}
       </span>
