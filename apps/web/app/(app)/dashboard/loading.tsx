@@ -1,3 +1,4 @@
+/** Esqueleto de carga (Suspense fallback) mostrado mientras `/dashboard` resuelve sus datos iniciales. */
 export default function Loading() {
   return (
     <div className="space-y-4 animate-pulse">

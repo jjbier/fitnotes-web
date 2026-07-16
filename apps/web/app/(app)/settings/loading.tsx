@@ -1,3 +1,4 @@
+/** Skeleton de carga mostrado mientras se resuelve la ruta /settings. */
 export default function Loading() {
   return (
     <div className="space-y-4 animate-pulse">

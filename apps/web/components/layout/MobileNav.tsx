@@ -1,3 +1,10 @@
+/**
+ * Barra de navegación inferior para viewport móvil (oculta en `md:` y
+ * superior, ver `Sidebar` para el equivalente de escritorio). Replica las
+ * mismas 6 secciones que las tabs de la app mobile nativa, para mantener
+ * paridad de navegación entre plataformas.
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -13,8 +20,16 @@ const TAB_ITEMS = [
   { href: "/settings", label: "Configuración", icon: "⚙️" },
 ] as const;
 
+// Rutas que cuelgan de "Configuración" (Medidas corporales, Herramientas):
+// no tienen tab propia pero deben mantener "Configuración" resaltada.
 const SETTINGS_SUBROUTES = ["/body-tracker", "/tools"];
 
+/**
+ * Renderiza las 6 tabs fijas en la parte inferior de la pantalla. Una tab se
+ * marca activa si la ruta actual coincide exactamente, es una subruta suya
+ * (`/exercise/123`), o —caso especial de "Configuración"— si la ruta
+ * pertenece a `SETTINGS_SUBROUTES`.
+ */
 export default function MobileNav() {
   const pathname = usePathname();
 

@@ -4,6 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { createBrowserClient } from "@fitnotes/database";
 
+/**
+ * Página de registro ("/register"). Formulario de email/contraseña/confirmación que valida
+ * localmente (coincidencia de contraseñas, longitud mínima de 8) y luego llama a `signUp` de
+ * Supabase. Tras un registro exitoso muestra una pantalla de "revisa tu correo" en vez de
+ * redirigir directamente (Supabase requiere confirmación por email).
+ */
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,6 +18,11 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
 
+  /**
+   * Maneja el submit del formulario: valida contraseñas en el cliente y llama a `signUp`.
+   * Si Supabase acepta el registro, activa el estado `sent` para mostrar el aviso de confirmación
+   * por correo (no redirige a login/dashboard automáticamente).
+   */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");

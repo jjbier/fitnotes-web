@@ -1,16 +1,39 @@
+/**
+ * Panel lateral/superior que lista los ejercicios de un entrenamiento en
+ * curso, permite navegar entre ellos, reordenarlos por drag & drop (HTML5
+ * DnD nativo), eliminarlos y, en "modo selección", marcarlos para acciones
+ * en lote (p. ej. compartir). Muestra progreso de series completadas por
+ * ejercicio con una barra y un check verde cuando todas las series están
+ * completas.
+ */
+
 "use client";
 
 import { useState } from "react";
 import { GripVertical, CheckCircle2, Trash2, Square, CheckSquare } from "lucide-react";
 import type { WorkoutExercise, Exercise, Set as FitSet } from "@fitnotes/core";
 
+/**
+ * Props de `NavigationPanel`.
+ * @property workoutExercises - Ejercicios del entrenamiento (se ordenan internamente por `order_index`).
+ * @property exercises - Catálogo de ejercicios usado para resolver el nombre a mostrar de cada `workoutExercise`.
+ * @property sets - Series por `workoutExercise.id`, usadas para calcular el progreso (completadas/total).
+ * @property activeExerciseId - Id del `workoutExercise` actualmente enfocado, para resaltarlo.
+ * @property onSelectExercise - Se invoca al pulsar un ejercicio fuera de modo selección.
+ * @property onAddExercise - Si se provee, muestra el botón "Agregar ejercicio" al final de la lista.
+ * @property onReorderExercises - Si se provee, habilita drag & drop y se invoca con los ids en el nuevo orden al soltar.
+ * @property onDeleteExercise - Si se provee, muestra un botón de papelera por fila (oculto en modo selección).
+ * @property selectMode - Activa el modo selección múltiple (checkboxes en vez de navegación/drag).
+ * @property selectedIds - Conjunto de ids seleccionados en modo selección.
+ * @property onToggleSelect - Alterna la selección de un ejercicio (usado tanto por el checkbox como al pulsar la fila en modo selección).
+ */
 interface NavigationPanelProps {
   workoutExercises: WorkoutExercise[];
   exercises: Exercise[];
   sets: Record<string, FitSet[]>;
   activeExerciseId: string | null;
   onSelectExercise: (workoutExerciseId: string) => void;
-  onAddExercise: () => void;
+  onAddExercise?: () => void;
   onReorderExercises?: (orderedIds: string[]) => void;
   onDeleteExercise?: (workoutExerciseId: string, exerciseName: string) => void;
   selectMode?: boolean;
@@ -18,6 +41,14 @@ interface NavigationPanelProps {
   onToggleSelect?: (workoutExerciseId: string) => void;
 }
 
+/**
+ * Lista reordenable/seleccionable de ejercicios de un entrenamiento. El
+ * reordenamiento (`canReorder`) solo se habilita si se pasa
+ * `onReorderExercises` y no se está en modo selección; el estado de arrastre
+ * (`dragIdx`/`dragOverIdx`) es puramente local y se recalcula un array
+ * reordenado en `handleDragEnd`, delegando la persistencia al callback del
+ * padre.
+ */
 export default function NavigationPanel({
   workoutExercises,
   exercises,
@@ -137,13 +168,15 @@ export default function NavigationPanel({
         );
       })}
 
-      <button
-        onClick={onAddExercise}
-        className="mt-1 flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-secondary"
-      >
-        <span>+</span>
-        Agregar ejercicio
-      </button>
+      {onAddExercise && (
+        <button
+          onClick={onAddExercise}
+          className="mt-1 flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-secondary"
+        >
+          <span>+</span>
+          Agregar ejercicio
+        </button>
+      )}
     </div>
   );
 }

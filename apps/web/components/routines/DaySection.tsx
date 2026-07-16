@@ -1,23 +1,42 @@
+/**
+ * Sección colapsable de un día de rutina: lista sus ejercicios (con soporte
+ * de supersets agrupados visualmente por `group_id`/`group_name`), permite
+ * reordenarlos por drag & drop en modo edición, y en modo lectura ofrece el
+ * botón "Registrar todo" para volcar el día completo al entrenamiento de hoy.
+ * Toda la persistencia (renombrar, añadir/quitar ejercicio, reordenar,
+ * agrupar/desagrupar superset) se delega en callbacks — el componente no
+ * habla con repositorios directamente.
+ */
 "use client";
 
 import { useState } from "react";
 import { X } from "lucide-react";
 import type { RoutineDay, RoutineDayExercise, Exercise, PredefinedSet } from "@fitnotes/core";
 
+/** Props de {@link DaySection}. */
 interface Props {
   day: RoutineDay;
+  /** Ejercicios de este día (sin ordenar garantizado; el componente los ordena por `order_index`). */
   exercises: RoutineDayExercise[];
+  /** Catálogo completo de ejercicios, usado para resolver nombres y para el selector de "añadir ejercicio". */
   allExercises: Exercise[];
+  /** Series predefinidas de cada `RoutineDayExercise`, indexadas por su id; se usa para la insignia "Ns"/"series". */
   predefinedSets: Record<string, PredefinedSet[]>;
+  /** Activa los controles de edición (renombrar, eliminar, reordenar, agrupar) en lugar de la vista de registro. */
   editMode: boolean;
+  /** Deshabilita el botón "Registrar todo" mientras una operación de registro masivo está en curso. */
   isLoggingAll: boolean;
   onRenameDay: (dayId: string, name: string) => Promise<void>;
   onDeleteDay: (dayId: string) => Promise<void>;
   onAddExercise: (dayId: string, exerciseId: string) => Promise<void>;
   onRemoveExercise: (rdeId: string) => Promise<void>;
+  /** Registra automáticamente todos los ejercicios del día (con sus series predefinidas) en el entrenamiento de hoy. */
   onLogAll: (dayId: string) => Promise<void>;
+  /** Persiste el nuevo orden tras un drag & drop; recibe la lista completa de `{id, order_index}` ya recalculada. */
   onReorderExercises: (dayId: string, updates: { id: string; order_index: number }[]) => Promise<void>;
+  /** Abre el modal de edición de series predefinidas para un ejercicio del día. */
   onOpenPredefinedSets: (rde: RoutineDayExercise) => void;
+  /** Agrupa dos ejercicios consecutivos en un superset (mismo `group_id`). */
   onCreateSuperset: (rdeId: string, nextRdeId: string) => Promise<void>;
   onRemoveFromSuperset: (rdeId: string) => Promise<void>;
   onRenameGroup: (groupId: string, name: string) => Promise<void>;
@@ -45,12 +64,14 @@ export default function DaySection({
   const sortedExercises = [...exercises].sort((a, b) => a.order_index - b.order_index);
   const exerciseMap = Object.fromEntries(allExercises.map((e) => [e.id, e]));
 
+  /** Confirma el renombrado inline del día (no-op si el nombre queda vacío). */
   async function handleRename() {
     if (!dayName.trim()) return;
     await onRenameDay(day.id, dayName.trim());
     setRenaming(false);
   }
 
+  /** Añade el ejercicio seleccionado en el desplegable al día y cierra el formulario de "añadir". */
   async function handleAddExercise() {
     if (!selectedExId) return;
     await onAddExercise(day.id, selectedExId);
@@ -58,6 +79,11 @@ export default function DaySection({
     setShowAddEx(false);
   }
 
+  /**
+   * Al soltar un ejercicio arrastrado, recalcula el `order_index` de todos
+   * los ejercicios del día moviendo el elemento de `dragIdx` a `dragOverIdx`
+   * y persiste el nuevo orden completo vía `onReorderExercises`.
+   */
   async function handleExDragEnd() {
     if (dragIdx === null || dragOverIdx === null || dragIdx === dragOverIdx) {
       setDragIdx(null);
@@ -73,11 +99,13 @@ export default function DaySection({
     await onReorderExercises(day.id, updates);
   }
 
+  /** Abre el input de edición inline del nombre de un grupo (superset), precargado con su nombre actual. */
   async function handleStartRenameGroup(groupId: string, currentName: string) {
     setRenamingGroupId(groupId);
     setGroupNameInput(currentName);
   }
 
+  /** Confirma el renombrado del grupo (superset) actualmente en edición. */
   async function handleSaveGroupName() {
     if (!renamingGroupId) return;
     await onRenameGroup(renamingGroupId, groupNameInput.trim());

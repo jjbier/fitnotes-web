@@ -1,3 +1,11 @@
+/**
+ * Modal que permite copiar los ejercicios (y sus series) de un entrenamiento
+ * anterior al entrenamiento actual. Carga los últimos 20 entrenamientos del
+ * usuario (excluyendo el actual) y delega la copia real en
+ * `WorkoutRepository.copyWorkout`, que recibe la lista de ejercicios ya
+ * presentes en el entrenamiento destino para evitar duplicarlos.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,6 +14,14 @@ import { formatWorkoutDate } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
 import type { WorkoutExercise, Workout } from "@fitnotes/core";
 
+/**
+ * Props de `CopyWorkoutModal`.
+ * @property currentWorkout - Entrenamiento destino (id + fecha) al que se copiarán los ejercicios.
+ * @property currentExercises - Ejercicios ya presentes en el entrenamiento actual, usados para no duplicar al copiar.
+ * @property userId - Id del usuario dueño de los entrenamientos, requerido por `copyWorkout`.
+ * @property onCopied - Se invoca tras completar la copia con éxito.
+ * @property onClose - Cierra el modal (clic fuera, Escape, botón ✕ o tras copiar).
+ */
 interface Props {
   currentWorkout: { id: string; date: string };
   currentExercises: WorkoutExercise[];
@@ -14,6 +30,13 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * Muestra una lista de entrenamientos anteriores (máx. 20, excluyendo el
+ * actual) para elegir uno como origen y copiar sus ejercicios/series al
+ * entrenamiento en curso. Enfoca el botón de cierre al montar y cierra con
+ * Escape. Bloquea la lista (mostrando "Copiando…") mientras la copia está en
+ * curso para evitar copias duplicadas por doble clic.
+ */
 export default function CopyWorkoutModal({
   currentWorkout, currentExercises, userId, onCopied, onClose,
 }: Props) {

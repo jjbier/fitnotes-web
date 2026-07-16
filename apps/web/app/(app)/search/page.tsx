@@ -21,6 +21,13 @@ const TYPE_LABELS: Partial<Record<ExerciseType, string>> = {
   [ExerciseType.DISTANCE_ONLY]: "Distancia",
 };
 
+/**
+ * Búsqueda global de ejercicios (`/search`): filtra por nombre (case-insensitive) y
+ * muestra, por ejercicio, su categoría, tipo (`TYPE_LABELS`) y el último entrenamiento
+ * en que se usó (fecha relativa, series y mejor peso/reps vía `getLastWorkoutByExercises`).
+ * Los ejercicios con historial reciente se listan primero; el resto, alfabéticamente.
+ * Cada fila enlaza al historial del ejercicio (`/exercise/history/[id]`).
+ */
 export default function SearchPage() {
   const exercises = useExerciseStore((s) => s.exercises);
   const categories = useExerciseStore((s) => s.categories);

@@ -16,6 +16,13 @@ interface Measurement {
   goal_value: number | null;
 }
 
+/**
+ * Configuración de medidas corporales (`/body-tracker/settings`): lista las medidas
+ * activas (reordenables por drag&drop, `handleMeasurementDrop`) y desactivadas por
+ * separado, y permite crear, editar (nombre/unidad/objetivo), activar/desactivar,
+ * reiniciar (borrar todos los valores registrados) y eliminar cada medida. Las medidas
+ * por defecto (`is_default`) no se pueden editar ni eliminar, solo activar/desactivar/reiniciar.
+ */
 export default function BodyTrackerSettingsPage() {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +78,7 @@ export default function BodyTrackerSettingsPage() {
     setSaving(null);
   }
 
+  /** Reordena una medida activa arrastrada sobre otra y persiste el nuevo `order_index` de todas las activas (las desactivadas no se reordenan). */
   async function handleMeasurementDrop(toId: string) {
     if (!draggedId || draggedId === toId) { setDraggedId(null); setDragOverId(null); return; }
     const enabled = measurements.filter((m) => m.is_enabled);
@@ -348,6 +356,11 @@ export default function BodyTrackerSettingsPage() {
   );
 }
 
+/**
+ * Fila de una medida en la configuración: toggle activar/desactivar, y acciones
+ * editar/reiniciar/eliminar con confirmación inline (sustituye al botón por un
+ * mensaje de confirmación sí/no en vez de un diálogo modal).
+ */
 function MeasurementRow({
   m, saving, confirmDelete, confirmReset, onToggle, onDelete, onAskDelete, onCancelDelete, onReset, onAskReset, onCancelReset, onAskEdit,
 }: {
@@ -455,6 +468,7 @@ function MeasurementRow({
   );
 }
 
+/** Formulario inline de edición de una medida (nombre, unidad y tipo/valor de objetivo). */
 function EditMeasurementForm({
   name, unit, goalType, goalValue, saving,
   onNameChange, onUnitChange, onGoalTypeChange, onGoalValueChange, onSubmit, onCancel,

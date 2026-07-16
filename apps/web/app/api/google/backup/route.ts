@@ -1,9 +1,20 @@
+/**
+ * Endpoint que ejecuta una copia de seguridad completa a Google Drive: refresca el access token
+ * con el refresh_token guardado, exporta todas las tablas del usuario a un único JSON, lo sube a
+ * Drive como archivo multipart, rota backups antiguos (se conservan como máximo
+ * `MAX_DRIVE_BACKUPS`) y anota la fecha/URL del último backup en `user_metadata`.
+ */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@fitnotes/database";
 
 type BackupEntry = Record<string, unknown>;
 
+/**
+ * Intercambia un refresh_token de Google por un access_token nuevo usando el endpoint OAuth
+ * `token` con `grant_type=refresh_token`. Lanza si Google no devuelve `access_token` (token
+ * revocado o inválido).
+ */
 async function refreshAccessToken(refreshToken: string): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -22,6 +33,10 @@ async function refreshAccessToken(refreshToken: string): Promise<string> {
 
 const MAX_DRIVE_BACKUPS = 5;
 
+/**
+ * Busca en Drive los archivos cuyo nombre contiene "fitnotes-backup-" (más recientes primero) y
+ * elimina los que sobrepasan `MAX_DRIVE_BACKUPS`, para no acumular backups indefinidamente.
+ */
 async function rotateOldBackups(accessToken: string): Promise<void> {
   const res = await fetch(
     "https://www.googleapis.com/drive/v3/files?" +
@@ -47,6 +62,11 @@ async function rotateOldBackups(accessToken: string): Promise<void> {
   );
 }
 
+/**
+ * Sube un archivo JSON a Google Drive usando un request `multipart/related` (metadata + contenido
+ * en un mismo body con boundary manual). Devuelve la `webViewLink` del archivo creado, o una URL
+ * construida a partir del `id` si Drive no la incluye en la respuesta.
+ */
 async function uploadToDrive(accessToken: string, filename: string, content: string): Promise<string> {
   const boundary = `fitnotes_${Date.now()}`;
   const metadata = JSON.stringify({ name: filename, mimeType: "application/json" });
@@ -78,6 +98,16 @@ async function uploadToDrive(accessToken: string, filename: string, content: str
   return data.webViewLink ?? `https://drive.google.com/file/d/${data.id}`;
 }
 
+/**
+ * POST /api/google/backup
+ * Sin body. Requiere sesión de Supabase (401 si no hay usuario) y una cuenta de Google Drive ya
+ * conectada (400 si no hay `google_drive_refresh_token` guardado; 503 si el servidor no tiene
+ * configuradas las credenciales OAuth de Google).
+ * Exporta todas las tablas del usuario, sube el JSON resultante a Drive y devuelve
+ * `{ success: true, fileUrl, exportedAt }`. Si el refresh_token es inválido, lo limpia de
+ * `user_metadata` y responde 401 con `code: "TOKEN_INVALID"` para que la UI pida reconectar.
+ * En cualquier otro fallo responde 500 con el mensaje de error.
+ */
 export async function POST() {
   const cookieStore = await cookies();
   const supabase = createServerClient({

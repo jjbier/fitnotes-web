@@ -9,6 +9,7 @@ import { useBodyTrackerStore, GoalType } from "@fitnotes/core";
 import { createBrowserClient, createBodyTrackerRepository } from "@fitnotes/database";
 import type { BodyMeasurementEntry } from "@fitnotes/core";
 
+/** Formatea una fecha ISO como tiempo relativo en español ("hoy", "hace 3 días", "hace 2 meses", "hace 1 año"). */
 function formatTimeAgo(isoDate: string): string {
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -29,6 +30,19 @@ interface HistoryEntry {
   comment: string | null;
 }
 
+/**
+ * Página de Medidas corporales: siembra las medidas por defecto si el usuario no tiene
+ * ninguna (`seedDefaultMeasurementsIfNeeded`) y ofrece 3 pestañas:
+ *
+ * - Registrar: tarjeta por medida activa con último valor, delta vs. el registro
+ *   anterior (coloreado según si el objetivo de la medida es subir/bajar/valor
+ *   específico, ver `deltaColorClassFor`) y formulario de alta rápida.
+ * - Historial: todas las entradas agrupadas por fecha, filtrables por medida, con delta
+ *   respecto a la entrada previa de la misma medida.
+ * - Gráfica: evolución de una medida vía Recharts, con línea de referencia si tiene
+ *   objetivo numérico y clic en un punto para ver el resto de medidas registradas ese
+ *   mismo día (`handleChartClick`).
+ */
 export default function BodyTrackerPage() {
   const measurements = useBodyTrackerStore((s) => s.measurements);
   const latestEntries = useBodyTrackerStore((s) => s.latestEntries);
@@ -127,6 +141,7 @@ export default function BodyTrackerPage() {
     return user?.id ?? "";
   }
 
+  /** Carga todas las entradas del usuario para la pestaña Historial, una sola vez (cacheado con `historyLoaded`). */
   async function loadHistory() {
     if (historyLoaded) return;
     const uid = await resolveUserId();
@@ -179,6 +194,7 @@ export default function BodyTrackerPage() {
     return map;
   }, [historyEntries]);
 
+  /** Al clicar un punto de la gráfica, fija la fecha seleccionada y asegura tener el historial cargado para listar el resto de medidas de ese día. */
   function handleChartClick(state: { activeLabel?: string } | null) {
     if (!state?.activeLabel) return;
     setClickedChartDate(state.activeLabel);
@@ -191,6 +207,11 @@ export default function BodyTrackerPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [historyEntries, clickedChartDate]);
 
+  /**
+   * Clase de color para el delta entre dos valores de una medida, según su objetivo:
+   * verde si se acerca al valor específico o va en la dirección deseada (subir/bajar),
+   * rojo en caso contrario.
+   */
   function deltaColorClassFor(m: { goal_type: GoalType; goal_value?: number } | undefined, current: number, prev: number): string {
     if (!m) return "text-muted-foreground";
     if (m.goal_type === "SPECIFIC" && m.goal_value != null) {

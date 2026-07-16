@@ -10,6 +10,11 @@ import EmptyState from "@/components/EmptyState";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { Routine } from "@fitnotes/core";
 
+/**
+ * Página de listado de Rutinas: carga las rutinas del usuario y permite crear, editar,
+ * copiar (duplicar con nombre "Copia de …") y eliminar (con confirmación) cada una,
+ * además de abrir el editor de días/ejercicios en `/routines/[id]`.
+ */
 export default function RoutinesPage() {
   const routines = useRoutineStore((s) => s.routines);
   const isLoading = useRoutineStore((s) => s.isLoading);

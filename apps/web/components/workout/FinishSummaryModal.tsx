@@ -1,7 +1,15 @@
+/**
+ * Modal de resumen mostrado justo al finalizar un entrenamiento: presenta en
+ * una cuadrícula de tarjetas la duración, el número de ejercicios, el número
+ * de series y el volumen total levantado. Puramente presentacional (no hace
+ * llamadas a red ni a stores).
+ */
+
 "use client";
 
 import { formatClockDuration } from "@fitnotes/core";
 
+/** Estadísticas ya calculadas del entrenamiento recién finalizado, a mostrar en las tarjetas del resumen. */
 interface FinishStats {
   duration: number;
   exercises: number;
@@ -9,11 +17,22 @@ interface FinishStats {
   volume: number;
 }
 
+/**
+ * Props de `FinishSummaryModal`.
+ * @property stats - Estadísticas del entrenamiento finalizado.
+ * @property onClose - Cierra el modal (clic en el fondo o en el botón "Cerrar").
+ */
 interface FinishSummaryModalProps {
   stats: FinishStats;
   onClose: () => void;
 }
 
+/**
+ * Renderiza las 4 tarjetas de estadísticas (duración, ejercicios, series,
+ * volumen) del entrenamiento recién finalizado. El volumen se redondea y se
+ * formatea con separadores de miles en español (`es-ES`). El botón "Cerrar"
+ * tiene `autoFocus` para permitir cerrar con teclado inmediatamente.
+ */
 export default function FinishSummaryModal({ stats, onClose }: FinishSummaryModalProps) {
   const tiles = [
     { label: "Duración", value: formatClockDuration(stats.duration) },

@@ -1,5 +1,6 @@
 "use client";
 
+/** Error boundary de la sección Rutinas (listado): muestra el mensaje y permite reintentar el render. */
 export default function Error({
   error,
   reset,

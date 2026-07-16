@@ -13,6 +13,7 @@ import EmptyState from "@/components/EmptyState";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { Exercise, Category } from "@fitnotes/core";
 
+/** Devuelve `value` retrasado `delay` ms; usado para no filtrar en cada pulsación del buscador. */
 function useDebounce<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -22,6 +23,16 @@ function useDebounce<T>(value: T, delay = 300): T {
   return debounced;
 }
 
+/**
+ * Página de listado de ejercicios de una categoría (`/exercise/[id]`), o de favoritos
+ * cuando `id === "favorites"`. Carga categorías, ejercicios y estadísticas por ejercicio
+ * (`workout_count`/`last_used`) al montar, y permite crear/editar/eliminar ejercicios
+ * (con la posibilidad de crear una categoría nueva desde el propio formulario),
+ * marcar/desmarcar favoritos (con rollback si falla la persistencia) y convertir
+ * unidades de peso del ejercicio en edición. La lista, ya filtrada por búsqueda
+ * (debounced) y con favoritos primero, se virtualiza con `useWindowVirtualizer`
+ * (scroll de ventana) para soportar catálogos grandes sin degradar el rendimiento.
+ */
 export default function ExerciseCategoryPage() {
   const { id: categoryId } = useParams<{ id: string }>();
 
@@ -100,6 +111,10 @@ export default function ExerciseCategoryPage() {
     scrollMargin: listRef.current?.offsetTop ?? 0,
   });
 
+  /**
+   * Crea el ejercicio y lo añade al store, sin cerrar el formulario — separado de
+   * `handleCreate` para que `ExerciseForm` pueda reutilizarlo (p. ej. "crear y añadir otro").
+   */
   const doCreate = useCallback(async (data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
   }) => {
@@ -158,6 +173,7 @@ export default function ExerciseCategoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
 
+  /** Elimina el ejercicio de forma optimista (tras confirmar); si la persistencia falla, lo restaura en el store. */
   async function handleDelete(id: string) {
     if (!(await confirmDelete("¿Eliminar este ejercicio y todo su historial?"))) return;
     const saved = exercises.find((e) => e.id === id);
@@ -166,6 +182,7 @@ export default function ExerciseCategoryPage() {
     if (error && saved) addExercise(saved);
   }
 
+  /** Alterna el favorito de forma optimista y revierte si la persistencia lanza error. */
   async function handleToggleFavorite(id: string, current: boolean) {
     toggleFavorite(id);
     try {

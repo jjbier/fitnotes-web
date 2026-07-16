@@ -1,3 +1,4 @@
+/** Esqueleto de carga (Suspense fallback) mostrado mientras `/exercise/[id]` resuelve los ejercicios de la categoría. */
 export default function Loading() {
   return (
     <div className="space-y-4 animate-pulse">

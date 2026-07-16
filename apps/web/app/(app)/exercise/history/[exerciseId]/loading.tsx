@@ -1,3 +1,4 @@
+/** Esqueleto de carga (Suspense fallback) mostrado mientras `/exercise/history/[exerciseId]` resuelve el historial de sesiones. */
 export default function Loading() {
   return (
     <div className="space-y-4 animate-pulse">

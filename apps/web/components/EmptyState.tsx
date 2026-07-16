@@ -1,21 +1,33 @@
+/**
+ * Estado vacío reutilizable para listas/secciones sin contenido: icono,
+ * título, descripción opcional y hasta dos acciones (una primaria destacada,
+ * otra secundaria en forma de enlace de texto). Genérico y sin lógica de
+ * negocio — todo el comportamiento se inyecta vía props.
+ */
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 
+/** Acción mostrada en el estado vacío: si trae `href` se renderiza como enlace, si no como botón con `onClick`. */
 interface EmptyStateAction {
   label: string;
   onClick?: () => void;
   href?: string;
+  /** Icono opcional mostrado junto a la etiqueta (solo se usa en `secondaryAction`). */
   icon?: LucideIcon;
 }
 
+/** Props de {@link EmptyState}. */
 interface EmptyStateProps {
   icon: LucideIcon;
   title: string;
   description?: string;
+  /** Acción principal, renderizada como botón/enlace destacado (`bg-primary`). */
   action?: EmptyStateAction;
+  /** Acción secundaria, renderizada como enlace de texto discreto debajo de la principal. */
   secondaryAction?: EmptyStateAction;
 }
 
+/** Renderiza el bloque de estado vacío con borde discontinuo, icono, texto y acciones. */
 export default function EmptyState({ icon: Icon, title, description, action, secondaryAction }: EmptyStateProps) {
   return (
     <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-dashed p-10 text-center">

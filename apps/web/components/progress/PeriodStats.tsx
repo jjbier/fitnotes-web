@@ -1,3 +1,9 @@
+/**
+ * Panel de estadísticas agregadas de un ejercicio para un periodo
+ * seleccionable (última sesión, semana, mes, año, todo el histórico o rango
+ * personalizado). Deriva las tarjetas de estadísticas a mostrar según los
+ * campos que aplican al tipo de ejercicio (peso, reps, distancia, tiempo).
+ */
 "use client";
 
 import { useState } from "react";
@@ -5,8 +11,10 @@ import Link from "next/link";
 import type { ChartPoint } from "@fitnotes/database";
 import { ExerciseType, getExerciseFields, formatChartDuration, ALL_EXERCISE_FIELDS } from "@fitnotes/core";
 
+/** Ventana temporal sobre la que se agregan las estadísticas. */
 type Period = "workout" | "week" | "month" | "year" | "all" | "custom";
 
+/** Etiquetas en español mostradas en los botones de selección de periodo. */
 const periodLabel: Record<Period, string> = {
   workout: "Última sesión",
   week: "Última semana",
@@ -16,18 +24,28 @@ const periodLabel: Record<Period, string> = {
   custom: "Personalizado",
 };
 
+/** Devuelve la fecha (YYYY-MM-DD) correspondiente a `n` días antes de hoy. */
 function daysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
 }
 
+/** Props de {@link PeriodStats}. */
 interface PeriodStatsProps {
+  /** Puntos de progreso (uno por sesión) ya cargados para el ejercicio; el componente no hace fetching propio. */
   data: ChartPoint[];
+  /** Determina qué estadísticas son relevantes (peso/reps/distancia/tiempo); si se omite se muestran todas. */
   exerciseType?: ExerciseType;
+  /** Unidad de peso a mostrar junto a los valores de peso/volumen/1RM. */
   unit?: string;
 }
 
+/**
+ * Filtra `data` según el periodo seleccionado y calcula las tarjetas de
+ * estadísticas agregadas (sesiones, volumen, 1RM estimado, máximos, totales…)
+ * correspondientes a los campos aplicables al tipo de ejercicio.
+ */
 export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodStatsProps) {
   const [period, setPeriod] = useState<Period>("all");
   const [customFrom, setCustomFrom] = useState(daysAgo(30));

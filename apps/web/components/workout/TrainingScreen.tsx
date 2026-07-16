@@ -1,3 +1,13 @@
+/**
+ * Pantalla principal de registro de series para un ejercicio del
+ * entrenamiento en curso: lista las series existentes (`SetRow`), permite
+ * añadir nuevas, editarlas, comentarlas, eliminarlas y marcarlas como
+ * completadas. Todas las mutaciones son optimistas contra `useWorkoutStore`
+ * (Zustand) con rollback si la llamada al repositorio remoto falla, y leen
+ * ajustes de usuario (registro de PRs, auto-completar serie anterior,
+ * autoscroll a la siguiente serie) desde `localStorage` vía `@/lib/settings`.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,12 +18,36 @@ import SetCommentModal from "./SetCommentModal";
 import type { ExerciseType, Set as FitSet } from "@fitnotes/core";
 import { readBool, SETTING_KEYS, readDefaultWeightIncrement } from "@/lib/settings";
 
+/**
+ * Props de `TrainingScreen`.
+ * @property workoutExerciseId - Id del `workoutExercise` activo cuyas series se muestran/editan.
+ * @property userId - Id del usuario, requerido al crear una serie nueva en el repositorio remoto.
+ */
 interface Props {
   workoutExerciseId: string;
   userId: string;
 }
 
+/**
+ * Comportamiento no obvio a tener en cuenta:
+ * - Inserción optimista con id temporal (`temp-${Date.now()}`): la fila se
+ *   añade al store antes de confirmar en el backend; se reemplaza por el id
+ *   real al recibir respuesta, o se retira silenciosamente si falla.
+ * - "Auto-completar": al añadir una serie nueva, marca optimistamente como
+ *   completada la última serie incompleta anterior (configurable, ver
+ *   `SETTING_KEYS.AUTO_COMPLETE`).
+ * - "Avance automático": al completar una serie, hace scroll suave a la
+ *   siguiente serie incompleta (configurable, ver `SETTING_KEYS.AUTO_NEXT_SET`).
+ * - Los PRs se calculan localmente (`prMap`, mejor peso por número de reps a
+ *   partir de `getPersonalRecords`) solo para resaltar el trofeo en la fila;
+ *   no crea ni persiste PRs nuevos.
+ * - Los errores de red no bloquean la UI: se revierte el cambio local y se
+ *   muestra un aviso temporal (`networkError`) durante 3s.
+ * - No se permiten altas/ediciones si el entrenamiento ya tiene `end_time`
+ *   (entrenamiento finalizado).
+ */
 export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
+  const activeWorkout = useWorkoutStore((s) => s.activeWorkout);
   const workoutExercises = useWorkoutStore((s) => s.exercises);
   const sets = useWorkoutStore((s) => s.sets);
   const createSet = useWorkoutStore((s) => s.createSet);
@@ -71,7 +105,7 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
   }
 
   async function handleCreateSet() {
-    if (!workoutExercise) return;
+    if (!workoutExercise || activeWorkout?.end_time) return;
     const tempId = `temp-${Date.now()}`;
     const newOrder = exerciseSets.length;
 
@@ -208,12 +242,14 @@ export default function TrainingScreen({ workoutExerciseId, userId }: Props) {
         </div>
       )}
 
-      <button
-        onClick={handleCreateSet}
-        className="w-full rounded-2xl border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50"
-      >
-        + Agregar serie
-      </button>
+      {!activeWorkout?.end_time && (
+        <button
+          onClick={handleCreateSet}
+          className="w-full rounded-2xl border border-dashed py-2 text-sm text-muted-foreground hover:bg-secondary/50"
+        >
+          + Agregar serie
+        </button>
+      )}
 
       {commentSetId && (
         <SetCommentModal

@@ -14,6 +14,13 @@ import { useState } from "react";
 import type { Set, ExerciseType } from "@fitnotes/core";
 import { ExerciseType as ET } from "@fitnotes/core";
 
+/**
+ * Props de `SetForm`.
+ * @property exerciseType - Determina qué campos se muestran (peso/reps/distancia/tiempo).
+ * @property defaultValues - Valores iniciales de los campos (p. ej. para precargar con la última serie).
+ * @property onSubmit - Se invoca con los valores parseados (números o `undefined` si el campo está vacío); el formulario se resetea después.
+ * @property onCancel - Si se provee, muestra un botón "Cancelar" junto al de envío.
+ */
 interface SetFormProps {
   exerciseType: ExerciseType;
   defaultValues?: Partial<Set>;
@@ -21,6 +28,13 @@ interface SetFormProps {
   onCancel?: () => void;
 }
 
+/**
+ * Formulario de alta de una serie: muestra solo los campos relevantes según
+ * `exerciseType` (peso, repeticiones, distancia, tiempo — ver
+ * `ExerciseType`), parsea los valores como número al enviar y limpia el
+ * formulario tras cada envío para poder registrar la siguiente serie sin
+ * recargar valores previos.
+ */
 export default function SetForm({
   exerciseType,
   defaultValues = {},

@@ -1,13 +1,29 @@
+/**
+ * Modal simple para añadir/editar/borrar el comentario de texto libre de una
+ * serie (`Set.comment`).
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 
+/**
+ * Props de `SetCommentModal`.
+ * @property initialComment - Comentario actual de la serie (vacío si no tiene).
+ * @property onSave - Se invoca con el comentario final (recortado con `trim()`, o `""` al borrar) al guardar/borrar.
+ * @property onClose - Cierra el modal (clic fuera, Escape, Cancelar o tras guardar/borrar).
+ */
 interface Props {
   initialComment: string;
   onSave: (comment: string) => void;
   onClose: () => void;
 }
 
+/**
+ * Textarea controlado con foco automático al abrir y cierre con Escape. El
+ * botón "Borrar" solo aparece si ya hay texto y guarda un comentario vacío
+ * directamente (sin pasar por el textarea).
+ */
 export default function SetCommentModal({ initialComment, onSave, onClose }: Props) {
   const [value, setValue] = useState(initialComment);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

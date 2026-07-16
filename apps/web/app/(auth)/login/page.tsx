@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@fitnotes/database";
 
+/**
+ * Página de inicio de sesión ("/login"). Formulario de email/contraseña que autentica contra
+ * Supabase (`signInWithPassword`) y, si tiene éxito, redirige a /dashboard. Enlaza a /register
+ * para quien no tenga cuenta.
+ */
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -12,6 +17,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /**
+   * Maneja el submit del formulario: llama a `signInWithPassword` con email/contraseña.
+   * En caso de error muestra el mensaje de Supabase; en caso de éxito navega a /dashboard.
+   */
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");

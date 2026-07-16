@@ -1,7 +1,22 @@
+/**
+ * Callback OAuth de Google Drive: recibe el `code` de autorización, valida el `state` anti-CSRF
+ * contra la cookie `google_oauth_state` fijada en /api/google/auth, intercambia el code por
+ * tokens en el endpoint de token de Google, y guarda el `refresh_token` resultante en
+ * `user_metadata.google_drive_refresh_token` del usuario de Supabase para poder subir backups a
+ * Drive más adelante sin volver a pedir consentimiento.
+ */
 import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@fitnotes/database";
 
+/**
+ * GET /api/google/callback
+ * Query params esperados de Google: `code` (código de autorización), `state` (debe coincidir con
+ * la cookie `google_oauth_state`), `error` (si el usuario denegó el consentimiento).
+ * Siempre responde con un redirect a `/settings`, añadiendo `?drive=connected` en éxito o
+ * `?drive_error=<motivo>` (`auth_failed` | `not_configured` | `token_failed` | `save_failed`) en
+ * cualquier fallo del flujo.
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");

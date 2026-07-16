@@ -1,20 +1,37 @@
+/**
+ * Formulario de creación/edición de categorías de ejercicios.
+ *
+ * Recoge un nombre y un color (elegido de una paleta de presets o introducido
+ * como hex a mano) y delega el guardado real en `onSubmit`. Se usa tanto en
+ * modo "crear" como "editar" según se le pase o no `initial`.
+ */
 "use client";
 
 import { useState } from "react";
 import type { Category } from "@fitnotes/core";
 
+/** Paleta de colores sugeridos para las categorías, mostrados como swatches. */
 const PRESET_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
   "#f97316", "#eab308", "#22c55e", "#14b8a6",
   "#3b82f6", "#64748b",
 ];
 
+/** Props de {@link CategoryForm}. */
 interface Props {
+  /** Categoría existente a editar; si se omite, el formulario actúa en modo creación. */
   initial?: Partial<Category>;
+  /** Callback de guardado; puede lanzar (se captura y se muestra como error en el formulario). */
   onSubmit: (data: { name: string; color: string }) => Promise<void>;
+  /** Callback al cancelar la edición/creación. */
   onCancel: () => void;
 }
 
+/**
+ * Renderiza el formulario de nombre + selector de color para una categoría.
+ * Valida que el nombre no esté vacío antes de invocar `onSubmit` y muestra
+ * un estado de carga/error local mientras la promesa está en curso.
+ */
 export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [color, setColor] = useState(initial?.color ?? PRESET_COLORS[0]!);

@@ -8,6 +8,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import MobileNav from "@/components/layout/MobileNav";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 
+/**
+ * Layout del grupo de rutas autenticadas (app). Envuelve todas las páginas de la app en
+ * `ConfirmProvider` (para poder usar `ConfirmDialog` en vez de `confirm()` nativo), añade un
+ * skip-link de accesibilidad y monta el Sidebar de escritorio y el MobileNav inferior alrededor
+ * del `children` de cada página.
+ */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmProvider>

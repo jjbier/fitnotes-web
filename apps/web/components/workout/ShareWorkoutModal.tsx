@@ -1,8 +1,23 @@
+/**
+ * Modal para exportar un entrenamiento como texto plano listo para compartir
+ * (copiar al portapapeles). Permite elegir qué ejercicios incluir; solo se
+ * listan las series completadas (`is_complete`) de cada ejercicio
+ * seleccionado.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import type { WorkoutExercise, Exercise, Set as FitSet } from "@fitnotes/core";
 
+/**
+ * Props de `ShareWorkoutModal`.
+ * @property date - Fecha del entrenamiento, usada como cabecera del texto generado.
+ * @property workoutExercises - Ejercicios del entrenamiento disponibles para seleccionar/compartir.
+ * @property exercises - Catálogo de ejercicios usado para resolver el nombre a mostrar.
+ * @property sets - Series por `workoutExercise.id`; solo se incluyen en el texto las que tengan `is_complete`.
+ * @property onClose - Cierra el modal (clic fuera, Escape o botón Cancelar/✕).
+ */
 interface Props {
   date: string;
   workoutExercises: WorkoutExercise[];
@@ -11,6 +26,12 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * Construye el texto plano a compartir a partir de los ejercicios
+ * seleccionados (`selected`). Por cada serie completada elige el formato más
+ * específico disponible en este orden: peso×reps, solo reps, distancia+tiempo,
+ * solo distancia, solo tiempo (o "—" si no hay ningún valor).
+ */
 function buildShareText(
   date: string,
   workoutExercises: WorkoutExercise[],
@@ -37,6 +58,12 @@ function buildShareText(
   return lines.join("\n");
 }
 
+/**
+ * Selector de ejercicios (con checkboxes y "seleccionar todo") + vista previa
+ * en vivo del texto generado (`buildShareText`) + botón para copiar al
+ * portapapeles (`navigator.clipboard`), con confirmación visual temporal
+ * ("¡Copiado! ✓" durante 2s).
+ */
 export default function ShareWorkoutModal({
   date, workoutExercises, exercises, sets, onClose,
 }: Props) {

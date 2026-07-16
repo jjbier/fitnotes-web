@@ -1,3 +1,8 @@
+/**
+ * Fila de la lista de ejercicios: muestra nombre, tipo, notas y estadísticas
+ * de uso, con acciones rápidas (favorito) y un menú contextual (historial,
+ * editar, eliminar) posicionado de forma flotante junto al botón que lo abre.
+ */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -6,14 +11,24 @@ import { Star, Dumbbell, MoreVertical } from "lucide-react";
 import { formatLastUsedLabel, EXERCISE_TYPE_LABELS } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
 
+/** Props de {@link ExerciseCard}. */
 interface Props {
   exercise: Exercise;
+  /** Estadísticas de uso opcionales (nº de sesiones y fecha del último uso); si se omiten no se muestra la línea de stats. */
   stats?: { workout_count: number; last_used: string | null };
   onEdit: (exercise: Exercise) => void;
   onDelete: (id: string) => void;
+  /** Alterna el estado de favorito; `current` es el valor antes del toggle (se usa para el `aria-label`). */
   onToggleFavorite: (id: string, current: boolean) => void;
 }
 
+/**
+ * Renderiza la tarjeta de un ejercicio con su menú de opciones (`role="menu"`)
+ * posicionado con `position: fixed` a partir del `getBoundingClientRect()` del
+ * botón disparador. El menú gestiona su propia accesibilidad: foco en el
+ * primer ítem al abrirse, cierre y devolución del foco con Escape, y cierre
+ * al hacer scroll (para evitar que quede "flotando" en una posición obsoleta).
+ */
 export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onToggleFavorite }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);

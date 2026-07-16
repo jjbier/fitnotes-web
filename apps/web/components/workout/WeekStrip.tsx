@@ -1,7 +1,21 @@
+/**
+ * Franja semanal (lunes a domingo) de puntos de actividad, mostrada en el
+ * dashboard: resalta el día de hoy, el día actualmente seleccionado, marca
+ * con un punto los días que tienen entrenamiento registrado y muestra la
+ * racha (días consecutivos con entrenamiento) con un icono de llama.
+ */
+
 "use client";
 
 import { Flame } from "lucide-react";
 
+/**
+ * Props de `WeekStrip`.
+ * @property workoutDates - Conjunto de fechas (`YYYY-MM-DD`) con al menos un entrenamiento registrado.
+ * @property currentDate - Fecha actualmente seleccionada/visible, resaltada con fondo sólido.
+ * @property today - Fecha de hoy (inyectada por el padre en vez de calculada aquí, para facilitar tests/consistencia horaria).
+ * @property onSelectDate - Se invoca con la fecha del día pulsado.
+ */
 interface WeekStripProps {
   workoutDates: Set<string>;
   currentDate: string;
@@ -9,8 +23,14 @@ interface WeekStripProps {
   onSelectDate: (date: string) => void;
 }
 
+/** Iniciales de los días de la semana en español, en orden lunes→domingo (semana ISO). */
 const WEEK_LABELS = ["L", "M", "X", "J", "V", "S", "D"];
 
+/**
+ * Calcula las 7 fechas (`YYYY-MM-DD`) de la semana ISO (lunes a domingo) que
+ * contiene `today`. Usa `T00:00:00` al parsear para evitar desfases de zona
+ * horaria al construir la fecha a partir de un string `YYYY-MM-DD`.
+ */
 function getWeekDates(today: string): string[] {
   const todayDate = new Date(today + "T00:00:00");
   const dow = todayDate.getDay();
@@ -24,6 +44,12 @@ function getWeekDates(today: string): string[] {
   });
 }
 
+/**
+ * Cuenta los días consecutivos con entrenamiento hacia atrás desde hoy. Si
+ * hoy todavía no tiene entrenamiento registrado, la racha se calcula a
+ * partir de ayer (para no romper la racha mientras el usuario aún no ha
+ * entrenado hoy).
+ */
 function getStreak(workoutDates: Set<string>, today: string): number {
   let count = 0;
   const d = new Date(today + "T00:00:00");
@@ -37,6 +63,11 @@ function getStreak(workoutDates: Set<string>, today: string): number {
   return count;
 }
 
+/**
+ * Renderiza los 7 días de la semana actual como botones seleccionables, con
+ * indicadores visuales independientes para "hoy" (anillo), "seleccionado"
+ * (fondo sólido) y "con entrenamiento" (punto), más la racha si es mayor que 0.
+ */
 export default function WeekStrip({ workoutDates, currentDate, today, onSelectDate }: WeekStripProps) {
   const weekDates = getWeekDates(today);
   const streak = getStreak(workoutDates, today);

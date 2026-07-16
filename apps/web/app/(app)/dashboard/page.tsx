@@ -19,6 +19,18 @@ import { useWakeLock } from "@/hooks/useWakeLock";
 import { readBool, SETTING_KEYS, readHiddenCategories } from "@/lib/settings";
 import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
 
+/**
+ * Página "Hoy" (`/dashboard`): pantalla principal de entrenamiento del día actual.
+ *
+ * Al montar carga en paralelo categorías, ejercicios y los últimos 60 entrenamientos, y
+ * resuelve el entrenamiento de la fecha seleccionada (hoy por defecto, navegable con
+ * los botones de día anterior/siguiente o desde la franja semanal `WeekStrip`). Soporta:
+ * iniciar/finalizar entrenamiento con cronómetro pausable (`WorkoutTimer`), añadir/eliminar
+ * ejercicios, reordenarlos por drag&drop (`NavigationPanel`), selección múltiple para borrado
+ * en lote, edición de la nota del entrenamiento, y los modales de compartir/copiar/mover
+ * entrenamiento. Al finalizar muestra un resumen (duración, ejercicios, series, volumen) vía
+ * `FinishSummaryModal` y dispara el backup automático a Drive si está habilitado.
+ */
 export default function DashboardPage() {
   const today = todayISO();
 
@@ -65,6 +77,12 @@ export default function DashboardPage() {
   const repo = createWorkoutRepository(client);
   const exRepo = createExerciseRepository(client);
 
+  /**
+   * Carga (o limpia) el estado del store de entrenamiento para una fecha dada:
+   * resuelve el workout de esa fecha, sus ejercicios y las series de cada uno, y
+   * selecciona el primer ejercicio como activo. Si no hay workout en esa fecha,
+   * reinicia el store con un workout vacío (ver comentario interno).
+   */
   const loadWorkoutForDate = useCallback(async (date: string, uid: string) => {
     const { data: workout } = await repo.getWorkoutByDate(date);
     if (!workout) {
@@ -144,8 +162,10 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // userId se resuelve async al montar; si el usuario crea algo antes de que
-  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  /**
+   * userId se resuelve async al montar; si el usuario crea algo antes de que
+   * termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+   */
   async function resolveUserId(): Promise<string> {
     if (userId) return userId;
     const { data: { user } } = await client.auth.getUser();
@@ -162,7 +182,7 @@ export default function DashboardPage() {
   }
 
   async function handleAddExercise() {
-    if (!selectedExId || !activeWorkout) return;
+    if (!selectedExId || !activeWorkout || activeWorkout.end_time) return;
     const uid = await resolveUserId();
     const { data, error } = await repo.addExercise({
       workout_id: activeWorkout.id,
@@ -176,6 +196,10 @@ export default function DashboardPage() {
     setShowExPicker(false);
   }
 
+  /**
+   * Aplica el nuevo orden (drag&drop en `NavigationPanel`) al store de forma
+   * optimista y persiste los `order_index` recalculados en segundo plano.
+   */
   async function handleReorderExercises(orderedIds: string[]) {
     reorderExercisesStore(orderedIds);
     await repo.reorderExercises(orderedIds.map((id, i) => ({ id, order_index: i })));
@@ -201,6 +225,7 @@ export default function DashboardPage() {
     });
   }
 
+  /** Elimina en lote (tras confirmar) los ejercicios marcados en el modo selección múltiple. */
   async function handleDeleteSelected() {
     if (selectedIds.size === 0) return;
     if (!(await confirmDelete({ message: `¿Eliminar ${selectedIds.size} ejercicio(s)? Se eliminarán también todas sus series.` }))) return;
@@ -212,6 +237,12 @@ export default function DashboardPage() {
     setSelectedIds(new Set());
   }
 
+  /**
+   * Finaliza el entrenamiento activo: calcula series completadas (sin
+   * calentamiento) y volumen total (peso × reps) a partir de las series en el
+   * store, persiste `end_time`/`duration_minutes`, muestra el resumen final y
+   * dispara el backup automático a Drive si está habilitado.
+   */
   async function handleFinish() {
     if (!activeWorkout) return;
     const allSets = Object.values(sets).flat();
@@ -221,6 +252,8 @@ export default function DashboardPage() {
     setSummaryStats({ duration: elapsedRef.current, exercises: workoutExercises.length, sets: totalSets, volume: totalVolume });
     finishWorkout();
     setActiveWEId(null);
+    setShowExPicker(false);
+    setSelectedExId("");
     autoBackupToDriveIfEnabled();
   }
 
@@ -230,6 +263,7 @@ export default function DashboardPage() {
     await repo.updateWorkout(activeWorkout.id, { comment: workoutCommentLocal || undefined });
   }
 
+  /** Navega `delta` días respecto a `currentDate` y recarga el workout de la nueva fecha. */
   async function handleDateChange(delta: number) {
     // Deshabilitar los botones mientras carga evita que clics rápidos lean
     // un `currentDate` obsoleto (closure) antes de que termine el fetch
@@ -293,12 +327,14 @@ export default function DashboardPage() {
             >
               <Share2 size={14} aria-hidden="true" /> Compartir
             </button>
-            <button
-              onClick={() => setShowCopy(true)}
-              className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
-            >
-              Copiar de…
-            </button>
+            {!activeWorkout.end_time && (
+              <button
+                onClick={() => setShowCopy(true)}
+                className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+              >
+                Copiar de…
+              </button>
+            )}
             <button
               onClick={() => setShowMove(true)}
               className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
@@ -358,24 +394,24 @@ export default function DashboardPage() {
               sets={sets}
               activeExerciseId={activeWEId}
               onSelectExercise={setActiveWEId}
-              onAddExercise={() => setShowExPicker((v) => !v)}
+              onAddExercise={activeWorkout.end_time ? undefined : () => setShowExPicker((v) => !v)}
               onReorderExercises={activeWorkout.end_time ? undefined : handleReorderExercises}
               onDeleteExercise={activeWorkout.end_time ? undefined : handleDeleteExercise}
               selectMode={selectMode}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
             />
-          ) : (
+          ) : !activeWorkout.end_time ? (
             <button
               onClick={() => setShowExPicker(true)}
               className="w-full rounded-2xl border border-dashed py-3.5 text-sm text-muted-foreground hover:bg-secondary"
             >
               + Añadir ejercicio
             </button>
-          )}
+          ) : null}
 
           {/* Exercise picker */}
-          {showExPicker && (
+          {showExPicker && !activeWorkout.end_time && (
             <div className="flex gap-2">
               <label htmlFor="exercise-picker" className="sr-only">Seleccionar ejercicio</label>
               <select

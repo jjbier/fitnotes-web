@@ -1,10 +1,20 @@
+/**
+ * Modal para editar las series predefinidas de un ejercicio dentro de un día
+ * de rutina: al "Registrar todo" en {@link DaySection}, estas series se usan
+ * como plantilla para las series que se crean automáticamente. Una fila
+ * vacía significa "copiar del historial anterior" en lugar de un valor fijo.
+ * El formulario muestra columnas distintas (peso/reps vs. distancia/tiempo)
+ * según el tipo de ejercicio.
+ */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import type { PredefinedSet, RoutineDayExercise, Exercise } from "@fitnotes/core";
 
+/** Fila de edición local del formulario; todos los valores se mantienen como texto hasta el guardado. */
 interface SetRow {
+  /** Clave estable para `key` de React, no persistida (ver {@link makeKey}). */
   _key: string;
   weight: string;
   reps: string;
@@ -12,10 +22,15 @@ interface SetRow {
   time_seconds: string;
 }
 
+/** Props de {@link PredefinedSetsModal}. */
 interface Props {
+  /** Entrada de rutina (día × ejercicio) cuyas series predefinidas se editan. */
   rde: RoutineDayExercise;
+  /** Ejercicio asociado; determina si se muestran campos de peso/reps o de distancia/tiempo. */
   exercise?: Exercise;
+  /** Series predefinidas ya guardadas, usadas para precargar las filas del formulario. */
   initialSets: PredefinedSet[];
+  /** Persiste el conjunto completo de series (sustituye, no fusiona, las anteriores). */
   onSave: (
     rdeId: string,
     sets: Array<{ weight?: number; reps?: number; distance?: number; time_seconds?: number; order_index: number }>
@@ -23,10 +38,17 @@ interface Props {
   onClose: () => void;
 }
 
+/** Genera una clave local única y estable para una fila nueva del formulario (no tiene relación con el id persistido). */
 function makeKey(i: number) {
   return `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+/**
+ * Renderiza el modal (`role="dialog"`) con la tabla editable de series
+ * predefinidas. Atrapa el foco, se cierra con Escape o clic en el overlay,
+ * y al guardar convierte los campos de texto a número (cadena vacía → `undefined`,
+ * es decir "sin valor fijo / copiar del historial").
+ */
 export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave, onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true);
@@ -62,18 +84,25 @@ export default function PredefinedSetsModal({ rde, exercise, initialSets, onSave
 
   const [saving, setSaving] = useState(false);
 
+  /** Añade una fila de serie vacía al final del formulario. */
   function addRow() {
     setRows((r) => [...r, { _key: makeKey(r.length), weight: "", reps: "", distance: "", time_seconds: "" }]);
   }
 
+  /** Elimina la fila identificada por `key`. */
   function removeRow(key: string) {
     setRows((r) => r.filter((row) => row._key !== key));
   }
 
+  /** Actualiza un único campo de una fila, preservando el resto. */
   function updateRow(key: string, field: keyof Omit<SetRow, "_key">, value: string) {
     setRows((r) => r.map((row) => (row._key === key ? { ...row, [field]: value } : row)));
   }
 
+  /**
+   * Convierte las filas de texto a números (cadena vacía → `undefined`) y
+   * persiste el conjunto completo vía `onSave`; cierra el modal al terminar.
+   */
   async function handleSave() {
     setSaving(true);
     const sets = rows.map((row, i) => ({

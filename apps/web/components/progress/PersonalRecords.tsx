@@ -1,3 +1,11 @@
+/**
+ * Lista de récords personales (PRs). Tiene dos modos según se le pase
+ * `selectedExercise`: vista de un único ejercicio con sub-pestañas "Real"
+ * (PRs realmente registrados por nº de reps) y "Estimado" (tabla de 1RM a
+ * 15RM extrapolada con Epley/Brzycki vía `estimateRepMax`); o, sin ejercicio
+ * seleccionado, una tabla resumen con el mejor PR (por 1RM estimado) de cada
+ * ejercicio.
+ */
 "use client";
 
 import { useState } from "react";
@@ -5,13 +13,24 @@ import { Trophy } from "lucide-react";
 import type { PersonalRecord, Exercise } from "@fitnotes/core";
 import { calculate1RM, estimateRepMax } from "@fitnotes/core";
 
+/** Props de {@link PersonalRecords}. */
 interface PersonalRecordsProps {
+  /** Todos los PRs a considerar (de uno o varios ejercicios). */
   records: PersonalRecord[];
+  /** Catálogo completo de ejercicios, usado para resolver nombres y unidad de peso en la vista tabla. */
   exercises: Exercise[];
+  /** Si se indica, filtra la vista a los PRs de este ejercicio y habilita las sub-pestañas Real/Estimado. */
   selectedExercise?: Exercise;
+  /**
+   * Límite de reps (inclusive) a partir del cual un PR se considera poco
+   * fiable para estimar el 1RM (series muy largas distorsionan la fórmula).
+   * Si se indica, la pestaña "Estimado" excluye esos PRs del cálculo del
+   * mejor 1RM, salvo que excluirlos deje la lista vacía.
+   */
   estimatedRepLimit?: number;
 }
 
+/** Renderiza la lista/tabla de récords personales según el modo (ejercicio único o resumen global). */
 export default function PersonalRecords({ records, exercises, selectedExercise, estimatedRepLimit }: PersonalRecordsProps) {
   const [subTab, setSubTab] = useState<"real" | "estimado">("real");
 

@@ -22,6 +22,19 @@ interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
 }
 
+/**
+ * Página de entrenamiento para una fecha arbitraria (`/workout/[date]`): mismo patrón
+ * que el dashboard ("Hoy") pero con layout de dos columnas (panel lateral de
+ * navegación en desktop, lista apilada en móvil) y navegación de vuelta al calendario
+ * en vez de la franja semanal.
+ *
+ * Al montar carga categorías/ejercicios y el entrenamiento de `date` (con sus
+ * ejercicios y series). Soporta iniciar/finalizar entrenamiento con cronómetro
+ * pausable, añadir/eliminar ejercicios, reordenarlos por drag&drop, selección
+ * múltiple para borrado en lote, y los modales de compartir/copiar/mover
+ * entrenamiento (mover navega a la nueva fecha con `window.location.href`, a
+ * diferencia del dashboard que actualiza el estado local).
+ */
 export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const { date } = use(params);
 
@@ -131,8 +144,10 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
-  // userId se resuelve async al montar; si el usuario actúa antes de que
-  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  /**
+   * userId se resuelve async al montar; si el usuario actúa antes de que
+   * termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+   */
   async function resolveUserId(): Promise<string> {
     if (userId) return userId;
     const { data: { user } } = await client.auth.getUser();
@@ -152,7 +167,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   }
 
   async function handleAddExercise() {
-    if (!selectedExId || !activeWorkout) return;
+    if (!selectedExId || !activeWorkout || activeWorkout.end_time) return;
     const uid = await resolveUserId();
     const { data, error } = await repo.addExercise({
       workout_id: activeWorkout.id,
@@ -166,6 +181,10 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     setShowExPicker(false);
   }
 
+  /**
+   * Aplica el nuevo orden (drag&drop en `NavigationPanel`) al store de forma
+   * optimista y persiste los `order_index` recalculados en segundo plano.
+   */
   async function handleReorderExercises(orderedIds: string[]) {
     reorderExercisesStore(orderedIds);
     const updates = orderedIds.map((id, i) => ({ id, order_index: i }));
@@ -192,6 +211,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     });
   }
 
+  /** Elimina en lote (tras confirmar) los ejercicios marcados en el modo selección múltiple. */
   async function handleDeleteSelected() {
     if (selectedIds.size === 0) return;
     if (!(await confirmDelete({ message: `¿Eliminar ${selectedIds.size} ejercicio(s)? Se eliminarán también todas sus series.` }))) return;
@@ -203,6 +223,12 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     setSelectedIds(new Set());
   }
 
+  /**
+   * Finaliza el entrenamiento activo: calcula series completadas (sin
+   * calentamiento) y volumen total (peso × reps) a partir de las series en el
+   * store, persiste `end_time`/`duration_minutes`, muestra el resumen final y
+   * dispara el backup automático a Drive si está habilitado.
+   */
   async function handleFinish() {
     if (!activeWorkout) return;
     const allSets = Object.values(sets).flat();
@@ -212,6 +238,8 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     setSummaryStats({ duration: elapsedRef.current, exercises: workoutExercises.length, sets: totalSets, volume: totalVolume });
     finishWorkout();
     setActiveWEId(null);
+    setShowExPicker(false);
+    setSelectedExId("");
     autoBackupToDriveIfEnabled();
   }
 
@@ -238,12 +266,14 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             >
               <Share2 size={14} aria-hidden="true" /> Compartir
             </button>
-            <button
-              onClick={() => setShowCopy(true)}
-              className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
-            >
-              Copiar de…
-            </button>
+            {!activeWorkout.end_time && (
+              <button
+                onClick={() => setShowCopy(true)}
+                className="rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+              >
+                Copiar de…
+              </button>
+            )}
             <button
               onClick={() => setShowMove(true)}
               className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
@@ -317,7 +347,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
               sets={sets}
               activeExerciseId={activeWEId}
               onSelectExercise={setActiveWEId}
-              onAddExercise={() => setShowExPicker((v) => !v)}
+              onAddExercise={activeWorkout.end_time ? undefined : () => setShowExPicker((v) => !v)}
               onReorderExercises={activeWorkout.end_time ? undefined : handleReorderExercises}
               onDeleteExercise={activeWorkout.end_time ? undefined : handleDeleteExercise}
               selectMode={selectMode}
@@ -348,7 +378,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
                 sets={sets}
                 activeExerciseId={activeWEId}
                 onSelectExercise={setActiveWEId}
-                onAddExercise={() => setShowExPicker((v) => !v)}
+                onAddExercise={activeWorkout.end_time ? undefined : () => setShowExPicker((v) => !v)}
                 onReorderExercises={activeWorkout.end_time ? undefined : handleReorderExercises}
                 onDeleteExercise={activeWorkout.end_time ? undefined : handleDeleteExercise}
                 selectMode={selectMode}
@@ -358,7 +388,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             </div>
 
             {/* Exercise picker */}
-            {showExPicker && (
+            {showExPicker && !activeWorkout.end_time && (
               <div className="flex gap-2">
                 <select
                   value={selectedExId}

@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+/**
+ * Página 404 global de Next.js. Se muestra cuando ninguna ruta coincide y ofrece un enlace de
+ * vuelta a la home ("/").
+ */
 export default function NotFound() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-background px-4">

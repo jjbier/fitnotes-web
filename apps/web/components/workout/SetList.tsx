@@ -11,6 +11,14 @@
 
 import type { Set, ExerciseType } from "@fitnotes/core";
 
+/**
+ * Props de `SetList`.
+ * @property sets - Series a renderizar, en el orden recibido (se numeran por índice de array, no por `order_index`).
+ * @property exerciseType - Recibido pero no usado actualmente para filtrar campos (cada fila muestra los campos presentes en el propio `Set`); ver `SetRow`/`getExerciseFields` para el filtrado real por tipo de ejercicio.
+ * @property onUpdate - Recibido pero no usado por este componente (no hay edición inline aquí; ver `onUpdate` en `SetRow`).
+ * @property onDelete - Se invoca con el id de la serie al pulsar el botón de eliminar de una fila.
+ * @property onToggleComplete - Se invoca con el id de la serie y el nuevo estado (`!is_complete`) al pulsar el círculo de completado.
+ */
 interface SetListProps {
   sets: Set[];
   exerciseType: ExerciseType;
@@ -19,6 +27,14 @@ interface SetListProps {
   onToggleComplete: (setId: string, complete: boolean) => void;
 }
 
+/**
+ * Listado de solo lectura de series de un ejercicio: muestra los campos
+ * presentes (peso/reps/distancia/tiempo) de cada `Set`, un botón para marcar
+ * completada y otro para eliminar. Muestra un mensaje vacío si `sets` está
+ * vacío. Nota: es una versión más simple que `SetRow` (sin edición inline de
+ * valores ni comentario); comprobar en el punto de uso cuál de los dos
+ * componentes es el vigente antes de extenderlo.
+ */
 export default function SetList({
   sets,
   onDelete,

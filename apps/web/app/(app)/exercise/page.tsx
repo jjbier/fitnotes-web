@@ -13,6 +13,15 @@ import CategoryForm from "@/components/exercises/CategoryForm";
 import ExerciseCard from "@/components/exercises/ExerciseCard";
 import type { Category } from "@fitnotes/core";
 
+/**
+ * Página raíz del catálogo de ejercicios (`/exercise`): lista las categorías (con
+ * atajo a favoritos si hay alguno) y ofrece un buscador global que, al escribir,
+ * sustituye la lista de categorías por resultados de ejercicios de todas ellas
+ * (virtualizados con `useWindowVirtualizer`). Carga categorías, ejercicios y
+ * estadísticas por ejercicio al montar. Soporta crear/editar/eliminar categorías
+ * y ejercicios, reordenar categorías por drag&drop nativo (`draggable`/`onDrop`),
+ * y marcar/desmarcar favoritos con rollback optimista si falla la persistencia.
+ */
 export default function ExercisePage() {
   const categories = useExerciseStore((s) => s.categories);
   const exercises = useExerciseStore((s) => s.exercises);
@@ -72,8 +81,10 @@ export default function ExercisePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // userId se resuelve async al montar; si el usuario crea algo antes de que
-  // termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+  /**
+   * userId se resuelve async al montar; si el usuario crea algo antes de que
+   * termine esa llamada, hay que esperar a que resuelva en vez de insertar con "".
+   */
   async function resolveUserId(): Promise<string> {
     if (userId) return userId;
     const { data: { user } } = await client.auth.getUser();
@@ -81,6 +92,7 @@ export default function ExercisePage() {
     return user?.id ?? "";
   }
 
+  /** Crea el ejercicio y lo añade al store, sin cerrar el formulario (usado también por `handleCreateExercise`). */
   async function doCreateExercise(data: {
     name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
   }) {
@@ -140,6 +152,7 @@ export default function ExercisePage() {
     deleteCategory(id);
   }
 
+  /** Alterna el favorito de forma optimista y revierte si la persistencia lanza error. */
   async function handleToggleFavorite(id: string, current: boolean) {
     toggleFavorite(id);
     try {
@@ -149,6 +162,7 @@ export default function ExercisePage() {
     }
   }
 
+  /** Elimina el ejercicio de forma optimista (tras confirmar); si la persistencia falla, lo restaura en el store. */
   async function handleDeleteExercise(id: string) {
     if (!(await confirmDelete("¿Eliminar este ejercicio y todo su historial?"))) return;
     const saved = exercises.find((e) => e.id === id);
@@ -157,6 +171,11 @@ export default function ExercisePage() {
     if (error && saved) addExercise(saved);
   }
 
+  /**
+   * Handler del `onDrop` de drag&drop nativo sobre las filas de categoría: mueve
+   * `draggedId` a la posición de `toId` dentro del array local, aplica el nuevo
+   * orden al store de forma optimista y persiste los `order_index` recalculados.
+   */
   async function handleCategoryDrop(toId: string) {
     if (!draggedId || draggedId === toId) { setDraggedId(null); setDragOverId(null); return; }
     const fromIdx = categories.findIndex((c) => c.id === draggedId);

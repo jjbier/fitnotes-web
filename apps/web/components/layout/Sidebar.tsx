@@ -21,10 +21,17 @@ const NAV_ITEMS = [
 // pantallas empujadas desde la tab Configuración).
 const SETTINGS_SUBROUTES = ["/body-tracker", "/tools"];
 
+/**
+ * Barra lateral de navegación para viewport de escritorio (oculta bajo
+ * `md:`, ver `MobileNav` para el equivalente móvil). Muestra la marca, los
+ * enlaces a las 6 secciones principales y una sección de cuenta con acción
+ * de cerrar sesión.
+ */
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  /** Cierra la sesión de Supabase y redirige a la portada, refrescando el árbol de rutas del servidor. */
   async function handleSignOut() {
     const supabase = createBrowserClient();
     await supabase.auth.signOut();

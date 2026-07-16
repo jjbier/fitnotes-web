@@ -102,6 +102,71 @@ test.describe("Registro de entrenamiento", () => {
     await page.getByRole("button", { name: "Finalizar" }).click();
   });
 
+  test("no se puede añadir un ejercicio a un entrenamiento finalizado [regresión]", async ({ page }) => {
+    // Se usa la ruta /workout/[date] con una fecha fija muy antigua en vez de
+    // "hoy" (que es una fecha compartida con otros specs) o de navegar N días
+    // atrás desde /dashboard (lento y no idempotente entre corridas). Nota:
+    // mockear `Date` para simular "hoy" NO sirve aquí — el cliente de
+    // Supabase usa `Date.now()` para decidir si el access token expiró, y una
+    // fecha simulada muy futura le hace pensar que el token expiró, disparando
+    // un refresh en segundo plano que causa un parpadeo real de estado
+    // (el botón "Iniciar" aparece y desaparece a mitad de la prueba).
+    const FIXED_DATE = "2020-01-15";
+    await page.goto(`/workout/${FIXED_DATE}`);
+    await expect(page.locator("h1", { hasText: /Entrenamiento/ })).toBeVisible();
+
+    const startBtn = page.getByRole("button", { name: "Iniciar entrenamiento" });
+    const finishBtn = page.getByRole("button", { name: "Finalizar" });
+    // El día ya puede estar finalizado de una corrida anterior de este mismo
+    // test — en ese caso ni "Iniciar" ni "Finalizar" están visibles.
+    await page.waitForTimeout(1_000);
+    if (await startBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await startBtn.click();
+      await expect(finishBtn).toBeVisible({ timeout: 8_000 });
+    }
+
+    // Abrir el selector de ejercicio SIN llegar a añadir nada, y finalizar
+    // el entrenamiento mientras el selector sigue abierto — reproduce el bug
+    // donde el <select> + botón "Añadir" quedaban visibles en un entrenamiento
+    // ya finalizado (el guard de handleAddExercise bloqueaba el insert real,
+    // pero la UI seguía sugiriendo que se podía añadir).
+    // workout/[date]/page.tsx renderiza NavigationPanel dos veces (sidebar de
+    // escritorio + versión inline para móvil, ambas en el DOM a la vez,
+    // alternadas por CSS) — usar .first() para no violar el modo estricto.
+    const addExTab = page.locator("button", { hasText: /^\+ (Agregar|Añadir) ejercicio$/ }).first();
+    const navAddBtn = page.locator("button", { hasText: "Agregar ejercicio" }).first();
+    const picker = page.getByLabel("Seleccionar ejercicio");
+    if (await finishBtn.isVisible().catch(() => false)) {
+      // Dar tiempo a NavigationPanel a terminar de renderizar el botón antes
+      // de comprobar su visibilidad (justo tras cargar la página, un chequeo
+      // inmediato puede correr antes de que el listado de ejercicios monte).
+      await expect(addExTab.or(navAddBtn)).toBeVisible({ timeout: 8_000 });
+      if (await addExTab.isVisible().catch(() => false)) {
+        await addExTab.click();
+      } else {
+        await navAddBtn.click();
+      }
+      await expect(picker).toBeVisible({ timeout: 5_000 });
+
+      await finishBtn.click();
+
+      // Cerrar el modal de resumen si aparece
+      const closeSummary = page.getByRole("button", { name: "Cerrar", exact: true });
+      if (await closeSummary.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await closeSummary.click();
+      }
+    }
+
+    // El selector de ejercicio y su botón "Añadir" no deben quedar visibles
+    // en un entrenamiento finalizado.
+    await expect(picker).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("button", { name: "Añadir", exact: true })).not.toBeVisible();
+
+    // Tampoco debe haber ninguna otra vía de abrir el selector.
+    await expect(addExTab).not.toBeVisible();
+    await expect(navAddBtn).not.toBeVisible();
+  });
+
   test("navega entre días del calendar [T2.9]", async ({ page }) => {
     await page.goto("/dashboard");
     await page.getByRole("button", { name: "Día anterior" }).click();

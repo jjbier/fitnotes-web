@@ -1,3 +1,13 @@
+/**
+ * Formulario de creación/edición de ejercicios: nombre, categoría (con
+ * creación inline de categoría nueva), tipo de ejercicio y unidad de peso
+ * cuando aplica, más notas opcionales.
+ *
+ * Al editar, si el usuario cambia el tipo o la unidad de peso, se apoya en
+ * `useConfirm()` para advertir del impacto sobre el historial ya registrado
+ * (pérdida de campos al cambiar de tipo; oferta de conversión numérica al
+ * cambiar de unidad) antes de guardar.
+ */
 "use client";
 
 import { useState } from "react";
@@ -5,6 +15,7 @@ import { ExerciseType } from "@fitnotes/core";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { Category, Exercise } from "@fitnotes/core";
 
+/** Etiquetas en español para cada {@link ExerciseType}, usadas en el selector de tipo. */
 const TYPE_LABELS: Record<ExerciseType, string> = {
   [ExerciseType.WEIGHT_REPS]: "Peso × Repeticiones",
   [ExerciseType.DISTANCE_TIME]: "Distancia / Tiempo",
@@ -18,12 +29,14 @@ const TYPE_LABELS: Record<ExerciseType, string> = {
   [ExerciseType.DISTANCE_ONLY]: "Solo distancia",
 };
 
+/** Paleta de colores sugeridos para la creación inline de categoría. */
 const PRESET_COLORS = [
   "#6366f1", "#8b5cf6", "#ec4899", "#ef4444",
   "#f97316", "#eab308", "#22c55e", "#14b8a6",
   "#3b82f6", "#64748b",
 ];
 
+/** Datos del formulario que se envían a `onSubmit`. */
 interface FormData {
   name: string;
   category_id: string;
@@ -32,15 +45,30 @@ interface FormData {
   notes: string;
 }
 
+/** Props de {@link ExerciseForm}. */
 interface Props {
+  /** Categorías disponibles para el selector (puede crecer localmente si se crea una nueva). */
   categories: Category[];
+  /** Ejercicio existente a editar; si se omite, el formulario actúa en modo creación. */
   initial?: Partial<Exercise>;
   onSubmit: (data: FormData) => Promise<void>;
   onCancel: () => void;
+  /** Si se provee, habilita el flujo de "+ Nueva categoría" inline dentro del propio formulario. */
   onCreateCategory?: (data: { name: string; color: string }) => Promise<Category>;
+  /**
+   * Convierte retroactivamente los pesos del historial de este ejercicio al
+   * cambiar de unidad. Solo se invoca si el usuario confirma la conversión
+   * (ver `performSave`); `factor` es el multiplicador kg↔lb aplicado.
+   */
   onConvertWeights?: (factor: number) => Promise<void>;
 }
 
+/**
+ * Renderiza el formulario de ejercicio. Gestiona tanto el estado del propio
+ * ejercicio como el sub-formulario de creación de categoría inline, y
+ * antepone confirmaciones destructivas (`useConfirm`) antes de aplicar
+ * cambios de tipo o unidad de peso que afecten al historial.
+ */
 export default function ExerciseForm({ categories, initial, onSubmit, onCancel, onCreateCategory, onConvertWeights }: Props) {
   const confirm = useConfirm();
   const [form, setForm] = useState<FormData>({
@@ -60,10 +88,12 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
   const [catLoading, setCatLoading] = useState(false);
   const [localCategories, setLocalCategories] = useState<Category[]>(categories);
 
+  /** Actualiza un único campo del formulario preservando el resto. */
   function patch<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  /** Crea la categoría inline vía `onCreateCategory`, la añade a la lista local y la selecciona. */
   async function handleCreateCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!newCatName.trim() || !onCreateCategory) return;
@@ -80,6 +110,14 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
     }
   }
 
+  /**
+   * Valida y guarda el ejercicio. Si se está editando y el tipo o la unidad
+   * de peso cambian respecto al valor original, pide confirmación explícita
+   * antes de continuar (el cambio de tipo puede eliminar campos del
+   * historial; el cambio de unidad ofrece convertir los valores numéricos
+   * o solo la etiqueta). La conversión (`onConvertWeights`) se ejecuta
+   * después de que `onSubmit` haya guardado el ejercicio.
+   */
   async function performSave() {
     if (!form.name.trim()) { setError("El nombre es obligatorio"); return; }
     if (!form.category_id) { setError("Selecciona o crea una categoría"); return; }

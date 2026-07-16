@@ -1,14 +1,22 @@
+/**
+ * Formulario simple de creación/edición de rutinas: nombre y notas. Solo
+ * gestiona los metadatos de la rutina (los días y ejercicios se editan por
+ * separado, ver {@link DaySection}).
+ */
 "use client";
 
 import { useState } from "react";
 import type { Routine } from "@fitnotes/core";
 
+/** Props de {@link RoutineForm}. */
 interface Props {
+  /** Rutina existente a editar; si se omite, el formulario actúa en modo creación. */
   initial?: Partial<Routine>;
   onSubmit: (data: { name: string; notes: string }) => Promise<void>;
   onCancel: () => void;
 }
 
+/** Renderiza el formulario de nombre + notas, validando que el nombre no esté vacío antes de guardar. */
 export default function RoutineForm({ initial, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");

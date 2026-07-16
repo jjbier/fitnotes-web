@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Página de configuración ("/settings"): perfil de usuario, preferencias (unidad de peso, tema),
+ * comportamiento del entrenamiento (PRs, autocompletar series, inicio de semana, etc.), ajustes de
+ * pantalla de inicio (categorías visibles), gestión de datos (backup/restauración .fitnotes,
+ * integración con Google Drive, exportación a CSV) y zona de peligro (eliminar historial de
+ * entrenamientos / eliminar cuenta). Todas las preferencias no ligadas a Supabase se persisten en
+ * `localStorage` a través de `@/lib/settings`.
+ */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
@@ -27,12 +35,18 @@ type BackupData = {
   exercise_goals: BackupEntry[];
 };
 
+/**
+ * Type guard para validar que un JSON parseado desde un archivo `.fitnotes` tiene el shape mínimo
+ * esperado de un backup (versión 1, `exported_at` string, `workouts` array) antes de intentar
+ * restaurarlo.
+ */
 function isBackupData(v: unknown): v is BackupData {
   if (typeof v !== "object" || v === null) return false;
   const o = v as Record<string, unknown>;
   return o.version === 1 && typeof o.exported_at === "string" && Array.isArray(o.workouts);
 }
 
+/** Dispara la descarga de `content` como archivo CSV con el nombre `filename`, vía un Blob y un enlace temporal. */
 function downloadCSV(content: string, filename: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -43,6 +57,12 @@ function downloadCSV(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Componente de página de configuración. Carga el perfil y las preferencias al montar, y expone
+ * un conjunto de handlers (documentados individualmente más abajo) para cada sección: perfil,
+ * preferencias generales, comportamiento del entrenamiento, pantalla de inicio, backup/restore
+ * local, integración con Google Drive, exportación CSV, cierre de sesión y zona de peligro.
+ */
 export default function SettingsPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -94,6 +114,13 @@ export default function SettingsPage() {
 
   const client = createBrowserClient();
 
+  /**
+   * Efecto de montaje: hidrata todo el estado de la página de una sola vez — perfil y metadatos
+   * de Google Drive desde Supabase Auth, resultado del callback OAuth de Drive vía query params
+   * (`?drive=connected` / `?drive_error=...`), unidad de peso desde localStorage, todas las
+   * preferencias de comportamiento/entrenamiento vía `@/lib/settings`, la lista de ejercicios (para
+   * el selector de "eliminar historial") y las categorías (para el toggle de visibilidad en Inicio).
+   */
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
@@ -139,11 +166,13 @@ export default function SettingsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Activa/desactiva mostrar el contador de series completadas/totales en Inicio; persiste en localStorage. */
   function handleShowSetCountHome(next: boolean) {
     setShowSetCountHome(next);
     writeBool(SETTING_KEYS.SHOW_SET_COUNT_HOME, next);
   }
 
+  /** Alterna si `categoryId` aparece en la lista de categorías ocultas y persiste el resultado en localStorage. */
   function handleToggleCategoryVisible(categoryId: string) {
     setHiddenCategoryIds((prev) => {
       const next = prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId];
@@ -152,6 +181,7 @@ export default function SettingsPage() {
     });
   }
 
+  /** Guarda el nombre de usuario (`displayName`) en `user_metadata.display_name` vía Supabase Auth y refleja el resultado en `saveStatus` (se resetea a "idle" tras 2s). */
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSaveStatus("saving");
@@ -162,22 +192,26 @@ export default function SettingsPage() {
     setTimeout(() => setSaveStatus("idle"), 2000);
   }
 
+  /** Cambia la unidad de peso predeterminada de la app y la persiste en localStorage (`fitnotes_weight_unit`). */
   function handleWeightUnit(unit: "kg" | "lb") {
     setWeightUnit(unit);
     localStorage.setItem("fitnotes_weight_unit", unit);
   }
 
+  /** Helper genérico para toggles booleanos: invierte `current`, actualiza el estado local vía `setter` y persiste bajo `key` (uno de `SETTING_KEYS`). */
   function handleToggle(key: string, current: boolean, setter: (v: boolean) => void) {
     const next = !current;
     setter(next);
     writeBool(key, next);
   }
 
+  /** Cambia el primer día de la semana mostrado en el calendario (0 = domingo, 1 = lunes) y lo persiste en localStorage. */
   function handleWeekStart(value: 0 | 1) {
     setWeekStart(value);
     localStorage.setItem(SETTING_KEYS.WEEK_START, String(value));
   }
 
+  /** Actualiza el incremento de peso predeterminado para los botones +/- del entrenamiento; solo persiste en localStorage si `value` es un número finito y positivo. */
   function handleDefaultWeightIncrement(value: string) {
     setDefaultWeightIncrement(value);
     const parsed = parseFloat(value);
@@ -186,6 +220,7 @@ export default function SettingsPage() {
     }
   }
 
+  /** Actualiza el límite de repeticiones para considerar una serie en el cálculo de récords estimados; persiste el valor si es un entero positivo válido, o lo elimina de localStorage si el campo se vacía/es inválido (sin límite). */
   function handleEstimatedRecordsRepLimit(value: string) {
     setEstimatedRecordsRepLimit(value);
     const parsed = parseInt(value, 10);
@@ -196,6 +231,14 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Recalcula desde cero todos los récords personales (PRs) del usuario: borra todas las filas de
+   * `personal_records`, recorre el historial completo de series completadas (no calentamiento,
+   * con peso y reps) agrupando por ejercicio+reps para quedarse con el peso máximo de cada
+   * combinación, e inserta las filas resultantes. Usado como herramienta de recuperación cuando
+   * los PRs remotos pueden haber quedado desincronizados del historial real. Estado reflejado en
+   * `recalcPRs` ("running" → "done"/"error", vuelve a "idle" tras 3s).
+   */
   async function handleRecalcPRs() {
     setRecalcPRs("running");
     try {
@@ -248,6 +291,7 @@ export default function SettingsPage() {
     }
   }
 
+  /** Cierra la sesión de Supabase solo en este dispositivo/navegador y redirige a la home. */
   async function handleSignOut() {
     setSignOutLoading(true);
     await client.auth.signOut();
@@ -255,6 +299,7 @@ export default function SettingsPage() {
     router.refresh();
   }
 
+  /** Cierra la sesión de Supabase en todos los dispositivos (`scope: "global"`), invalidando todos los refresh tokens activos, y redirige a la home. */
   async function handleSignOutAll() {
     setSignOutLoading(true);
     await client.auth.signOut({ scope: "global" });
@@ -262,6 +307,12 @@ export default function SettingsPage() {
     router.refresh();
   }
 
+  /**
+   * Exporta todos los entrenamientos del usuario a CSV: recorre cada workout, sus
+   * workout_exercises y sets asociados, resuelve nombres de ejercicio y arma una fila por serie
+   * (fecha, ejercicio, número de serie, peso, reps, distancia, tiempo, completada, comentario).
+   * Descarga el resultado como `fitnotes-workouts.csv`. Avisa con un `alert` si no hay entrenamientos.
+   */
   async function handleExportWorkouts() {
     setExportingWorkouts(true);
     try {
@@ -318,6 +369,11 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Exporta todas las entradas del body tracker a CSV: une cada `body_measurement_entry` con el
+   * nombre/unidad de su medida y genera una fila por entrada (medida, valor, unidad, fecha,
+   * comentario). Descarga el resultado como `fitnotes-body-tracker.csv`.
+   */
   async function handleExportBodyTracker() {
     setExportingBody(true);
     try {
@@ -350,6 +406,11 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Elimina permanentemente la cuenta del usuario invocando el RPC `delete_user` de Supabase
+   * (borra la cuenta y, vía cascada en la base de datos, todos sus datos), cierra la sesión y
+   * redirige a /login. Muestra un `alert` con el mensaje de error si el RPC falla, sin cerrar sesión.
+   */
   async function handleDeleteAccount() {
     const { error } = await client.rpc("delete_user");
     if (error) { alert(`Error al eliminar la cuenta: ${error.message}`); return; }
@@ -357,6 +418,12 @@ export default function SettingsPage() {
     window.location.href = "/login";
   }
 
+  /**
+   * Dispara una copia de seguridad inmediata a Google Drive llamando a `POST /api/google/backup`.
+   * Actualiza la fecha/URL del último backup en el estado local en éxito. Si el endpoint responde
+   * con `code: "TOKEN_INVALID"`, marca Drive como desconectado en la UI; en cualquier error
+   * muestra un `alert` con el mensaje.
+   */
   async function handleDriveBackup() {
     setDriveBacking(true);
     try {
@@ -374,6 +441,10 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Desconecta Google Drive llamando a `POST /api/google/disconnect`, limpia el estado local
+   * relacionado (conectado, último backup) y desactiva el toggle de backup automático.
+   */
   async function handleDriveDisconnect() {
     setDriveDisconnecting(true);
     try {
@@ -388,6 +459,12 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Genera una copia de seguridad local completa: consulta en paralelo todas las tablas del
+   * usuario (categorías, ejercicios, rutinas, entrenamientos, series, PRs, medidas corporales,
+   * goals…), arma un único objeto `BackupData` versionado y lo descarga como archivo
+   * `fitnotes-backup-<fecha>.fitnotes` (JSON) directamente en el navegador, sin pasar por Drive.
+   */
   async function handleBackup() {
     setBackingUp(true);
     try {
@@ -425,6 +502,11 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Handler del `<input type="file">` de restauración: lee el archivo `.fitnotes`/`.json`
+   * seleccionado, lo parsea como JSON y lo valida con `isBackupData`. Si es válido, guarda el
+   * resultado en `restoreData` (lo que abre el modal de confirmación); si no, avisa con un `alert`.
+   */
   function handleRestoreFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -444,6 +526,14 @@ export default function SettingsPage() {
     e.target.value = "";
   }
 
+  /**
+   * Ejecuta la restauración confirmada por el usuario a partir de `restoreData`: borra todas las
+   * tablas del usuario en orden seguro respecto a las foreign keys, y vuelve a insertar los datos
+   * del backup en orden de dependencia (categorías → ejercicios → rutinas → … → sets → goals),
+   * reasignando `user_id` al usuario actual y en lotes de 500 filas. No inserta `personal_records`
+   * explícitamente porque el trigger SQL los reconstruye al insertar en `sets`. Actualiza
+   * `restoreStep` para mostrar progreso y `restoreError`/`restoreDone` según el resultado.
+   */
   async function executeRestore() {
     if (!restoreData) return;
     setRestoring(true);
@@ -503,6 +593,13 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Elimina el historial de entrenamientos del usuario según los filtros opcionales de fecha
+   * (`deleteHistoryFrom`/`deleteHistoryTo`) y ejercicio (`deleteHistoryExerciseId`) — si no se
+   * indica ninguno, elimina todo el historial. Delegado en
+   * `workoutRepository.deleteWorkoutHistory`. Muestra un `alert` con el número de elementos
+   * eliminados al terminar.
+   */
   async function handleDeleteHistory() {
     const { data: { user } } = await client.auth.getUser();
     if (!user) return;
@@ -524,6 +621,11 @@ export default function SettingsPage() {
     }
   }
 
+  /**
+   * Fila reutilizable de preferencia on/off: etiqueta + descripción a la izquierda, switch
+   * accesible (`role="switch"`) a la derecha. El `data-testid` se deriva del `label` normalizado
+   * (slug ASCII en minúsculas) para poder seleccionarlo en tests E2E.
+   */
   function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: () => void }) {
     const slug = label
       .normalize("NFD")

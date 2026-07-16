@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Página de herramientas de entrenamiento ("/tools"): calculadora de 1RM, calculadora de series
+ * (porcentajes del peso base), calculadora de discos de barra y temporizador de descanso.
+ * Presentadas como pestañas dentro de una única página; cada calculadora usa las funciones puras
+ * de `@fitnotes/core` y algunas permiten cargar un PR existente o añadir el resultado directamente
+ * al entrenamiento de hoy vía los repositorios de `@fitnotes/database`.
+ */
 import { useEffect, useRef, useState } from "react";
 import {
   calculate1RM,
@@ -17,6 +24,11 @@ type Tab = "1rm" | "set" | "plates" | "timer";
 
 interface ExerciseOption { id: string; name: string; }
 
+/**
+ * Hook que carga perezosamente (`ensureLoaded`) la lista de ejercicios del usuario desde
+ * Supabase, ordenada alfabéticamente. Evita hacer la consulta hasta que algún selector de
+ * ejercicio la necesita (se abre el desplegable de "Cargar desde ejercicio…" o similar).
+ */
 function useExerciseList() {
   const [exercises, setExercises] = useState<ExerciseOption[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -32,6 +44,10 @@ function useExerciseList() {
   return { exercises, ensureLoaded };
 }
 
+/**
+ * Componente de página: gestiona la pestaña activa (1RM, series, discos, temporizador) y
+ * renderiza el panel de calculadora correspondiente.
+ */
 export default function ToolsPage() {
   const [tab, setTab] = useState<Tab>("1rm");
 
@@ -65,6 +81,11 @@ export default function ToolsPage() {
   );
 }
 
+/**
+ * Selector desplegable opcional que, dado un ejercicio elegido por el usuario, busca su récord
+ * personal más pesado (`getPersonalRecords`) y lo entrega vía `onSelect(weight, reps)` para
+ * precargar los campos de la calculadora que lo use.
+ */
 function PRSelector({ onSelect }: { onSelect: (weight: number, reps: number) => void }) {
   const { exercises, ensureLoaded } = useExerciseList();
   const [open, setOpen] = useState(false);
@@ -125,6 +146,13 @@ function PRSelector({ onSelect }: { onSelect: (weight: number, reps: number) => 
   );
 }
 
+/**
+ * Añade una serie con `weight`/`reps` al entrenamiento de hoy del usuario autenticado: crea el
+ * entrenamiento del día si no existe, reutiliza o crea el `workout_exercise` para `exerciseId`, y
+ * añade la serie al final. No hace nada (devuelve `false`) si no hay usuario, si el entrenamiento
+ * de hoy ya está finalizado (`end_time` presente), o si falla la creación del set.
+ * Devuelve `true` si la serie se creó correctamente.
+ */
 async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: number | undefined): Promise<boolean> {
   const client = createBrowserClient();
   const { data: { user } } = await client.auth.getUser();
@@ -137,7 +165,7 @@ async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: nu
     const { data } = await workoutRepo.createWorkout({ date: today }, user.id);
     workout = data ?? null;
   }
-  if (!workout) return false;
+  if (!workout || workout.end_time) return false;
 
   const { data: wes } = await workoutRepo.getWorkoutExercises(workout.id);
   let we = wes?.find((w) => w.exercise_id === exerciseId);
@@ -158,6 +186,11 @@ async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: nu
   return !error;
 }
 
+/**
+ * Selector de ejercicio + campo de repeticiones usado por la calculadora de series para elegir a
+ * qué ejercicio del entrenamiento de hoy añadir cada peso calculado. Es controlado: el estado vive
+ * en el componente padre (`SetCalculator`).
+ */
 function AddToWorkoutPicker({ exerciseId, reps, onChangeExercise, onChangeReps }: {
   exerciseId: string;
   reps: string;
@@ -195,6 +228,12 @@ function AddToWorkoutPicker({ exerciseId, reps, onChangeExercise, onChangeReps }
   );
 }
 
+/**
+ * Calculadora de 1RM (una repetición máxima) con la fórmula de Brzycki: a partir de un peso y
+ * unas repeticiones levantadas, estima el 1RM y muestra además una tabla de máximos estimados
+ * para 1–15 repeticiones (`estimateRepMax`). Permite precargar peso/reps desde un PR existente
+ * vía `PRSelector`.
+ */
 function OneRMCalculator() {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
@@ -272,6 +311,12 @@ function OneRMCalculator() {
   );
 }
 
+/**
+ * Calculadora de series: dado un peso base (habitualmente un 1RM o PR) y un incremento de
+ * redondeo, calcula el peso de trabajo para cada porcentaje de `PERCENTAGES` (`calculateSetWeight`)
+ * y permite añadir cualquiera de esos pesos como serie al entrenamiento de hoy mediante
+ * `addSetToTodayWorkout`.
+ */
 function SetCalculator() {
   const [baseWeight, setBaseWeight] = useState("");
   const [increment, setIncrement] = useState("2.5");
@@ -282,6 +327,11 @@ function SetCalculator() {
   const base = parseFloat(baseWeight);
   const inc = parseFloat(increment) || 2.5;
 
+  /**
+   * Añade el peso calculado para el porcentaje `pct` como serie del ejercicio seleccionado en
+   * `AddToWorkoutPicker`. Si la inserción tiene éxito, marca brevemente (1.5s) ese porcentaje como
+   * "Añadido" en la UI.
+   */
   async function handleAdd(pct: number, weight: number) {
     if (!addExerciseId) return;
     const reps = parseInt(addReps, 10) || undefined;
@@ -372,6 +422,7 @@ function SetCalculator() {
 
 const PRESET_DURATIONS = [30, 60, 90, 120, 180, 300];
 
+/** Reproduce un pitido corto (880Hz, envolvente exponencial) vía Web Audio API al terminar el descanso. Silencioso si `AudioContext` no está disponible. */
 function playBeep() {
   try {
     const ctx = new AudioContext();
@@ -388,6 +439,11 @@ function playBeep() {
   } catch { /* AudioContext not available */ }
 }
 
+/**
+ * Temporizador de descanso entre series: cuenta regresiva configurable con presets, ajuste
+ * ±15s, duración personalizada y aviso sonoro + notificación del navegador al llegar a 0.
+ * Se renderiza como un anillo circular de progreso (SVG) alrededor del tiempo restante.
+ */
 function RestTimerSection() {
   const [duration, setDuration] = useState(90);
   const [remaining, setRemaining] = useState(90);
@@ -417,17 +473,20 @@ function RestTimerSection() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [running]);
 
+  /** Fija la duración a `secs` (preset o valor custom) y reinicia el restante si no está corriendo. */
   function handleSetDuration(secs: number) {
     setDuration(secs);
     if (!running) setRemaining(secs);
     setCustomInput("");
   }
 
+  /** Aplica la duración escrita en el input personalizado, si es un número positivo válido. */
   function handleCustomDuration() {
     const val = parseInt(customInput, 10);
     if (val > 0) handleSetDuration(val);
   }
 
+  /** Inicia/pausa el temporizador; si llegó a 0, reinicia desde `duration` y arranca. */
   function handleToggle() {
     if (remaining === 0) {
       setRemaining(duration);
@@ -437,17 +496,20 @@ function RestTimerSection() {
     }
   }
 
+  /** Detiene el conteo y restaura el tiempo restante a la duración configurada. */
   function handleReset() {
     setRunning(false);
     setRemaining(duration);
   }
 
+  /** Suma/resta `delta` segundos a la duración (mínimo 5s), sin bajar de ahí. */
   function handleAdjust(delta: number) {
     const next = Math.max(5, duration + delta);
     setDuration(next);
     if (!running) setRemaining(next);
   }
 
+  /** Solicita permiso de notificaciones del navegador si aún no se ha decidido ("default"). */
   function requestNotifPermission() {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
@@ -568,6 +630,11 @@ function RestTimerSection() {
   );
 }
 
+/**
+ * Calculadora de discos de barra: dado un peso objetivo, el peso de la barra y la lista de discos
+ * disponibles, calcula la combinación de discos por lado (`calculatePlates`) y muestra una
+ * representación visual de la barra cargada.
+ */
 function PlateCalculatorPanel() {
   const [targetWeight, setTargetWeight] = useState("");
   const [barWeight, setBarWeight] = useState("20");
@@ -690,6 +757,7 @@ const PLATE_COLORS: Record<number, string> = {
   0.5: "bg-slate-100 border border-slate-300",
 };
 
+/** Bloque visual de un disco individual: color por peso estándar (`PLATE_COLORS`) y altura proporcional al peso. */
 function PlateBlock({ weight }: { weight: number }) {
   const color = PLATE_COLORS[weight] ?? "bg-slate-400";
   const height = Math.min(80, Math.max(32, weight * 2.5));

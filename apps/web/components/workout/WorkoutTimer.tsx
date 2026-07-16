@@ -1,14 +1,36 @@
+/**
+ * Cronómetro del entrenamiento en curso: muestra el tiempo transcurrido
+ * desde `startTime`, en formato reloj, con un botón de pausa/reanudar. Es
+ * puramente de presentación/estado local (no persiste la pausa en el
+ * backend); pausar solo detiene el conteo visual y deja de notificar avances
+ * a través de `onElapsedChange`.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause } from "lucide-react";
 import { formatClockDuration } from "@fitnotes/core";
 
+/**
+ * Props de `WorkoutTimer`.
+ * @property startTime - Timestamp ISO de inicio del entrenamiento; al cambiar, reinicia el cronómetro recalculando el tiempo transcurrido desde ese origen. `undefined` equivale a "empieza ahora".
+ * @property onElapsedChange - Se invoca cada segundo (y al pausar) con el total de segundos transcurridos.
+ */
 interface Props {
   startTime: string | undefined;
   onElapsedChange?: (elapsed: number) => void;
 }
 
+/**
+ * Comportamiento no obvio: el tiempo transcurrido se acumula en dos partes
+ * para sobrevivir a pausas — `elapsedBaseRef` (segundos ya acumulados de
+ * segmentos anteriores) + el segmento en curso (`segmentStartRef` hasta
+ * ahora). Al pausar, el segmento en curso se suma a la base y
+ * `segmentStartRef` se pone a `null`; al reanudar, se abre un nuevo segmento.
+ * Esto evita depender de un único `setInterval` continuo que se desincronice
+ * tras pausas repetidas.
+ */
 export default function WorkoutTimer({ startTime, onElapsedChange }: Props) {
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);

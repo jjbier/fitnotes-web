@@ -21,6 +21,23 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Editor de una rutina (`/routines/[id]`): carga la rutina, sus días (`RoutineDay`),
+ * los ejercicios de cada día (`RoutineDayExercise`) y las series predefinidas de cada
+ * ejercicio, todo en el store `useRoutineStore`.
+ *
+ * Soporta, en modo edición (`editMode`):
+ * - Alta/renombrado/eliminación de días, y reordenación por drag&drop (`handleDayDragEnd`).
+ * - Alta/eliminación de ejercicios dentro de un día y reordenación (delegada en `DaySection`).
+ * - Gestión de supersets: agrupar dos ejercicios (`handleCreateSuperset`), desagrupar
+ *   (`handleRemoveFromSuperset`, que también desagrupa automáticamente si solo queda un
+ *   ejercicio en el grupo) y renombrar el grupo (`handleRenameGroup`).
+ * - Edición de series predefinidas por ejercicio vía `PredefinedSetsModal`.
+ *
+ * Fuera de modo edición, "Registrar todo" (`handleLogAll`) crea/reutiliza el entrenamiento
+ * de hoy y añade todos los ejercicios del día con sus series predefinidas, rellenando
+ * huecos sin valores con los datos de la última sesión de cada ejercicio.
+ */
 export default function RoutineDetailPage({ params }: Props) {
   const { id: routineId } = use(params);
   const router = useRouter();
@@ -176,6 +193,7 @@ export default function RoutineDetailPage({ params }: Props) {
 
   // ─── Day drag & drop ───────────────────────────────────────────────────────
 
+  /** Al soltar un día arrastrado, recalcula el `order_index` de todos los días y persiste el nuevo orden. */
   async function handleDayDragEnd() {
     if (!dragDayId || !dragOverDayId || dragDayId === dragOverDayId) {
       setDragDayId(null);
@@ -233,6 +251,7 @@ export default function RoutineDetailPage({ params }: Props) {
 
   // ─── Supersets ─────────────────────────────────────────────────────────────
 
+  /** Agrupa dos ejercicios del día en un superset, asignándoles un `group_id` nuevo compartido. */
   async function handleCreateSuperset(rdeId: string, nextRdeId: string) {
     const groupId = crypto.randomUUID();
     const dayId = Object.keys(routineDayExercises).find((dId) =>
@@ -255,6 +274,10 @@ export default function RoutineDetailPage({ params }: Props) {
     );
   }
 
+  /**
+   * Saca un ejercicio de su superset. Si en el grupo solo queda un ejercicio tras la
+   * salida, también lo desagrupa (un superset de un solo ejercicio no tiene sentido).
+   */
   async function handleRemoveFromSuperset(rdeId: string) {
     const dayId = Object.keys(routineDayExercises).find((dId) =>
       routineDayExercises[dId]?.some((e) => e.id === rdeId)
@@ -285,6 +308,7 @@ export default function RoutineDetailPage({ params }: Props) {
     );
   }
 
+  /** Renombra un grupo de superset (`group_name`) localizando el día que lo contiene. */
   async function handleRenameGroup(groupId: string, name: string) {
     const dayId = Object.keys(routineDayExercises).find((dId) =>
       routineDayExercises[dId]?.some((e) => e.group_id === groupId)
@@ -302,6 +326,11 @@ export default function RoutineDetailPage({ params }: Props) {
 
   // ─── Predefined sets ───────────────────────────────────────────────────────
 
+  /**
+   * Persiste las series predefinidas de un ejercicio del día. Si el repo devuelve un
+   * array vacío (p. ej. al borrar todas las series), reconstruye filas locales
+   * temporales (`local-*`) a partir del input para no perder el estado optimista en UI.
+   */
   async function handleSavePredefinedSets(
     rdeId: string,
     sets: Array<{ weight?: number; reps?: number; distance?: number; time_seconds?: number; order_index: number }>
@@ -333,6 +362,13 @@ export default function RoutineDetailPage({ params }: Props) {
 
   // ─── Log All ───────────────────────────────────────────────────────────────
 
+  /**
+   * Registra de una vez todos los ejercicios (y sus series predefinidas) de un día de
+   * la rutina en el entrenamiento de hoy: obtiene o crea el entrenamiento de hoy,
+   * añade cada ejercicio a continuación de los existentes preservando `group_id`/`group_name`,
+   * y para las series predefinidas sin valores propios copia los de la última sesión
+   * registrada del ejercicio. Navega a `/dashboard` al terminar.
+   */
   async function handleLogAll(dayId: string) {
     setLoggingDayId(dayId);
     setLogError(null);

@@ -1,3 +1,15 @@
+/**
+ * Panel lateral ("drawer") de detalle de un ejercicio dentro de la sección
+ * de progreso. Se abre como overlay a pantalla completa y organiza el
+ * contenido en 5 pestañas: récords personales, gráfica de progreso,
+ * historial de sesiones (con copia de series a hoy), estadísticas por
+ * periodo y objetivo (goal) del ejercicio.
+ *
+ * Es un panel modal ligero: atrapa el foco (`useFocusTrap`), se cierra con
+ * Escape y devuelve el foco al elemento que lo abrió al desmontarse. Carga
+ * sus propios datos (`PersonalRecord[]`, `ChartPoint[]`, objetivo) al montar
+ * y bajo demanda al expandir una fecha del historial.
+ */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,8 +30,10 @@ import PersonalRecords from "./PersonalRecords";
 import PeriodStats from "./PeriodStats";
 import { readEstimatedRecordsRepLimit } from "@/lib/settings";
 
+/** Pestaña activa dentro del panel de detalle del ejercicio. */
 type Tab = "records" | "chart" | "history" | "stats" | "goals";
 
+/** Serie de una sesión pasada, tal y como se muestra al expandir una fecha del historial. */
 type HistorySet = {
   id: string;
   order_index: number;
@@ -31,13 +45,22 @@ type HistorySet = {
   time_seconds: number | null;
 };
 
+/** Props de {@link ExerciseOverview}. */
 interface ExerciseOverviewProps {
+  /** Ejercicio cuyo detalle se muestra. */
   exercise: Exercise;
+  /** Lista completa de ejercicios, usada por {@link PersonalRecords} para resolver nombres. */
   exercises: Exercise[];
+  /** Id del usuario propietario, requerido para crear/copiar entrenamientos y guardar objetivos. */
   userId: string;
   onClose: () => void;
 }
 
+/**
+ * Renderiza el panel de detalle del ejercicio. Internamente resuelve sus
+ * propios repositorios (`progress`, `workout`, `goals`) a partir de un
+ * cliente de Supabase creado en el propio componente.
+ */
 export default function ExerciseOverview({ exercise, exercises, userId, onClose }: ExerciseOverviewProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true);
@@ -102,6 +125,12 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercise.id]);
 
+  /**
+   * Alterna la fila de historial expandida para `date` y, la primera vez que
+   * se expande una fecha, resuelve perezosamente sus series (entrenamiento →
+   * ejercicio dentro del entrenamiento → sets) y las cachea en `historySets`
+   * para no repetir la consulta en expansiones posteriores.
+   */
   const handleExpandDate = useCallback(async (date: string) => {
     if (expandedDate === date) { setExpandedDate(null); return; }
     setExpandedDate(date);
@@ -130,6 +159,14 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedDate, historySets, exercise.id]);
 
+  /**
+   * Copia las series de `fromDate` al entrenamiento de hoy: crea el
+   * entrenamiento de hoy si no existe, reutiliza o crea la entrada del
+   * ejercicio dentro de él (si el entrenamiento de hoy ya no admite cambios
+   * por estar cerrado —`end_time` presente— aborta), y añade cada serie
+   * como una nueva serie sin completar. Marca la fecha como "copiada" para
+   * evitar duplicados accidentales desde la UI.
+   */
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
     if (!sets?.length || !userId) return;
@@ -140,7 +177,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
         const { data: created } = await workoutRepo.createWorkout({ date: today }, userId);
         todayWorkout = created;
       }
-      if (!todayWorkout) return;
+      if (!todayWorkout || todayWorkout.end_time) return;
 
       const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
       let targetWE = (todayWEs ?? []).find((w) => w.exercise_id === exercise.id);
@@ -171,6 +208,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
     }
   }
 
+  /** Guarda (crea o actualiza) el objetivo del ejercicio a partir de `goalForm` mediante upsert. */
   async function handleSaveGoal() {
     if (!userId) return;
     setGoalSaving(true);
@@ -186,17 +224,20 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
     setGoalSaving(false);
   }
 
+  /** Elimina el objetivo del ejercicio y cierra el formulario si estaba abierto. */
   async function handleDeleteGoal() {
     await goalsRepo.deleteGoal(exercise.id);
     setGoal(null);
     setShowGoalForm(false);
   }
 
+  /** Marca el objetivo actual como conseguido (optimista: actualiza `achieved_at` localmente sin recargar). */
   async function handleMarkAchieved() {
     await goalsRepo.markAchieved(exercise.id);
     setGoal((g) => g ? { ...g, achieved_at: new Date().toISOString() } : g);
   }
 
+  /** Precarga `goalForm` a partir de un objetivo existente (o vacío para uno nuevo) y abre el formulario. */
   function openGoalForm(existing?: ExerciseGoalRow) {
     setGoalForm({
       target_weight: existing?.target_weight?.toString() ?? "",

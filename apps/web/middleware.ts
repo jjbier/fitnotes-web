@@ -1,8 +1,25 @@
+/**
+ * Middleware de Next.js que actúa como guard de sesión global: exige una
+ * sesión Supabase válida para acceder a cualquier ruta salvo las públicas
+ * (portada, login, registro), assets de Next.js, rutas de API y archivos
+ * estáticos. Se ejecuta en el edge runtime antes de renderizar la página.
+ */
+
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
+/** Rutas accesibles sin sesión iniciada. */
 const PUBLIC_PATHS = ["/", "/login", "/register"];
 
+/**
+ * Comprueba la sesión Supabase (vía cookies) para cada request que matchea
+ * `config.matcher` y redirige a `/login` si no hay usuario autenticado.
+ * Si las variables de entorno de Supabase no están configuradas, deja pasar
+ * la request sin comprobar (permite arrancar el proyecto sin credenciales
+ * aún configuradas). Usa el patrón de `@supabase/ssr` de reconstruir la
+ * `NextResponse` dentro de `setAll` para poder propagar cookies renovadas
+ * tanto a la request entrante como a la respuesta.
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 

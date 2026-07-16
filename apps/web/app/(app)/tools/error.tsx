@@ -1,5 +1,6 @@
 "use client";
 
+/** Error boundary de la sección /tools: muestra el mensaje de error y un botón para reintentar el render. */
 export default function Error({
   error,
   reset,

@@ -26,6 +26,17 @@ type Session = {
   sets: SetRow[];
 };
 
+/**
+ * Página de historial de un ejercicio (`/exercise/history/[exerciseId]`): lista todas
+ * las sesiones pasadas (fecha, nota del workout y sus series) en las que se registró
+ * el ejercicio dado, ordenadas por el repositorio remoto (`getExerciseHistory`).
+ *
+ * El nombre/unidad/tipo del ejercicio se resuelve del `useExerciseStore` (ya cargado
+ * por otras pantallas); si el store está vacío se ignora (ver nota en `load`) y el
+ * encabezado cae a valores por defecto. La lista de sesiones se virtualiza con
+ * `useVirtualizer` (scroll interno, no de ventana) para poder renderizar historiales
+ * largos sin degradar el rendimiento.
+ */
 export default function ExerciseHistoryPage() {
   const { exerciseId } = useParams<{ exerciseId: string }>();
   const exercises = useExerciseStore((s) => s.exercises);

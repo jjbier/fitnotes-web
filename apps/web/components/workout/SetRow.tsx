@@ -1,9 +1,29 @@
+/**
+ * Fila editable de una única serie dentro de un ejercicio del entrenamiento
+ * en curso: cada campo numérico (peso/reps/distancia/tiempo) es un input
+ * independiente que dispara `onUpdate` en cada cambio, y muestra acciones de
+ * completar, comentar y eliminar. Es el componente usado en la pantalla de
+ * entrenamiento real (ver `TrainingScreen`); `SetList` es una variante
+ * de solo lectura más simple.
+ */
+
 "use client";
 
 import { Check, MessageCircle, Trash2, Trophy } from "lucide-react";
 import { getExerciseFields } from "@fitnotes/core";
 import type { Set, ExerciseType } from "@fitnotes/core";
 
+/**
+ * Props de `SetRow`.
+ * @property set - Serie a mostrar/editar.
+ * @property exerciseType - Determina, vía `getExerciseFields`, qué campos (peso/reps/distancia/tiempo) se renderizan.
+ * @property onUpdate - Se invoca en cada cambio de un input numérico con el patch parcial correspondiente (valor `undefined` si el campo queda vacío).
+ * @property onDelete - Se invoca con el id de la serie al pulsar el icono de papelera.
+ * @property onToggleComplete - Se invoca con el id de la serie y su estado `is_complete` actual (el llamador decide el toggle).
+ * @property onComment - Se invoca con el id de la serie al pulsar el icono de comentario (abre `SetCommentModal` en el padre).
+ * @property isPR - Si es `true`, muestra el icono de trofeo indicando que esta serie es un récord personal.
+ * @property weightStep - Paso del input de peso (`step`), normalmente el incremento configurado del ejercicio o el valor por defecto de ajustes.
+ */
 interface Props {
   set: Set;
   exerciseType: ExerciseType;

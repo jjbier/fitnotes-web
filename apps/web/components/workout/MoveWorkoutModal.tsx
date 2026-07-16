@@ -1,8 +1,21 @@
+/**
+ * Modal para cambiar la fecha de un entrenamiento ya existente. Comprueba en
+ * cada cambio de fecha si ya existe otro entrenamiento en ese día (un
+ * entrenamiento por fecha) y bloquea el botón "Mover" si hay conflicto.
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
 
+/**
+ * Props de `MoveWorkoutModal`.
+ * @property workoutId - Id del entrenamiento a mover.
+ * @property currentDate - Fecha actual del entrenamiento (fecha inicial del selector; mover a la misma fecha desactiva el botón).
+ * @property onMoved - Se invoca con la nueva fecha tras confirmar el movimiento en el backend.
+ * @property onClose - Cierra el modal (clic fuera, Escape, Cancelar o tras mover).
+ */
 interface Props {
   workoutId: string;
   currentDate: string;
@@ -10,6 +23,13 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * Selector de fecha con comprobación de conflicto en vivo: cada vez que
+ * cambia `targetDate` (y difiere de `currentDate`) consulta
+ * `getWorkoutByDate` para saber si esa fecha ya tiene entrenamiento y, de ser
+ * así, deshabilita "Mover" y muestra un aviso. La fecha máxima seleccionable
+ * es hoy (no se permite mover entrenamientos a fechas futuras).
+ */
 export default function MoveWorkoutModal({ workoutId, currentDate, onMoved, onClose }: Props) {
   const [targetDate, setTargetDate] = useState(currentDate);
   const [saving, setSaving] = useState(false);

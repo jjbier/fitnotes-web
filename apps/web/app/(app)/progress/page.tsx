@@ -19,6 +19,20 @@ import { readEstimatedRecordsRepLimit } from "@/lib/settings";
 
 type Tab = "records" | "chart" | "history" | "stats" | "goals";
 
+/**
+ * Página de Progreso: selector de ejercicio + 5 pestañas (Récords, Gráfica, Historial,
+ * Estadísticas, Objetivos) sobre datos de `progressRepo`/`goalsRepo`/`workoutRepo`.
+ *
+ * - Sin ejercicio seleccionado: resumen de récords personales de todos los ejercicios
+ *   (1RM estimado vía `calculate1RM`), con acceso a `ExerciseOverview` (slide-over) por fila.
+ * - Récords: delega en `PersonalRecords` (mejores marcas por número de reps).
+ * - Gráfica: delega en `ProgressChart` (evolución en el tiempo vía Recharts).
+ * - Historial: lista de sesiones por fecha, expandibles a nivel de serie, con edición
+ *   inline de series (`saveEditSet`) y "copiar series de un día pasado a hoy" (`handleCopySets`).
+ * - Estadísticas: delega en `PeriodStats` (agregados por periodo).
+ * - Objetivos: CRUD de un objetivo (peso/reps/fecha/notas) por ejercicio vía `goalsRepo`,
+ *   con barra de progreso hacia la mejor marca actual y marcado de "conseguido".
+ */
 export default function ProgressPage() {
   const personalRecords = useProgressStore((s) => s.personalRecords);
   const chartData = useProgressStore((s) => s.chartData);
@@ -95,6 +109,7 @@ export default function ProgressPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Carga récords personales y datos de gráfica de un ejercicio y los fusiona en el store. */
   const loadExerciseData = useCallback(async (exerciseId: string) => {
     setLoading(true);
     const [prRes, chartRes] = await Promise.all([
@@ -164,6 +179,11 @@ export default function ProgressPage() {
     ));
   }
 
+  /**
+   * Expande/contrae una fecha del historial; en la primera expansión resuelve el
+   * entrenamiento de ese día y busca las series del ejercicio seleccionado (con caché
+   * en `historySets` para no repetir la consulta).
+   */
   async function handleExpandDate(date: string) {
     if (expandedDate === date) { setExpandedDate(null); return; }
     setExpandedDate(date);
@@ -219,6 +239,10 @@ export default function ProgressPage() {
     setEditingSetId(null);
   }
 
+  /**
+   * Copia las series de `fromDate` al entrenamiento de hoy: crea el entrenamiento/ejercicio
+   * de hoy si no existen y añade cada serie histórica como una nueva serie sin completar.
+   */
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
     if (!sets?.length || !selectedExId) return;
@@ -231,7 +255,7 @@ export default function ProgressPage() {
         const { data: created } = await workoutRepo.createWorkout({ date: today }, uid);
         todayWorkout = created;
       }
-      if (!todayWorkout) return;
+      if (!todayWorkout || todayWorkout.end_time) return;
 
       const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
       let targetWE = (todayWEs ?? []).find((w) => w.exercise_id === selectedExId);

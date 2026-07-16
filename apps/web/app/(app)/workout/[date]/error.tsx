@@ -1,5 +1,6 @@
 "use client";
 
+/** Error boundary de la ruta `/workout/[date]`: captura errores de render y ofrece reintentar (`reset`). */
 export default function Error({
   error,
   reset,

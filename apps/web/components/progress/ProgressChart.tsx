@@ -1,3 +1,10 @@
+/**
+ * Gráfica de progreso de un ejercicio a lo largo del tiempo (Recharts
+ * `LineChart`). Soporta múltiples métricas seleccionables (peso máx.,
+ * volumen, 1RM estimado, etc.), dos modos "especiales" derivados
+ * (peso a X reps, progresión de rep-max estimado), línea de tendencia por
+ * regresión lineal y exportación de la gráfica como PNG.
+ */
 "use client";
 
 import { useRef, useState } from "react";
@@ -7,11 +14,14 @@ import {
 import type { ChartPoint } from "@fitnotes/database";
 import { ExerciseType, getExerciseFields, estimateRepMax, formatChartDuration, ALL_EXERCISE_FIELDS } from "@fitnotes/core";
 
+/** Métrica simple (un campo de {@link ChartPoint}) que se puede graficar directamente. */
 type ChartMetric =
   | "maxWeight" | "totalVolume" | "maxReps" | "totalReps" | "est1RM"
   | "maxDistance" | "totalDistance" | "maxTime" | "totalTime" | "maxSpeed" | "bestPace";
+/** Modo de la gráfica: una métrica simple, o uno de los dos modos derivados que requieren un `repTarget`. */
 type ChartMode = ChartMetric | "weightByReps" | "repMaxProgression";
 
+/** Etiquetas en español de cada métrica, usadas en los botones de selección y en el tooltip. */
 const metricLabel: Record<ChartMetric, string> = {
   maxWeight: "Peso máx.",
   totalVolume: "Volumen total",
@@ -26,6 +36,7 @@ const metricLabel: Record<ChartMetric, string> = {
   bestPace: "Mejor ritmo",
 };
 
+/** Color de línea asignado a cada métrica, consistente entre botón de selección y trazo de la gráfica. */
 const metricColor: Record<ChartMetric, string> = {
   maxWeight: "#6366f1",
   totalVolume: "#10b981",
@@ -40,6 +51,11 @@ const metricColor: Record<ChartMetric, string> = {
   bestPace: "#f43f5e",
 };
 
+/**
+ * Calcula qué métricas son aplicables a un tipo de ejercicio dado, en base a
+ * los campos que registra (`getExerciseFields`). Sin `exerciseType`, devuelve
+ * todas las métricas conocidas.
+ */
 function metricsForExercise(exerciseType?: ExerciseType): ChartMetric[] {
   if (!exerciseType) return Object.keys(metricLabel) as ChartMetric[];
   const fields = getExerciseFields(exerciseType);
@@ -53,11 +69,18 @@ function metricsForExercise(exerciseType?: ExerciseType): ChartMetric[] {
   return metrics;
 }
 
+/** Formatea el valor de una métrica para el tooltip: duración legible para métricas de tiempo/ritmo, un decimal para el resto. */
 function formatMetricValue(metric: ChartMetric, v: number): string {
   if (metric === "maxTime" || metric === "totalTime" || metric === "bestPace") return formatChartDuration(v);
   return v.toFixed(1);
 }
 
+/**
+ * Ajusta una recta de mínimos cuadrados sobre `values` (tratando el índice
+ * de cada punto como variable independiente) y devuelve la serie de valores
+ * ajustados, usada para dibujar la línea de tendencia. Con menos de 2 puntos
+ * o varianza nula en X devuelve los valores originales/la media, respectivamente.
+ */
 function linearRegression(values: number[]): number[] {
   const n = values.length;
   if (n < 2) return [...values];
@@ -71,13 +94,22 @@ function linearRegression(values: number[]): number[] {
   return values.map((_, i) => parseFloat((slope * i + intercept).toFixed(2)));
 }
 
+/** Props de {@link ProgressChart}. */
 interface ProgressChartProps {
+  /** Puntos de progreso (uno por sesión) a graficar; el componente no hace fetching propio. */
   data: ChartPoint[];
+  /** Nombre del ejercicio, usado en el título del PNG exportado y en el mensaje de "sin datos". */
   exerciseName?: string;
+  /** Determina qué métricas se ofrecen como seleccionables; sin valor se ofrecen todas. */
   exerciseType?: ExerciseType;
+  /** Alto en píxeles de la gráfica (y del placeholder cuando no hay datos). */
   height?: number;
 }
 
+/**
+ * Renderiza la gráfica de línea con selector de métrica/modo y controles de
+ * visualización (puntos, escala desde cero, tendencia, exportar PNG).
+ */
 export default function ProgressChart({ data, exerciseName, exerciseType, height = 220 }: ProgressChartProps) {
   const availableMetrics = metricsForExercise(exerciseType);
   const fields = exerciseType ? getExerciseFields(exerciseType) : ALL_EXERCISE_FIELDS;
@@ -137,6 +169,13 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
     ? `${repTarget}RM estimado`
     : metricLabel[metric!];
 
+  /**
+   * Exporta la gráfica actualmente renderizada como PNG: clona el `<svg>`
+   * generado por Recharts, le añade un fondo blanco y un título, lo serializa
+   * y lo dibuja en un `<canvas>` (a 2x de resolución) para finalmente
+   * descargarlo como imagen. Todo el trabajo ocurre en el cliente, sin
+   * dependencias externas de renderizado.
+   */
   async function exportChart() {
     const container = containerRef.current;
     if (!container) return;

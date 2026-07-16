@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+/**
+ * Landing pública en "/": presenta la app (logo, título, descripción) con llamadas a la acción
+ * hacia /login y /register. No comprueba sesión — la redirección a /dashboard tras autenticarse
+ * ocurre en las propias páginas de login/register.
+ */
 export default function RootPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-background px-4">

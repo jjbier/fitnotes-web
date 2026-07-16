@@ -1,10 +1,26 @@
+/**
+ * Hook de accesibilidad (WCAG AA) para atrapar el foco de teclado dentro de
+ * un contenedor (típicamente un modal/diálogo) mientras esté activo, de modo
+ * que Tab/Shift+Tab no se escape hacia el contenido de fondo.
+ */
+
 "use client";
 
 import { useEffect } from "react";
 
+/** Selector CSS de elementos considerados "enfocables" dentro del contenedor atrapado. */
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Mientras `active` es `true`, enfoca automáticamente el primer elemento
+ * enfocable dentro de `ref.current` y, en cada pulsación de Tab, hace que el
+ * foco cicle dentro del contenedor: Tab desde el último elemento vuelve al
+ * primero, y Shift+Tab desde el primero salta al último. Recalcula la lista
+ * de enfocables en cada pulsación (en vez de cachearla) para tolerar
+ * cambios dinámicos de contenido (p. ej. un elemento que aparece/desaparece
+ * dentro del modal), filtrando los ocultos vía `[hidden]`/`offsetParent`.
+ */
 export function useFocusTrap(ref: React.RefObject<HTMLElement | null>, active: boolean) {
   useEffect(() => {
     if (!active || !ref.current) return;

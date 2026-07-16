@@ -1,6 +1,20 @@
+/**
+ * Utilidad de backup automático a Google Drive. Delega la subida real en el
+ * endpoint de servidor `/api/google/backup` (que gestiona el token OAuth de
+ * Google); este módulo solo decide, en base a un ajuste local, si dispara la
+ * subida y qué hacer si el token dejó de ser válido.
+ */
+
 import { readBool, SETTING_KEYS } from "./settings";
 
-/** Called after finishing a workout. Silently uploads to Drive if the setting is on. */
+/**
+ * Llamado tras finalizar un entrenamiento. Si el ajuste
+ * `SETTING_KEYS.AUTO_BACKUP_DRIVE` está activado, sube el backup a Drive en
+ * segundo plano; si el endpoint responde `TOKEN_INVALID` (token de Google
+ * caducado/revocado), desactiva el ajuste automáticamente para no seguir
+ * reintentando en cada entrenamiento. Cualquier otro error (de red o
+ * servidor) se ignora en silencio para no bloquear el flujo del usuario.
+ */
 export async function autoBackupToDriveIfEnabled(): Promise<void> {
   if (!readBool(SETTING_KEYS.AUTO_BACKUP_DRIVE, false)) return;
   try {
@@ -15,6 +29,7 @@ export async function autoBackupToDriveIfEnabled(): Promise<void> {
   }
 }
 
+/** Escribe un booleano en `localStorage` como string (`"true"`/`"false"`); no-op en SSR. */
 function writeBool(key: string, value: boolean) {
   if (typeof window !== "undefined") localStorage.setItem(key, String(value));
 }

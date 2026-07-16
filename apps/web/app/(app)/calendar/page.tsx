@@ -9,10 +9,12 @@ import type { Exercise as CoreExercise } from "@fitnotes/core";
 import { readWeekStart, readBool, writeBool, SETTING_KEYS } from "@/lib/settings";
 import ExerciseOverview from "@/components/progress/ExerciseOverview";
 
+/** Número de días del mes (1-12) dado, usando el truco de pedir el "día 0" del mes siguiente. */
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
+/** Día de la semana (0=domingo..6=sábado, según `Date.getDay()`) del día 1 del mes (1-12) dado. */
 function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month - 1, 1).getDay();
 }
@@ -20,6 +22,21 @@ function getFirstDayOfWeek(year: number, month: number): number {
 type Category = { id: string; name: string; color: string };
 type Exercise = { id: string; name: string };
 
+/**
+ * Página de calendario (`/calendar`): vista mensual con un punto de color por
+ * categoría entrenada cada día (o un único indicador si se desactivan los puntos
+ * de categoría), más una vista de lista alternativa con el historial detallado
+ * de entrenamientos (expandible por workout).
+ *
+ * Al montar carga categorías/ejercicios (para el panel de filtros) y, por cada
+ * mes visitado, los entrenamientos, colores de categoría por día e IDs de
+ * categoría por día. Soporta filtrar por categorías musculares (modo "cualquiera"
+ * o "todas") y por ejercicio con condiciones mínimas de peso/reps —ambos filtros
+ * se combinan por intersección de fechas (`activeDates`)—, seleccionar un día para
+ * ver sus ejercicios en un panel lateral (con overview del ejercicio vía
+ * `ExerciseOverview`), y navegar directamente al workout de un día desde ese panel
+ * o desde la vista de lista.
+ */
 export default function CalendarPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -146,6 +163,7 @@ export default function CalendarPage() {
     return new Set([...catFilteredDates!].filter((d) => filteredExDates!.has(d)));
   }, [catFilteredDates, filteredExDates]);
 
+  /** Consulta al repo las fechas donde `filterExId` se registró cumpliendo el peso/reps mínimos indicados. */
   async function applyExerciseFilter() {
     if (!filterExId) { setFilteredExDates(null); return; }
     setFilterExLoading(true);
@@ -185,6 +203,11 @@ export default function CalendarPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, workouts]);
 
+  /**
+   * Expande/colapsa una fila de la vista de lista; al expandir por primera vez
+   * carga y cachea (`historyDetail`) el detalle de series de ese workout,
+   * formateadas a texto legible por tipo de ejercicio (peso×reps, distancia/tiempo, etc.).
+   */
   async function toggleHistoryExpand(workoutId: string) {
     const next = expandedHistoryId === workoutId ? null : workoutId;
     setExpandedHistoryId(next);
