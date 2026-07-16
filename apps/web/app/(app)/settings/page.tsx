@@ -14,6 +14,7 @@ import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
+import { computeDefaultCatalogSeedPlan, type DefaultCatalogSeedPlan } from "@fitnotes/core";
 import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit, readHiddenCategories, writeHiddenCategories } from "@/lib/settings";
 
 type BackupEntry = Record<string, unknown>;
@@ -96,6 +97,14 @@ export default function SettingsPage() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreDone, setRestoreDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Default exercise catalog import
+  const [catalogChecking, setCatalogChecking] = useState(false);
+  const [catalogPlan, setCatalogPlan] = useState<DefaultCatalogSeedPlan | null>(null);
+  const [catalogImporting, setCatalogImporting] = useState(false);
+  const [catalogStep, setCatalogStep] = useState("");
+  const [catalogDone, setCatalogDone] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   // Advanced workout settings
   const [trackPRs, setTrackPRs] = useState(true);
@@ -594,6 +603,83 @@ export default function SettingsPage() {
   }
 
   /**
+   * Consulta las categorías/ejercicios actuales y calcula (vía
+   * `computeDefaultCatalogSeedPlan`) qué falta por crear del catálogo por
+   * defecto. Si no falta nada, avisa con un `alert` en vez de abrir el modal
+   * de confirmación; si falta algo, guarda el plan en `catalogPlan` (lo que
+   * abre el modal).
+   */
+  async function handleCheckCatalogImport() {
+    setCatalogChecking(true);
+    setCatalogError(null);
+    try {
+      const repo = createExerciseRepository(client);
+      const [{ data: cats }, { data: exs }] = await Promise.all([repo.getCategories(), repo.getExercises()]);
+      const plan = computeDefaultCatalogSeedPlan(cats ?? [], exs ?? []);
+      if (plan.categoriesToCreateCount === 0 && plan.exercisesToCreateCount === 0) {
+        alert("Ya tienes todas las categorías y ejercicios del catálogo por defecto.");
+        return;
+      }
+      setCatalogDone(false);
+      setCatalogPlan(plan);
+    } finally {
+      setCatalogChecking(false);
+    }
+  }
+
+  /**
+   * Ejecuta el plan calculado por `handleCheckCatalogImport`: crea las categorías que faltan
+   * (una a una, para poder asignarles el `id` real a sus ejercicios) y luego sus ejercicios,
+   * saltando lo que ya exista según el plan. Actualiza `catalogStep` para mostrar progreso y
+   * refresca la lista de categorías de "Pantalla de inicio" al terminar.
+   */
+  async function executeCatalogImport() {
+    if (!catalogPlan) return;
+    setCatalogImporting(true);
+    setCatalogError(null);
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) throw new Error("Sesión no válida");
+      const repo = createExerciseRepository(client);
+      const categoryIdByName = new Map(categories.map((c) => [c.name.trim().toLowerCase(), c.id]));
+      let createdCategories = 0;
+
+      for (const catPlan of catalogPlan.categories) {
+        const key = catPlan.name.trim().toLowerCase();
+        let categoryId = categoryIdByName.get(key);
+        if (!categoryId) {
+          setCatalogStep(`Creando categoría "${catPlan.name}"…`);
+          const { data, error } = await repo.createCategory(
+            { name: catPlan.name, order_index: categories.length + createdCategories },
+            user.id
+          );
+          if (error || !data) throw new Error(`Error creando categoría "${catPlan.name}": ${error?.message ?? "desconocido"}`);
+          categoryId = data.id;
+          categoryIdByName.set(key, categoryId);
+          createdCategories++;
+        }
+        for (const ex of catPlan.exercisesToCreate) {
+          setCatalogStep(`Creando "${ex.name}"…`);
+          const { error } = await repo.createExercise(
+            { name: ex.name, category_id: categoryId, type: ex.type, weight_unit: "kg", is_favorite: false },
+            user.id
+          );
+          if (error) throw new Error(`Error creando ejercicio "${ex.name}": ${error.message}`);
+        }
+      }
+
+      setCatalogDone(true);
+      setCatalogStep("¡Importación completada!");
+      const { data: refreshedCats } = await repo.getCategories();
+      setCategories(refreshedCats ?? []);
+    } catch (err) {
+      setCatalogError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setCatalogImporting(false);
+    }
+  }
+
+  /**
    * Elimina el historial de entrenamientos del usuario según los filtros opcionales de fecha
    * (`deleteHistoryFrom`/`deleteHistoryTo`) y ejercicio (`deleteHistoryExerciseId`) — si no se
    * indica ninguno, elimina todo el historial. Delegado en
@@ -937,6 +1023,21 @@ export default function SettingsPage() {
           />
         </div>
 
+        {/* Default catalog import */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Catálogo de ejercicios por defecto</p>
+            <p className="text-xs text-muted-foreground">Importa 8 categorías y 96 ejercicios habituales; salta los que ya tengas</p>
+          </div>
+          <button
+            onClick={handleCheckCatalogImport}
+            disabled={catalogChecking}
+            className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+          >
+            {catalogChecking ? "Comprobando…" : "Importar catálogo"}
+          </button>
+        </div>
+
         <div className="border-t" />
 
         {/* Google Drive */}
@@ -1188,6 +1289,63 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      {/* Default catalog import confirmation modal */}
+      {catalogPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl border bg-card shadow-xl p-6 space-y-5">
+            <h3 className="text-lg font-semibold">Importar catálogo por defecto</h3>
+
+            <div className="rounded-2xl bg-secondary/50 p-4 space-y-2 text-sm">
+              <p>
+                Se crearán <span className="font-semibold tabular-nums">{catalogPlan.categoriesToCreateCount}</span> categoría(s) y{" "}
+                <span className="font-semibold tabular-nums">{catalogPlan.exercisesToCreateCount}</span> ejercicio(s) nuevo(s).
+              </p>
+              {(catalogPlan.categoriesSkippedCount > 0 || catalogPlan.exercisesSkippedCount > 0) && (
+                <p className="text-xs text-muted-foreground">
+                  {catalogPlan.categoriesSkippedCount} categoría(s) y {catalogPlan.exercisesSkippedCount} ejercicio(s) ya existen por nombre y se omitirán.
+                </p>
+              )}
+            </div>
+
+            {catalogError && (
+              <p className="text-sm text-destructive rounded-xl bg-destructive/10 px-3 py-2">{catalogError}</p>
+            )}
+
+            {catalogImporting ? (
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-4 w-4 shrink-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                <p className="text-sm text-muted-foreground">{catalogStep}</p>
+              </div>
+            ) : catalogDone ? (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-green-600">¡Catálogo importado con éxito!</p>
+                <button
+                  onClick={() => setCatalogPlan(null)}
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => { setCatalogPlan(null); setCatalogError(null); }}
+                  className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeCatalogImport}
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Importar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Restore confirmation modal */}
       {restoreData && (
