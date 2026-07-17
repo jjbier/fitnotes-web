@@ -445,7 +445,7 @@ export default function CalendarPage() {
                       {w.comment && <p className="text-xs text-muted-foreground truncate max-w-[280px]">{w.comment}</p>}
                     </button>
                     <div className="flex items-center gap-3 shrink-0">
-                      <Link href={`/workout/${w.date}`} className="text-xs text-primary hover:underline">
+                      <Link href={`/workout/${w.id}`} className="text-xs text-primary hover:underline">
                         Abrir →
                       </Link>
                       <button onClick={() => toggleHistoryExpand(w.id)} className="text-xs text-muted-foreground">
@@ -548,7 +548,7 @@ export default function CalendarPage() {
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm">{formatWorkoutDate(selectedDate)}</h3>
                 {selectedWorkout && (
-                  <Link href={`/workout/${selectedDate}`} className="text-xs text-primary hover:underline">
+                  <Link href={`/workout/${selectedWorkout.id}`} className="text-xs text-primary hover:underline">
                     Abrir entrenamiento →
                   </Link>
                 )}

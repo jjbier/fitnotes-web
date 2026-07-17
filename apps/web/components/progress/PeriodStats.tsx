@@ -162,7 +162,7 @@ export default function PeriodStats({ data, exerciseType, unit = "kg" }: PeriodS
 
       {period === "workout" && filtered[0] && (
         <Link
-          href={`/workout/${filtered[0].date}`}
+          href={`/workout/date/${filtered[0].date}`}
           className="inline-block text-sm text-primary hover:underline"
         >
           {t("progress:viewWorkoutLink", { date: filtered[0].date })}

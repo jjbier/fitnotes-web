@@ -18,32 +18,35 @@ import { useWakeLock } from "@/hooks/useWakeLock";
 import { readBool, SETTING_KEYS } from "@/lib/settings";
 import { autoBackupToDriveIfEnabled } from "@/lib/driveBackup";
 
-interface WorkoutDatePageProps {
-  params: Promise<{ date: string }>;
+interface WorkoutIdPageProps {
+  params: Promise<{ id: string }>;
 }
 
 /**
- * Página de entrenamiento para una fecha arbitraria (`/workout/[date]`): mismo patrón
- * que el dashboard ("Hoy") pero con layout de dos columnas (panel lateral de
- * navegación en desktop, lista apilada en móvil) y navegación de vuelta al calendario
- * en vez de la franja semanal.
+ * Página de entrenamiento identificado por `id` (`/workout/[id]`) — reemplaza a la
+ * antigua ruta por fecha (`/workout/[date]`, ahora un shim de compatibilidad que
+ * redirige aquí, ver ese archivo) para poder distinguir varios entrenamientos el
+ * mismo día (docs/implementation-plan-multi-workout-per-day.md, Fase 3). Mismo
+ * layout de dos columnas que antes (panel lateral de navegación en desktop, lista
+ * apilada en móvil) y navegación de vuelta al calendario.
  *
- * Al montar carga categorías/ejercicios y el entrenamiento de `date` (con sus
- * ejercicios y series). Soporta iniciar/finalizar entrenamiento con cronómetro
- * pausable, añadir/eliminar ejercicios, reordenarlos por drag&drop, selección
- * múltiple para borrado en lote, y los modales de compartir/copiar/mover
- * entrenamiento (mover navega a la nueva fecha con `window.location.href`, a
- * diferencia del dashboard que actualiza el estado local).
+ * Al montar carga categorías/ejercicios y el entrenamiento de `id` (con sus
+ * ejercicios y series) — a diferencia de la ruta por fecha, nunca lo crea: si el
+ * id no existe (o fue borrado), muestra un estado "no encontrado". Soporta
+ * iniciar/finalizar entrenamiento con cronómetro pausable, añadir/eliminar
+ * ejercicios, reordenarlos por drag&drop, selección múltiple para borrado en
+ * lote, y los modales de compartir/copiar/mover entrenamiento (mover solo
+ * actualiza la fecha mostrada — el id no cambia, así que no navega a ningún
+ * sitio).
  */
-export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
-  const { date } = use(params);
+export default function WorkoutIdPage({ params }: WorkoutIdPageProps) {
+  const { id } = use(params);
 
   const activeWorkout = useWorkoutStore((s) => s.activeWorkout);
   const workoutExercises = useWorkoutStore((s) => s.exercises);
   const sets = useWorkoutStore((s) => s.sets);
   const isLoading = useWorkoutStore((s) => s.isLoading);
   const loadWorkout = useWorkoutStore((s) => s.loadWorkout);
-  const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const addExerciseToWorkout = useWorkoutStore((s) => s.addExerciseToWorkout);
   const removeExerciseFromWorkout = useWorkoutStore((s) => s.removeExerciseFromWorkout);
   const reorderExercisesStore = useWorkoutStore((s) => s.reorderExercises);
@@ -56,6 +59,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
   const confirmDelete = useConfirm();
 
   const [userId, setUserId] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [activeWEId, setActiveWEId] = useState<string | null>(null);
   const [showExPicker, setShowExPicker] = useState(false);
   const [selectedExId, setSelectedExId] = useState("");
@@ -78,16 +82,33 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     setSelectedIds(new Set());
   }, [activeWorkout?.id]);
 
+  async function loadWorkoutExercisesAndSets(workoutId: string) {
+    const { data: wExercises } = await repo.getWorkoutExercises(workoutId);
+    const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
+    for (const we of wExercises ?? []) {
+      const { data: wSets } = await repo.getSets(we.id);
+      setsMap[we.id] = (wSets ?? []).map((s) => ({
+        id: s.id, workout_exercise_id: s.workout_exercise_id,
+        weight: s.weight ?? undefined, reps: s.reps ?? undefined,
+        distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
+        is_complete: s.is_complete, is_warmup: s.is_warmup ?? false,
+        comment: s.comment ?? undefined, order_index: s.order_index,
+      }));
+    }
+    return { wExercises: wExercises ?? [], setsMap };
+  }
+
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setNotFound(false);
       const { data: { user } } = await client.auth.getUser();
       if (user) setUserId(user.id);
 
       const [catRes, exRes, workoutRes] = await Promise.all([
         exRepo.getCategories(),
         exRepo.getExercises(),
-        repo.getWorkoutByDate(date),
+        repo.getWorkout(id),
       ]);
 
       if (catRes.data && exRes.data) {
@@ -103,46 +124,34 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
       }
 
       const workout = workoutRes.data;
-      if (workout) {
-        const { data: wExercises } = await repo.getWorkoutExercises(workout.id);
-        const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
-        for (const we of wExercises ?? []) {
-          const { data: wSets } = await repo.getSets(we.id);
-          setsMap[we.id] = (wSets ?? []).map((s) => ({
-            id: s.id, workout_exercise_id: s.workout_exercise_id,
-            weight: s.weight ?? undefined, reps: s.reps ?? undefined,
-            distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
-            is_complete: s.is_complete, is_warmup: s.is_warmup ?? false,
-            comment: s.comment ?? undefined, order_index: s.order_index,
-          }));
-        }
-        loadWorkout(
-          {
-            id: workout.id, date: workout.date,
-            comment: workout.comment ?? undefined,
-            start_time: workout.start_time ?? undefined,
-            end_time: workout.end_time ?? undefined,
-            duration_minutes: workout.duration_minutes ?? undefined,
-          },
-          (wExercises ?? []).map((we) => ({
-            id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id,
-            order_index: we.order_index, group_id: we.group_id ?? undefined,
-          })),
-          setsMap
-        );
-        if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
-      } else {
-        // Sin esto, navegar aquí desde otra página con un workout ya cargado
-        // en el store deja visible ese workout stale bajo esta fecha.
-        loadWorkout({ id: "", date }, [], {});
-        setActiveWEId(null);
+      if (!workout) {
+        setNotFound(true);
+        setLoading(false);
+        return;
       }
+
+      const { wExercises, setsMap } = await loadWorkoutExercisesAndSets(workout.id);
+      loadWorkout(
+        {
+          id: workout.id, date: workout.date,
+          comment: workout.comment ?? undefined,
+          start_time: workout.start_time ?? undefined,
+          end_time: workout.end_time ?? undefined,
+          duration_minutes: workout.duration_minutes ?? undefined,
+        },
+        wExercises.map((we) => ({
+          id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id,
+          order_index: we.order_index, group_id: we.group_id ?? undefined,
+        })),
+        setsMap
+      );
+      setActiveWEId(wExercises.length > 0 ? wExercises[0]!.id : null);
       setKeepScreenOn(readBool(SETTING_KEYS.KEEP_SCREEN_ON, false));
       setLoading(false);
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  }, [id]);
 
   /**
    * userId se resuelve async al montar; si el usuario actúa antes de que
@@ -153,17 +162,6 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     const { data: { user } } = await client.auth.getUser();
     if (user) setUserId(user.id);
     return user?.id ?? "";
-  }
-
-  async function handleStartWorkout() {
-    const uid = await resolveUserId();
-    const { data, error } = await repo.createWorkout(
-      { date, start_time: new Date().toISOString() },
-      uid
-    );
-    if (error || !data) return;
-    startWorkout(date);
-    loadWorkout({ id: data.id, date: data.date, start_time: data.start_time ?? undefined }, [], {});
   }
 
   async function handleAddExercise() {
@@ -243,6 +241,8 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
     autoBackupToDriveIfEnabled();
   }
 
+  const date = activeWorkout?.id === id ? activeWorkout.date : undefined;
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -256,9 +256,9 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Entrenamiento</h1>
-          <p className="text-sm text-muted-foreground">{formatWorkoutDate(date)}</p>
+          <p className="text-sm text-muted-foreground">{date ? formatWorkoutDate(date) : "…"}</p>
         </div>
-        {activeWorkout && activeWorkout.id && (
+        {activeWorkout && activeWorkout.id === id && (
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setShowShare(true)}
@@ -318,13 +318,19 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
             <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />
           ))}
         </div>
-      ) : !activeWorkout || !activeWorkout.id ? (
+      ) : notFound ? (
         <EmptyState
           icon={Dumbbell}
-          title="Sin entrenamiento aún"
-          description="Inicia un entrenamiento para registrar tus series y hacer seguimiento del progreso."
-          action={{ label: "Iniciar entrenamiento", onClick: handleStartWorkout }}
+          title="Entrenamiento no encontrado"
+          description="Puede que se haya movido o eliminado. Vuelve al calendario para buscarlo."
+          action={{ label: "Ir al calendario", onClick: () => { window.location.href = "/calendar"; } }}
         />
+      ) : !activeWorkout || activeWorkout.id !== id ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />
+          ))}
+        </div>
       ) : (
         <div className="flex gap-5 items-start">
           {/* NavigationPanel — sidebar */}
@@ -432,7 +438,7 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
         </div>
       )}
 
-      {showShare && activeWorkout && (
+      {showShare && activeWorkout && date && (
         <ShareWorkoutModal
           date={date}
           workoutExercises={workoutExercises}
@@ -448,37 +454,28 @@ export default function WorkoutDatePage({ params }: WorkoutDatePageProps) {
           currentExercises={workoutExercises}
           userId={userId}
           onCopied={async () => {
-            const { data: workout } = await repo.getWorkoutByDate(date);
-            if (!workout) return;
-            const { data: wExercises } = await repo.getWorkoutExercises(workout.id);
-            const setsMap: Record<string, Parameters<typeof loadWorkout>[2][string]> = {};
-            for (const we of wExercises ?? []) {
-              const { data: wSets } = await repo.getSets(we.id);
-              setsMap[we.id] = (wSets ?? []).map((s) => ({
-                id: s.id, workout_exercise_id: s.workout_exercise_id,
-                weight: s.weight ?? undefined, reps: s.reps ?? undefined,
-                distance: s.distance ?? undefined, time_seconds: s.time_seconds ?? undefined,
-                is_complete: s.is_complete, is_warmup: s.is_warmup ?? false,
-                comment: s.comment ?? undefined, order_index: s.order_index,
-              }));
-            }
+            const { wExercises, setsMap } = await loadWorkoutExercisesAndSets(activeWorkout.id);
             loadWorkout(
-              { id: workout.id, date: workout.date, comment: workout.comment ?? undefined, start_time: workout.start_time ?? undefined, end_time: workout.end_time ?? undefined, duration_minutes: workout.duration_minutes ?? undefined },
-              (wExercises ?? []).map((we) => ({ id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id, order_index: we.order_index, group_id: we.group_id ?? undefined })),
+              { id: activeWorkout.id, date: activeWorkout.date, comment: activeWorkout.comment, start_time: activeWorkout.start_time, end_time: activeWorkout.end_time, duration_minutes: activeWorkout.duration_minutes },
+              wExercises.map((we) => ({ id: we.id, workout_id: we.workout_id, exercise_id: we.exercise_id, order_index: we.order_index, group_id: we.group_id ?? undefined })),
               setsMap
             );
-            if ((wExercises ?? []).length > 0) setActiveWEId(wExercises![0]!.id);
+            setActiveWEId(wExercises.length > 0 ? wExercises[0]!.id : null);
           }}
           onClose={() => setShowCopy(false)}
         />
       )}
 
-      {showMove && activeWorkout && (
+      {showMove && activeWorkout && date && (
         <MoveWorkoutModal
           workoutId={activeWorkout.id}
           currentDate={date}
           onMoved={(newDate) => {
-            window.location.href = `/workout/${newDate}`;
+            loadWorkout(
+              { ...activeWorkout, date: newDate },
+              workoutExercises,
+              sets
+            );
           }}
           onClose={() => setShowMove(false)}
         />

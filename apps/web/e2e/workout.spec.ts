@@ -103,7 +103,7 @@ test.describe("Registro de entrenamiento", () => {
   });
 
   test("no se puede añadir un ejercicio a un entrenamiento finalizado [regresión]", async ({ page }) => {
-    // Se usa la ruta /workout/[date] con una fecha fija muy antigua en vez de
+    // Se usa la ruta /workout/date/[date] con una fecha fija muy antigua en vez de
     // "hoy" (que es una fecha compartida con otros specs) o de navegar N días
     // atrás desde /dashboard (lento y no idempotente entre corridas). Nota:
     // mockear `Date` para simular "hoy" NO sirve aquí — el cliente de
@@ -112,7 +112,7 @@ test.describe("Registro de entrenamiento", () => {
     // un refresh en segundo plano que causa un parpadeo real de estado
     // (el botón "Iniciar" aparece y desaparece a mitad de la prueba).
     const FIXED_DATE = "2020-01-15";
-    await page.goto(`/workout/${FIXED_DATE}`);
+    await page.goto(`/workout/date/${FIXED_DATE}`);
     await expect(page.locator("h1", { hasText: /Entrenamiento/ })).toBeVisible();
 
     const startBtn = page.getByRole("button", { name: "Iniciar entrenamiento" });

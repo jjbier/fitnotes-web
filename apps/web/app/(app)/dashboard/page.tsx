@@ -514,7 +514,7 @@ export default function DashboardPage() {
             {workouts.slice(0, 5).map((w) => (
               <Link
                 key={w.id}
-                href={`/workout/${w.date}`}
+                href={`/workout/${w.id}`}
                 className="flex items-center justify-between rounded-2xl border bg-card px-4 py-3 hover:bg-secondary/50"
               >
                 <span className="text-sm font-medium">{formatWorkoutDate(w.date)}</span>

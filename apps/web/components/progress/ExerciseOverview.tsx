@@ -362,7 +362,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                           <span className="text-muted-foreground text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
                         </button>
                         <Link
-                          href={`/workout/${point.date}`}
+                          href={`/workout/date/${point.date}`}
                           className="shrink-0 text-xs text-primary hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -407,7 +407,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                                     {isCopying ? t("progress:copyingButton") : wasCopied ? t("progress:copiedButton") : t("progress:copySetsButton")}
                                   </button>
                                   {wasCopied && (
-                                    <Link href={`/workout/${today}`} className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                                    <Link href={`/workout/date/${today}`} className="text-xs text-muted-foreground hover:text-primary hover:underline">
                                       {t("progress:openTodayLink")}
                                     </Link>
                                   )}

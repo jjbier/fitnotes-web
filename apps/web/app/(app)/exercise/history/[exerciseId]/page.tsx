@@ -152,7 +152,7 @@ export default function ExerciseHistoryPage() {
                         )}
                       </div>
                       <Link
-                        href={`/workout/${session.date}`}
+                        href={`/workout/${session.workout_id}`}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         Ver workout →
