@@ -13,6 +13,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import Link from "next/link";
@@ -62,6 +63,7 @@ interface ExerciseOverviewProps {
  * cliente de Supabase creado en el propio componente.
  */
 export default function ExerciseOverview({ exercise, exercises, userId, onClose }: ExerciseOverviewProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true);
 
@@ -278,20 +280,20 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
             {!isLoading && (
               <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
                 {best1RM > 0 && (
-                  <span>1RM est. <span className="font-semibold text-foreground">{best1RM.toFixed(1)} kg</span></span>
+                  <span>{t("progress:est1RMLabel")} <span className="font-semibold text-foreground">{best1RM.toFixed(1)} kg</span></span>
                 )}
                 {bestWeight > 0 && (
-                  <span>Mejor <span className="font-semibold text-foreground">{bestWeight} kg</span></span>
+                  <span>{t("progress:bestLabel")} <span className="font-semibold text-foreground">{bestWeight} kg</span></span>
                 )}
                 {totalSessions > 0 && (
-                  <span><span className="font-semibold text-foreground">{totalSessions}</span> sesiones</span>
+                  <span className="font-semibold text-foreground">{t("progress:sessionsCount", { count: totalSessions })}</span>
                 )}
               </div>
             )}
           </div>
           <button
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t("progress:closeLabel")}
             className="shrink-0 rounded-xl p-1.5 hover:bg-secondary text-muted-foreground hover:text-foreground"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5" aria-hidden="true">
@@ -301,7 +303,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
         </div>
 
         {/* Tabs */}
-        <div role="tablist" aria-label="Secciones del ejercicio" className="flex gap-1 border-b px-4 pt-2">
+        <div role="tablist" aria-label={t("progress:sectionsTablistLabelExerciseOverview")} className="flex gap-1 border-b px-4 pt-2">
           {(["records", "chart", "history", "stats", "goals"] as Tab[]).map((tab) => (
             <button
               key={tab}
@@ -314,7 +316,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : tab === "history" ? "Historial" : tab === "stats" ? "Estadísticas" : "Objetivo"}
+              {tab === "records" ? t("progress:tabs.records") : tab === "chart" ? t("progress:tabs.chart") : tab === "history" ? t("progress:tabs.history") : tab === "stats" ? t("progress:tabs.stats") : t("progress:tabs.goals")}
             </button>
           ))}
         </div>
@@ -334,7 +336,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
           ) : activeTab === "history" ? (
             <div className="space-y-2">
               {chartData.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Sin historial para este ejercicio.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">{t("progress:noHistoryMessage")}</p>
               ) : (
                 chartData.slice().reverse().map((point) => {
                   const isExpanded = expandedDate === point.date;
@@ -364,7 +366,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                           className="shrink-0 text-xs text-primary hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Ver →
+                          {t("progress:viewLink")}
                         </Link>
                       </div>
                       {isExpanded && (
@@ -374,7 +376,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                               {[1, 2, 3].map((i) => <div key={i} className="h-7 rounded bg-secondary/40 animate-pulse" />)}
                             </div>
                           ) : sets.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-2">Sin series registradas.</p>
+                            <p className="text-xs text-muted-foreground py-2">{t("progress:noSetsMessage")}</p>
                           ) : (
                             <>
                               {sets.map((s, idx) => (
@@ -389,7 +391,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                                     {s.weight == null && s.reps != null && `${s.reps} reps`}
                                     {s.distance != null && `${s.distance} km`}
                                     {s.time_seconds != null && ` · ${s.time_seconds} s`}
-                                    {s.is_warmup && <span className="ml-1 text-muted-foreground">(calent.)</span>}
+                                    {s.is_warmup && <span className="ml-1 text-muted-foreground">{t("progress:warmupSuffix")}</span>}
                                   </span>
                                   {s.is_complete && <Check className="text-primary shrink-0" size={13} aria-hidden="true" />}
                                 </div>
@@ -402,11 +404,11 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                                     disabled={isCopying || wasCopied}
                                     className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline"
                                   >
-                                    {isCopying ? "Copiando…" : wasCopied ? "¡Copiado!" : "Copiar series a hoy"}
+                                    {isCopying ? t("progress:copyingButton") : wasCopied ? t("progress:copiedButton") : t("progress:copySetsButton")}
                                   </button>
                                   {wasCopied && (
                                     <Link href={`/workout/${today}`} className="text-xs text-muted-foreground hover:text-primary hover:underline">
-                                      Abrir hoy →
+                                      {t("progress:openTodayLink")}
                                     </Link>
                                   )}
                                 </div>
@@ -429,9 +431,10 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                     <div className="flex items-center gap-2 text-sm font-medium text-green-600">
                       <span>🏆</span>
                       <span>
-                        Objetivo conseguido el{" "}
-                        {new Date(goal.achieved_at).toLocaleDateString("es-ES", {
-                          day: "numeric", month: "long", year: "numeric",
+                        {t("progress:goalAchievedOn", {
+                          date: new Date(goal.achieved_at).toLocaleDateString("es-ES", {
+                            day: "numeric", month: "long", year: "numeric",
+                          }),
                         })}
                       </span>
                     </div>
@@ -440,7 +443,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   {goal.target_weight && (
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-sm">
-                        <span className="font-medium">Peso objetivo</span>
+                        <span className="font-medium">{t("progress:goalWeightLabel")}</span>
                         <span className="text-muted-foreground">{bestWeight} / {goal.target_weight} kg</span>
                       </div>
                       <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -450,7 +453,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                         />
                       </div>
                       <p className="text-xs text-muted-foreground text-right">
-                        {((bestWeight / goal.target_weight) * 100).toFixed(0)}% completado
+                        {t("progress:goalProgressPercent", { percent: ((bestWeight / goal.target_weight) * 100).toFixed(0) })}
                       </p>
                     </div>
                   )}
@@ -458,7 +461,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                   {goal.target_reps && (
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-sm">
-                        <span className="font-medium">Reps objetivo</span>
+                        <span className="font-medium">{t("progress:goalRepsLabel")}</span>
                         <span className="text-muted-foreground">{bestReps} / {goal.target_reps} reps</span>
                       </div>
                       <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -468,16 +471,17 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                         />
                       </div>
                       <p className="text-xs text-muted-foreground text-right">
-                        {((bestReps / goal.target_reps) * 100).toFixed(0)}% completado
+                        {t("progress:goalProgressPercent", { percent: ((bestReps / goal.target_reps) * 100).toFixed(0) })}
                       </p>
                     </div>
                   )}
 
                   {goal.target_date && (
                     <p className="text-sm text-muted-foreground">
-                      Fecha límite:{" "}
-                      {new Date(goal.target_date).toLocaleDateString("es-ES", {
-                        day: "numeric", month: "long", year: "numeric",
+                      {t("progress:goalDeadline", {
+                        date: new Date(goal.target_date).toLocaleDateString("es-ES", {
+                          day: "numeric", month: "long", year: "numeric",
+                        }),
                       })}
                     </p>
                   )}
@@ -488,64 +492,64 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                       onClick={() => openGoalForm(goal)}
                       className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"
                     >
-                      Editar
+                      {t("exercises:edit")}
                     </button>
                     {!goal.achieved_at && (
                       <button
                         onClick={handleMarkAchieved}
                         className="rounded-xl border border-green-600 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
                       >
-                        Marcar conseguido
+                        {t("progress:markAchieved")}
                       </button>
                     )}
                     <button
                       onClick={handleDeleteGoal}
                       className="ml-auto rounded-xl border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                     >
-                      Eliminar
+                      {t("common:delete")}
                     </button>
                   </div>
                 </div>
               ) : !showGoalForm ? (
                 <div className="rounded-2xl border border-dashed p-10 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">Sin objetivo para este ejercicio.</p>
+                  <p className="text-sm text-muted-foreground">{t("progress:noGoalMessage")}</p>
                   <button
                     onClick={() => openGoalForm()}
                     className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   >
-                    Crear objetivo
+                    {t("progress:createGoal")}
                   </button>
                 </div>
               ) : null}
 
               {showGoalForm && (
                 <div className="rounded-2xl border bg-card p-5 space-y-4">
-                  <h3 className="font-semibold text-sm">{goal ? "Editar objetivo" : "Nuevo objetivo"}</h3>
+                  <h3 className="font-semibold text-sm">{goal ? t("progress:editGoalHeading") : t("progress:newGoalHeading")}</h3>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="ov-goal-weight" className="text-xs font-medium text-muted-foreground">
-                        Peso objetivo (kg)
+                        {t("progress:goalWeightFieldLabel")}
                       </label>
                       <input
                         id="ov-goal-weight"
                         type="number" min="0" step="0.5"
                         value={goalForm.target_weight}
                         onChange={(e) => setGoalForm((f) => ({ ...f, target_weight: e.target.value }))}
-                        placeholder="ej. 100"
+                        placeholder={t("progress:goalWeightPlaceholder")}
                         className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                     <div>
                       <label htmlFor="ov-goal-reps" className="text-xs font-medium text-muted-foreground">
-                        Reps objetivo
+                        {t("progress:goalRepsFieldLabel")}
                       </label>
                       <input
                         id="ov-goal-reps"
                         type="number" min="0"
                         value={goalForm.target_reps}
                         onChange={(e) => setGoalForm((f) => ({ ...f, target_reps: e.target.value }))}
-                        placeholder="ej. 10"
+                        placeholder={t("progress:goalRepsPlaceholder")}
                         className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
@@ -553,7 +557,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
 
                   <div>
                     <label htmlFor="ov-goal-date" className="text-xs font-medium text-muted-foreground">
-                      Fecha límite (opcional)
+                      {t("progress:goalDeadlineFieldLabel")}
                     </label>
                     <input
                       id="ov-goal-date"
@@ -566,14 +570,14 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
 
                   <div>
                     <label htmlFor="ov-goal-notes" className="text-xs font-medium text-muted-foreground">
-                      Notas (opcional)
+                      {t("progress:goalNotesFieldLabel")}
                     </label>
                     <textarea
                       id="ov-goal-notes"
                       value={goalForm.notes}
                       onChange={(e) => setGoalForm((f) => ({ ...f, notes: e.target.value }))}
                       rows={2}
-                      placeholder="Motivación, contexto…"
+                      placeholder={t("progress:goalNotesPlaceholder")}
                       className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                     />
                   </div>
@@ -583,14 +587,14 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
                       onClick={() => setShowGoalForm(false)}
                       className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
                     >
-                      Cancelar
+                      {t("common:cancel")}
                     </button>
                     <button
                       onClick={handleSaveGoal}
                       disabled={goalSaving || (!goalForm.target_weight && !goalForm.target_reps)}
                       className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
-                      {goalSaving ? "Guardando…" : "Guardar objetivo"}
+                      {goalSaving ? t("progress:savingGoalButton") : t("progress:saveGoalButton")}
                     </button>
                   </div>
                 </div>

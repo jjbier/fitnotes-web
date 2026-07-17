@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { PersonalRecord, Exercise } from "@fitnotes/core";
 import { calculate1RM, estimateRepMax } from "@fitnotes/core";
 
@@ -32,15 +33,16 @@ interface PersonalRecordsProps {
 
 /** Renderiza la lista/tabla de récords personales según el modo (ejercicio único o resumen global). */
 export default function PersonalRecords({ records, exercises, selectedExercise, estimatedRepLimit }: PersonalRecordsProps) {
+  const { t } = useTranslation();
   const [subTab, setSubTab] = useState<"real" | "estimado">("real");
 
   if (records.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
         <Trophy className="text-muted-foreground" size={32} aria-hidden="true" />
-        <p className="text-sm text-muted-foreground">Sin récords personales aún.</p>
+        <p className="text-sm text-muted-foreground">{t("progress:noRecordsTitleWeb")}</p>
         <p className="text-xs text-muted-foreground">
-          Completa series para registrar tus récords automáticamente.
+          {t("progress:noRecordsSubtitleWeb")}
         </p>
       </div>
     );
@@ -54,7 +56,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
     if (exPRs.length === 0) {
       return (
         <p className="text-sm text-muted-foreground text-center py-8">
-          Sin récords para este ejercicio aún.
+          {t("progress:noRecordsForExerciseWeb")}
         </p>
       );
     }
@@ -79,7 +81,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {sub === "real" ? "Real" : "Estimado"}
+              {sub === "real" ? t("progress:realTab") : t("progress:estimatedTab")}
             </button>
           ))}
         </div>
@@ -89,7 +91,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
             {exPRs.map((pr) => (
               <div key={pr.id} className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm">
                 <div>
-                  <span className="font-medium">{pr.reps} rep{pr.reps !== 1 ? "s" : ""}</span>
+                  <span className="font-medium">{t("progress:repsCount", { count: pr.reps })}</span>
                   <span className="ml-2 font-semibold text-muted-foreground">{pr.weight} kg</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -99,7 +101,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
                     })}
                   </span>
                   <span>
-                    1RM est.{" "}
+                    {t("progress:est1RMLabel")}{" "}
                     <span className="font-semibold text-primary">
                       {calculate1RM(pr.weight, pr.reps).toFixed(1)} kg
                     </span>
@@ -111,10 +113,9 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
         ) : (
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground mb-2">
-              Basado en 1RM estimado de{" "}
-              <span className="font-semibold text-foreground">{best1RM.toFixed(1)} kg</span>
+              {t("progress:basedOnEstimated1RM", { value: best1RM.toFixed(1) })}
               {estimatedRepLimit && (
-                <> · excluye series de más de {estimatedRepLimit} reps</>
+                <>{t("progress:excludesHighRepSets", { limit: estimatedRepLimit })}</>
               )}
             </p>
             {Array.from({ length: 15 }, (_, i) => i + 1).map((reps) => {
@@ -128,17 +129,17 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
                   }`}
                 >
                   <span className="font-medium flex items-center gap-2">
-                    {reps} rep{reps !== 1 ? "s" : ""}
+                    {t("progress:repsCount", { count: reps })}
                     {actualPR && (
                       <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">
-                        PR
+                        {t("progress:prBadge")}
                       </span>
                     )}
                   </span>
                   <div className="text-right">
                     <span className="font-semibold">{est.toFixed(1)} kg</span>
                     {actualPR && (
-                      <span className="ml-2 text-xs text-green-600">real {actualPR.weight} kg</span>
+                      <span className="ml-2 text-xs text-green-600">{t("progress:actualPRNote", { weight: actualPR.weight })}</span>
                     )}
                   </div>
                 </div>
@@ -162,11 +163,11 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
       <table className="w-full text-sm">
         <thead className="bg-secondary/50">
           <tr>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ejercicio</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Reps</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Peso</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">1RM est.</th>
-            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Fecha</th>
+            <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("progress:exerciseTableHeader")}</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">{t("progress:repsFieldLabel")}</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">{t("progress:weightFieldLabel")}</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">{t("progress:est1RMLabel")}</th>
+            <th className="px-4 py-3 text-right font-medium text-muted-foreground">{t("progress:dateTableHeader")}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -178,7 +179,7 @@ export default function PersonalRecords({ records, exercises, selectedExercise, 
             );
             return (
               <tr key={exId} className="hover:bg-secondary/30">
-                <td className="px-4 py-3 font-medium">{exercise?.name ?? "Desconocido"}</td>
+                <td className="px-4 py-3 font-medium">{exercise?.name ?? t("progress:unknownExercise")}</td>
                 <td className="px-4 py-3 text-right">{best.reps}</td>
                 <td className="px-4 py-3 text-right">
                   {best.weight} {exercise?.weight_unit ?? "kg"}

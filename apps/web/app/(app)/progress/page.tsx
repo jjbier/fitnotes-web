@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 import { useProgressStore, useExerciseStore, calculate1RM } from "@fitnotes/core";
 import type { Exercise, ExerciseType } from "@fitnotes/core";
 import {
@@ -34,6 +36,7 @@ type Tab = "records" | "chart" | "history" | "stats" | "goals";
  *   con barra de progreso hacia la mejor marca actual y marcado de "conseguido".
  */
 export default function ProgressPage() {
+  const { t } = useTranslation();
   const personalRecords = useProgressStore((s) => s.personalRecords);
   const chartData = useProgressStore((s) => s.chartData);
   const isLoading = useProgressStore((s) => s.isLoading);
@@ -306,17 +309,17 @@ export default function ProgressPage() {
   return (
     <>
       <div className="space-y-5">
-        <h1 className="text-2xl font-bold tracking-tight">Progreso</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("progress:title")}</h1>
 
         {/* Exercise selector */}
         <div>
-          <label className="block text-xs font-medium mb-1 text-muted-foreground">Ejercicio</label>
+          <label className="block text-xs font-medium mb-1 text-muted-foreground">{t("progress:exerciseLabel")}</label>
           <select
             value={selectedExId}
             onChange={(e) => handleExerciseChange(e.target.value)}
             className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="">Seleccionar un ejercicio…</option>
+            <option value="">{t("progress:selectExercisePlaceholder")}</option>
             {exercises.map((ex) => (
               <option key={ex.id} value={ex.id}>{ex.name}</option>
             ))}
@@ -326,14 +329,14 @@ export default function ProgressPage() {
         {!selectedExId ? (
           /* All-exercise PR summary — click opens ExerciseOverview */
           <div className="rounded-2xl border bg-card p-5">
-            <h2 className="font-semibold mb-4">Todos los récords personales</h2>
+            <h2 className="font-semibold mb-4">{t("progress:allRecordsHeading")}</h2>
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => <div key={i} className="h-10 rounded bg-secondary/30 animate-pulse" />)}
               </div>
             ) : Object.keys(personalRecords).length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                Sin récords personales aún. Completa series para que se registren automáticamente.
+                {t("progress:noRecordsAtAllMessage")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -356,7 +359,7 @@ export default function ProgressPage() {
                         {hasGoal && <span className="text-xs text-primary">●</span>}
                       </span>
                       <span className="text-muted-foreground">
-                        {best.weight} kg × {best.reps} · est. 1RM {calculate1RM(best.weight, best.reps).toFixed(1)} kg
+                        {best.weight} {t("common:kg")} × {best.reps} · est. 1RM {calculate1RM(best.weight, best.reps).toFixed(1)} {t("common:kg")}
                       </span>
                     </button>
                   );
@@ -368,11 +371,11 @@ export default function ProgressPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-lg">{selectedExercise?.name}</h2>
-              {isLoading && <span className="text-xs text-muted-foreground animate-pulse">Cargando…</span>}
+              {isLoading && <span className="text-xs text-muted-foreground animate-pulse">{t("progress:loading")}</span>}
             </div>
 
             {/* Tabs */}
-            <div role="tablist" aria-label="Secciones de progreso" className="flex gap-1 rounded-2xl border bg-secondary/30 p-1">
+            <div role="tablist" aria-label={t("progress:sectionsTablistLabel")} className="flex gap-1 rounded-2xl border bg-secondary/30 p-1">
               {(["records", "chart", "history", "stats", "goals"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
@@ -383,7 +386,7 @@ export default function ProgressPage() {
                     activeTab === tab ? "bg-white shadow-sm dark:bg-secondary" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {tab === "records" ? "Récords" : tab === "chart" ? "Gráfica" : tab === "history" ? "Historial" : tab === "stats" ? "Estadísticas" : "Objetivos"}
+                  {tab === "records" ? t("progress:tabs.records") : tab === "chart" ? t("progress:tabs.chart") : tab === "history" ? t("progress:tabs.history") : tab === "stats" ? t("progress:tabs.stats") : t("progress:tabs.goals")}
                 </button>
               ))}
             </div>
@@ -412,7 +415,7 @@ export default function ProgressPage() {
             {activeTab === "history" && (
               <div className="space-y-2">
                 {exChartData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Sin historial para este ejercicio.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">{t("progress:noHistoryMessage")}</p>
                 ) : (
                   exChartData.slice().reverse().map((point) => {
                     const isExpanded = expandedDate === point.date;
@@ -428,7 +431,7 @@ export default function ProgressPage() {
                           <button
                             onClick={() => handleExpandDate(point.date)}
                             aria-expanded={isExpanded}
-                            aria-label={`${isExpanded ? "Contraer" : "Expandir"} sesión del ${point.date}`}
+                            aria-label={isExpanded ? t("progress:collapseSession", { date: point.date }) : t("progress:expandSession", { date: point.date })}
                             className="flex-1 flex items-center gap-3 text-left min-w-0"
                           >
                             <span className="font-medium shrink-0">{point.date}</span>
@@ -443,7 +446,7 @@ export default function ProgressPage() {
                             href={`/workout/${point.date}`}
                             className="shrink-0 text-xs text-primary hover:underline"
                           >
-                            Ver →
+                            {t("progress:viewLink")}
                           </Link>
                         </div>
 
@@ -454,7 +457,7 @@ export default function ProgressPage() {
                                 {[1, 2, 3].map((i) => <div key={i} className="h-8 rounded bg-secondary/40 animate-pulse" />)}
                               </div>
                             ) : sets.length === 0 ? (
-                              <p className="text-xs text-muted-foreground py-2">Sin series registradas.</p>
+                              <p className="text-xs text-muted-foreground py-2">{t("progress:noSetsMessage")}</p>
                             ) : (
                               <>
                               {sets.map((s, idx) => {
@@ -471,7 +474,7 @@ export default function ProgressPage() {
                                                 type="number" value={editDraft.weight} min="0" step="0.5"
                                                 onChange={(e) => setEditDraft((d) => ({ ...d, weight: e.target.value }))}
                                                 className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                                                aria-label="Peso"
+                                                aria-label={t("progress:weightFieldLabel")}
                                               />
                                               <span className="text-xs text-muted-foreground">kg</span>
                                             </div>
@@ -482,7 +485,7 @@ export default function ProgressPage() {
                                                 type="number" value={editDraft.reps} min="0"
                                                 onChange={(e) => setEditDraft((d) => ({ ...d, reps: e.target.value }))}
                                                 className="w-14 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                                                aria-label="Reps"
+                                                aria-label={t("progress:repsFieldLabel")}
                                               />
                                               <span className="text-xs text-muted-foreground">reps</span>
                                             </div>
@@ -493,14 +496,14 @@ export default function ProgressPage() {
                                                 <input type="number" value={editDraft.distance} min="0" step="0.1"
                                                   onChange={(e) => setEditDraft((d) => ({ ...d, distance: e.target.value }))}
                                                   className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                                                  aria-label="Distancia" />
+                                                  aria-label={t("progress:distanceFieldLabel")} />
                                                 <span className="text-xs text-muted-foreground">km</span>
                                               </div>
                                               <div className="flex items-center gap-1">
                                                 <input type="number" value={editDraft.time_seconds} min="0"
                                                   onChange={(e) => setEditDraft((d) => ({ ...d, time_seconds: e.target.value }))}
                                                   className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                                                  aria-label="Tiempo" />
+                                                  aria-label={t("progress:timeFieldLabel")} />
                                                 <span className="text-xs text-muted-foreground">s</span>
                                               </div>
                                             </>
@@ -510,12 +513,12 @@ export default function ProgressPage() {
                                               <input type="number" value={editDraft.time_seconds} min="0"
                                                 onChange={(e) => setEditDraft((d) => ({ ...d, time_seconds: e.target.value }))}
                                                 className="w-16 rounded border px-2 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-ring"
-                                                aria-label="Tiempo" />
+                                                aria-label={t("progress:timeFieldLabel")} />
                                               <span className="text-xs text-muted-foreground">s</span>
                                             </div>
                                           )}
                                         </div>
-                                        <button onClick={() => saveEditSet(s.id, point.date)} className="text-xs font-medium text-primary hover:underline shrink-0">Guardar</button>
+                                        <button onClick={() => saveEditSet(s.id, point.date)} className="text-xs font-medium text-primary hover:underline shrink-0">{t("progress:saveSet")}</button>
                                         <button onClick={() => setEditingSetId(null)} className="text-muted-foreground hover:text-foreground shrink-0"><X size={14} aria-hidden="true" /></button>
                                       </>
                                     ) : (
@@ -526,12 +529,12 @@ export default function ProgressPage() {
                                           {s.weight == null && s.reps != null && `${s.reps} reps`}
                                           {s.distance != null && `${s.distance} km`}
                                           {s.time_seconds != null && ` · ${s.time_seconds} s`}
-                                          {s.is_warmup && <span className="ml-1 text-muted-foreground">(calent.)</span>}
+                                          {s.is_warmup && <span className="ml-1 text-muted-foreground">{t("progress:warmupSuffix")}</span>}
                                         </span>
                                         {s.is_complete && <Check className="text-primary shrink-0" size={13} aria-hidden="true" />}
                                         <button
                                           onClick={() => startEditSet(s)}
-                                          aria-label="Editar serie"
+                                          aria-label={t("progress:editSet")}
                                           className="text-muted-foreground hover:text-foreground text-xs shrink-0"
                                         >
                                           ✎
@@ -550,11 +553,11 @@ export default function ProgressPage() {
                                     aria-live="polite"
                                     className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline"
                                   >
-                                    {isCopying ? "Copiando…" : wasCopied ? "¡Copiado!" : "Copiar series a hoy"}
+                                    {isCopying ? t("progress:copyingButton") : wasCopied ? t("progress:copiedButton") : t("progress:copySetsButton")}
                                   </button>
                                   {wasCopied && (
                                     <Link href={`/workout/${today}`} className="text-xs text-muted-foreground hover:text-primary hover:underline">
-                                      Abrir hoy →
+                                      {t("progress:openTodayLink")}
                                     </Link>
                                   )}
                                 </div>
@@ -578,14 +581,14 @@ export default function ProgressPage() {
                     {currentGoal.achieved_at && (
                       <div className="flex items-center gap-2 text-sm font-medium text-green-600">
                         <span>🏆</span>
-                        <span>Objetivo conseguido el {new Date(currentGoal.achieved_at).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}</span>
+                        <span>{t("progress:goalAchievedOn", { date: new Date(currentGoal.achieved_at).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }) })}</span>
                       </div>
                     )}
 
                     {currentGoal.target_weight && (
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium">Peso objetivo</span>
+                          <span className="font-medium">{t("progress:goalWeightLabel")}</span>
                           <span className="text-muted-foreground">{bestWeight} / {currentGoal.target_weight} kg</span>
                         </div>
                         <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -595,7 +598,7 @@ export default function ProgressPage() {
                           />
                         </div>
                         <p className="text-xs text-muted-foreground text-right">
-                          {((bestWeight / currentGoal.target_weight) * 100).toFixed(0)}% completado
+                          {t("progress:goalProgressPercent", { percent: ((bestWeight / currentGoal.target_weight) * 100).toFixed(0) })}
                         </p>
                       </div>
                     )}
@@ -603,7 +606,7 @@ export default function ProgressPage() {
                     {currentGoal.target_reps && (
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium">Reps objetivo</span>
+                          <span className="font-medium">{t("progress:goalRepsLabel")}</span>
                           <span className="text-muted-foreground">{bestReps} / {currentGoal.target_reps} reps</span>
                         </div>
                         <div className="h-2 rounded-full bg-secondary overflow-hidden">
@@ -613,14 +616,14 @@ export default function ProgressPage() {
                           />
                         </div>
                         <p className="text-xs text-muted-foreground text-right">
-                          {((bestReps / currentGoal.target_reps) * 100).toFixed(0)}% completado
+                          {t("progress:goalProgressPercent", { percent: ((bestReps / currentGoal.target_reps) * 100).toFixed(0) })}
                         </p>
                       </div>
                     )}
 
                     {currentGoal.target_date && (
                       <p className="text-sm text-muted-foreground">
-                        Fecha límite: {new Date(currentGoal.target_date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
+                        {t("progress:goalDeadline", { date: new Date(currentGoal.target_date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }) })}
                       </p>
                     )}
                     {currentGoal.notes && (
@@ -632,65 +635,65 @@ export default function ProgressPage() {
                         onClick={() => openGoalForm(currentGoal)}
                         className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary"
                       >
-                        Editar
+                        {t("exercises:edit")}
                       </button>
                       {!currentGoal.achieved_at && (
                         <button
                           onClick={() => handleMarkAchieved(selectedExId)}
                           className="rounded-xl border border-green-600 px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
                         >
-                          Marcar conseguido
+                          {t("progress:markAchieved")}
                         </button>
                       )}
                       <button
                         onClick={() => handleDeleteGoal(selectedExId)}
                         className="ml-auto rounded-xl border border-destructive px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                       >
-                        Eliminar
+                        {t("common:delete")}
                       </button>
                     </div>
                   </div>
                 ) : !showGoalForm ? (
                   <div className="rounded-2xl border border-dashed p-10 text-center space-y-3">
-                    <p className="text-sm text-muted-foreground">Sin objetivo para este ejercicio.</p>
+                    <p className="text-sm text-muted-foreground">{t("progress:noGoalMessage")}</p>
                     <button
                       onClick={() => openGoalForm()}
                       className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                     >
-                      Crear objetivo
+                      {t("progress:createGoal")}
                     </button>
                   </div>
                 ) : null}
 
                 {showGoalForm && (
                   <div className="rounded-2xl border bg-card p-5 space-y-4">
-                    <h3 className="font-semibold text-sm">{currentGoal ? "Editar objetivo" : "Nuevo objetivo"}</h3>
+                    <h3 className="font-semibold text-sm">{currentGoal ? t("progress:editGoalHeading") : t("progress:newGoalHeading")}</h3>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="goal-weight" className="text-xs font-medium text-muted-foreground">Peso objetivo (kg)</label>
+                        <label htmlFor="goal-weight" className="text-xs font-medium text-muted-foreground">{t("progress:goalWeightFieldLabel")}</label>
                         <input
                           id="goal-weight" type="number" min="0" step="0.5"
                           value={goalForm.target_weight}
                           onChange={(e) => setGoalForm((f) => ({ ...f, target_weight: e.target.value }))}
-                          placeholder="ej. 100"
+                          placeholder={t("progress:goalWeightPlaceholder")}
                           className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                       </div>
                       <div>
-                        <label htmlFor="goal-reps" className="text-xs font-medium text-muted-foreground">Reps objetivo</label>
+                        <label htmlFor="goal-reps" className="text-xs font-medium text-muted-foreground">{t("progress:goalRepsFieldLabel")}</label>
                         <input
                           id="goal-reps" type="number" min="0"
                           value={goalForm.target_reps}
                           onChange={(e) => setGoalForm((f) => ({ ...f, target_reps: e.target.value }))}
-                          placeholder="ej. 10"
+                          placeholder={t("progress:goalRepsPlaceholder")}
                           className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="goal-date" className="text-xs font-medium text-muted-foreground">Fecha límite (opcional)</label>
+                      <label htmlFor="goal-date" className="text-xs font-medium text-muted-foreground">{t("progress:goalDeadlineFieldLabel")}</label>
                       <input
                         id="goal-date" type="date"
                         value={goalForm.target_date}
@@ -700,13 +703,13 @@ export default function ProgressPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="goal-notes" className="text-xs font-medium text-muted-foreground">Notas (opcional)</label>
+                      <label htmlFor="goal-notes" className="text-xs font-medium text-muted-foreground">{t("progress:goalNotesFieldLabel")}</label>
                       <textarea
                         id="goal-notes"
                         value={goalForm.notes}
                         onChange={(e) => setGoalForm((f) => ({ ...f, notes: e.target.value }))}
                         rows={2}
-                        placeholder="Motivación, contexto…"
+                        placeholder={t("progress:goalNotesPlaceholder")}
                         className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                       />
                     </div>
@@ -716,14 +719,14 @@ export default function ProgressPage() {
                         onClick={() => setShowGoalForm(false)}
                         className="rounded-xl border px-4 py-2 text-sm hover:bg-secondary"
                       >
-                        Cancelar
+                        {t("common:cancel")}
                       </button>
                       <button
                         onClick={handleSaveGoal}
                         disabled={goalSaving || (!goalForm.target_weight && !goalForm.target_reps)}
                         className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                       >
-                        {goalSaving ? "Guardando…" : "Guardar objetivo"}
+                        {goalSaving ? t("progress:savingGoalButton") : t("progress:saveGoalButton")}
                       </button>
                     </div>
                   </div>

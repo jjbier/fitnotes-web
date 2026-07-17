@@ -8,6 +8,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -20,21 +21,6 @@ type ChartMetric =
   | "maxDistance" | "totalDistance" | "maxTime" | "totalTime" | "maxSpeed" | "bestPace";
 /** Modo de la gráfica: una métrica simple, o uno de los dos modos derivados que requieren un `repTarget`. */
 type ChartMode = ChartMetric | "weightByReps" | "repMaxProgression";
-
-/** Etiquetas en español de cada métrica, usadas en los botones de selección y en el tooltip. */
-const metricLabel: Record<ChartMetric, string> = {
-  maxWeight: "Peso máx.",
-  totalVolume: "Volumen total",
-  maxReps: "Reps máx.",
-  totalReps: "Reps totales",
-  est1RM: "1RM estimado",
-  maxDistance: "Distancia máx.",
-  totalDistance: "Distancia total",
-  maxTime: "Tiempo máx.",
-  totalTime: "Tiempo total",
-  maxSpeed: "Velocidad máx.",
-  bestPace: "Mejor ritmo",
-};
 
 /** Color de línea asignado a cada métrica, consistente entre botón de selección y trazo de la gráfica. */
 const metricColor: Record<ChartMetric, string> = {
@@ -51,13 +37,19 @@ const metricColor: Record<ChartMetric, string> = {
   bestPace: "#f43f5e",
 };
 
+/** Todas las métricas conocidas, en el orden en que se ofrecen cuando no hay `exerciseType`. */
+const ALL_CHART_METRICS: ChartMetric[] = [
+  "maxWeight", "totalVolume", "maxReps", "totalReps", "est1RM",
+  "maxDistance", "totalDistance", "maxTime", "totalTime", "maxSpeed", "bestPace",
+];
+
 /**
  * Calcula qué métricas son aplicables a un tipo de ejercicio dado, en base a
  * los campos que registra (`getExerciseFields`). Sin `exerciseType`, devuelve
  * todas las métricas conocidas.
  */
 function metricsForExercise(exerciseType?: ExerciseType): ChartMetric[] {
-  if (!exerciseType) return Object.keys(metricLabel) as ChartMetric[];
+  if (!exerciseType) return ALL_CHART_METRICS;
   const fields = getExerciseFields(exerciseType);
   const metrics: ChartMetric[] = [];
   if (fields.weight) metrics.push("maxWeight");
@@ -111,6 +103,20 @@ interface ProgressChartProps {
  * visualización (puntos, escala desde cero, tendencia, exportar PNG).
  */
 export default function ProgressChart({ data, exerciseName, exerciseType, height = 220 }: ProgressChartProps) {
+  const { t } = useTranslation();
+  const metricLabel: Record<ChartMetric, string> = {
+    maxWeight: t("progress:metric.maxWeight"),
+    totalVolume: t("progress:metric.totalVolume"),
+    maxReps: t("progress:metric.maxReps"),
+    totalReps: t("progress:metric.totalReps"),
+    est1RM: t("progress:metric.est1RM"),
+    maxDistance: t("progress:metric.maxDistance"),
+    totalDistance: t("progress:metric.totalDistance"),
+    maxTime: t("progress:metric.maxTime"),
+    totalTime: t("progress:metric.totalTime"),
+    maxSpeed: t("progress:metric.maxSpeed"),
+    bestPace: t("progress:metric.bestPace"),
+  };
   const availableMetrics = metricsForExercise(exerciseType);
   const fields = exerciseType ? getExerciseFields(exerciseType) : ALL_EXERCISE_FIELDS;
   const [mode, setMode] = useState<ChartMode>(availableMetrics[0] ?? "maxWeight");
@@ -127,10 +133,10 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
         style={{ height }}
         className="flex flex-col items-center justify-center rounded-xl border border-dashed gap-2"
       >
-        <p className="text-sm text-muted-foreground">Sin datos aún</p>
+        <p className="text-sm text-muted-foreground">{t("progress:noChartDataTitle")}</p>
         {exerciseName && (
           <p className="text-xs text-muted-foreground">
-            Registra series de {exerciseName} para ver el progreso
+            {t("progress:noChartDataSubtitle", { exercise: exerciseName })}
           </p>
         )}
       </div>
@@ -164,9 +170,9 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
   const dataKey = isSpecialMode ? "value" : metric!;
   const lineColor = isSpecialMode ? "#6366f1" : metricColor[metric!];
   const label = mode === "weightByReps"
-    ? `Peso a ${repTarget} reps`
+    ? t("progress:weightAtRepsLabel", { reps: repTarget })
     : mode === "repMaxProgression"
-    ? `${repTarget}RM estimado`
+    ? t("progress:estimatedRMLabel", { reps: repTarget })
     : metricLabel[metric!];
 
   /**
@@ -202,7 +208,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
     titleEl.setAttribute("x", "10"); titleEl.setAttribute("y", "16");
     titleEl.setAttribute("font-size", "12"); titleEl.setAttribute("font-family", "system-ui, sans-serif");
     titleEl.setAttribute("font-weight", "600"); titleEl.setAttribute("fill", "#111");
-    titleEl.textContent = `${exerciseName ?? ""} — ${label}`;
+    titleEl.textContent = t("progress:exportedChartTitle", { exercise: exerciseName ?? "", label });
     svgClone.insertBefore(titleEl, g);
 
     const svgString = new XMLSerializer().serializeToString(svgClone);
@@ -224,7 +230,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
         const pngUrl = URL.createObjectURL(png);
         const a = document.createElement("a");
         a.href = pngUrl;
-        a.download = `${(exerciseName ?? "progreso").replace(/\s+/g, "_")}-${mode}.png`;
+        a.download = `${(exerciseName ?? t("progress:progressFallbackFilename")).replace(/\s+/g, "_")}-${mode}.png`;
         a.click();
         URL.revokeObjectURL(pngUrl);
         setExporting(false);
@@ -257,7 +263,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
                 mode === "weightByReps" ? "bg-indigo-500 text-white border-indigo-500" : "hover:bg-secondary"
               }`}
             >
-              Peso por reps
+              {t("progress:weightByRepsButton")}
             </button>
             <button
               onClick={() => setMode("repMaxProgression")}
@@ -265,7 +271,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
                 mode === "repMaxProgression" ? "bg-indigo-500 text-white border-indigo-500" : "hover:bg-secondary"
               }`}
             >
-              Progresión rep max
+              {t("progress:repMaxProgressionButton")}
             </button>
           </>
         )}
@@ -276,13 +282,13 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
               !showDots ? "bg-secondary" : "hover:bg-secondary text-muted-foreground"
             }`}
           >
-            {showDots ? "Ocultar puntos" : "Mostrar puntos"}
+            {showDots ? t("progress:hideDotsButton") : t("progress:showDotsButton")}
           </button>
           <button
             onClick={() => setYDomain((v) => (v === "auto" ? "zero" : "auto"))}
             className="rounded-full border px-3 py-1 text-xs font-medium hover:bg-secondary text-muted-foreground"
           >
-            {yDomain === "auto" ? "Escala desde 0" : "Escala auto"}
+            {yDomain === "auto" ? t("progress:scaleFromZeroButton") : t("progress:scaleAutoButton")}
           </button>
           <button
             onClick={() => setShowTrend((v) => !v)}
@@ -290,22 +296,22 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
               showTrend ? "bg-orange-500 text-white border-orange-500" : "hover:bg-secondary text-muted-foreground"
             }`}
           >
-            Tendencia
+            {t("progress:trendLabel")}
           </button>
           <button
             onClick={exportChart}
             disabled={exporting}
             className="rounded-full border px-3 py-1 text-xs font-medium hover:bg-secondary text-muted-foreground disabled:opacity-40"
-            aria-label="Exportar gráfica como PNG"
+            aria-label={t("progress:exportPngLabel")}
           >
-            {exporting ? "…" : "Exportar"}
+            {exporting ? "…" : t("progress:exportButton")}
           </button>
         </div>
       </div>
 
       {isSpecialMode && (
         <div className="flex items-center gap-2">
-          <label htmlFor="rep-target" className="text-xs font-medium text-muted-foreground">Repeticiones:</label>
+          <label htmlFor="rep-target" className="text-xs font-medium text-muted-foreground">{t("progress:repsColonLabel")}</label>
           <input
             id="rep-target"
             type="number"
@@ -321,7 +327,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
       <div ref={containerRef} className="rounded-2xl border bg-card p-4">
         {plotData.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-10">
-            Sin sesiones a {repTarget} reps aún.
+            {t("progress:noSessionsAtRepsMessage", { reps: repTarget })}
           </p>
         ) : (
           <ResponsiveContainer width="100%" height={height}>
@@ -337,7 +343,7 @@ export default function ProgressChart({ data, exerciseName, exerciseType, height
                 labelFormatter={(l) => String(l)}
                 formatter={(v, name) => [
                   typeof v === "number" ? (metric ? formatMetricValue(metric, v) : v.toFixed(1)) : String(v),
-                  name === "trend" ? "Tendencia" : label,
+                  name === "trend" ? t("progress:trendLabel") : label,
                 ]}
               />
               <Line
