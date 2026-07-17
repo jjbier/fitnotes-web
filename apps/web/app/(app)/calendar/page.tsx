@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { createBrowserClient, createCalendarRepository, createExerciseRepository, createWorkoutRepository } from "@fitnotes/database";
-import { formatWorkoutDate, ExerciseType } from "@fitnotes/core";
+import { formatWorkoutDate, labelWorkoutByTime, ExerciseType } from "@fitnotes/core";
 import type { Exercise as CoreExercise } from "@fitnotes/core";
 import { readWeekStart, readBool, writeBool, SETTING_KEYS } from "@/lib/settings";
 import ExerciseOverview from "@/components/progress/ExerciseOverview";
@@ -563,20 +563,24 @@ export default function CalendarPage() {
                 // Varios entrenamientos ese día (Fase 4): lista corta en vez del
                 // detalle de ejercicios de un único workout — ver docs/implementation-plan-multi-workout-per-day.md.
                 <div className="space-y-1.5">
-                  {selectedDayWorkouts.map((w) => (
-                    <Link
-                      key={w.id}
-                      href={`/workout/${w.id}`}
-                      className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm hover:bg-secondary"
-                    >
-                      <span className="font-medium">
-                        {w.start_time && !Number.isNaN(new Date(w.start_time).getTime())
-                          ? new Date(w.start_time).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
-                          : "Sin hora"}
-                      </span>
-                      {w.comment && <span className="text-xs text-muted-foreground truncate max-w-[60%]">{w.comment}</span>}
-                    </Link>
-                  ))}
+                  {selectedDayWorkouts.map((w) => {
+                    const time = w.start_time && !Number.isNaN(new Date(w.start_time).getTime())
+                      ? new Date(w.start_time).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+                      : "";
+                    return (
+                      <Link
+                        key={w.id}
+                        href={`/workout/${w.id}`}
+                        className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm hover:bg-secondary"
+                      >
+                        <span className="flex items-baseline gap-1.5">
+                          <span className="font-medium">{labelWorkoutByTime(w.start_time)}</span>
+                          {time && <span className="text-xs text-muted-foreground">{time}</span>}
+                        </span>
+                        {w.comment && <span className="text-xs text-muted-foreground truncate max-w-[45%]">{w.comment}</span>}
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
                 <>

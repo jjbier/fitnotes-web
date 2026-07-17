@@ -9,6 +9,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { labelWorkoutByTime } from "@fitnotes/core";
 
 export interface PickableWorkout {
   id: string;
@@ -24,11 +25,11 @@ interface Props {
   onClose: () => void;
 }
 
-/** "18:32" a partir de un ISO datetime, o "Sin hora" si no hay `start_time` o no es parseable. */
+/** "18:32" a partir de un ISO datetime, o cadena vacía si no hay `start_time` o no es parseable. */
 function formatTime(startTime?: string | null): string {
-  if (!startTime) return "Sin hora";
+  if (!startTime) return "";
   const d = new Date(startTime);
-  if (Number.isNaN(d.getTime())) return "Sin hora";
+  if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -72,16 +73,22 @@ export default function WorkoutPickerModal({ workouts, creating, onChoose, onCre
 
         <div className="px-5 py-4 space-y-2">
           <p className="text-xs text-muted-foreground">¿A cuál quieres añadirlo?</p>
-          {workouts.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => onChoose(w.id)}
-              className="w-full flex items-center justify-between rounded-xl border px-3 py-2 text-sm hover:bg-secondary text-left"
-            >
-              <span className="font-medium">{formatTime(w.start_time)}</span>
-              {w.comment && <span className="text-xs text-muted-foreground truncate max-w-[60%]">{w.comment}</span>}
-            </button>
-          ))}
+          {workouts.map((w) => {
+            const time = formatTime(w.start_time);
+            return (
+              <button
+                key={w.id}
+                onClick={() => onChoose(w.id)}
+                className="w-full flex items-center justify-between rounded-xl border px-3 py-2 text-sm hover:bg-secondary text-left"
+              >
+                <span className="flex items-baseline gap-1.5">
+                  <span className="font-medium">{labelWorkoutByTime(w.start_time)}</span>
+                  {time && <span className="text-xs text-muted-foreground">{time}</span>}
+                </span>
+                {w.comment && <span className="text-xs text-muted-foreground truncate max-w-[45%]">{w.comment}</span>}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex gap-2 justify-end px-5 pb-5">
