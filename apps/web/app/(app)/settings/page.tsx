@@ -13,9 +13,11 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useTranslation, Trans } from "react-i18next";
+import "@/lib/i18n";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import { computeDefaultCatalogSeedPlan, type DefaultCatalogSeedPlan } from "@fitnotes/core";
-import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit, readHiddenCategories, writeHiddenCategories } from "@/lib/settings";
+import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit, readHiddenCategories, writeHiddenCategories, readLanguage, writeLanguage } from "@/lib/settings";
 
 type BackupEntry = Record<string, unknown>;
 type BackupData = {
@@ -66,6 +68,7 @@ function downloadCSV(content: string, filename: string) {
  */
 export default function SettingsPage() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
@@ -150,7 +153,7 @@ export default function SettingsPage() {
         setDriveConnected(true);
         window.history.replaceState({}, "", "/settings");
       } else if (params.get("drive_error")) {
-        alert(`Error conectando Google Drive: ${params.get("drive_error")}`);
+        alert(t("settings:googleDrive.errorConnecting", { message: params.get("drive_error") }));
         window.history.replaceState({}, "", "/settings");
       }
     }
@@ -205,6 +208,12 @@ export default function SettingsPage() {
   function handleWeightUnit(unit: "kg" | "lb") {
     setWeightUnit(unit);
     localStorage.setItem("fitnotes_weight_unit", unit);
+  }
+
+  /** Cambia el idioma de la interfaz (i18next) y lo persiste en localStorage. */
+  function handleLanguageChange(lang: "es" | "en") {
+    void i18n.changeLanguage(lang);
+    writeLanguage(lang);
   }
 
   /** Helper genérico para toggles booleanos: invierte `current`, actualiza el estado local vía `setter` y persiste bajo `key` (uno de `SETTING_KEYS`). */
@@ -326,7 +335,7 @@ export default function SettingsPage() {
     setExportingWorkouts(true);
     try {
       const { data: workouts } = await client.from("workouts").select("*").order("date");
-      if (!workouts?.length) { alert("No hay entrenamientos para exportar."); return; }
+      if (!workouts?.length) { alert(t("settings:exportWorkouts.noDataMessage")); return; }
 
       const weIds: string[] = [];
       const weByWorkout: Record<string, { id: string; exercise_id: string; order_index: number }[]> = {};
@@ -422,7 +431,7 @@ export default function SettingsPage() {
    */
   async function handleDeleteAccount() {
     const { error } = await client.rpc("delete_user");
-    if (error) { alert(`Error al eliminar la cuenta: ${error.message}`); return; }
+    if (error) { alert(t("settings:dangerZone.deleteAccountErrorMessage", { message: error.message })); return; }
     await client.auth.signOut();
     window.location.href = "/login";
   }
@@ -440,7 +449,7 @@ export default function SettingsPage() {
       const data = (await res.json()) as { success?: boolean; fileUrl?: string; exportedAt?: string; error?: string; code?: string };
       if (!res.ok) {
         if (data.code === "TOKEN_INVALID") setDriveConnected(false);
-        alert(data.error ?? "Error al hacer la copia en Drive");
+        alert(data.error ?? t("settings:googleDrive.errorBackup"));
         return;
       }
       setDriveLastBackup(data.exportedAt ?? null);
@@ -523,12 +532,12 @@ export default function SettingsPage() {
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
-        if (!isBackupData(parsed)) { alert("Archivo inválido o formato no reconocido."); return; }
+        if (!isBackupData(parsed)) { alert(t("settings:restoreModal.invalidFile")); return; }
         setRestoreData(parsed);
         setRestoreError(null);
         setRestoreDone(false);
       } catch {
-        alert("No se pudo leer el archivo. Asegúrate de que es un archivo .fitnotes válido.");
+        alert(t("settings:restoreModal.readError"));
       }
     };
     reader.readAsText(file);
@@ -549,7 +558,7 @@ export default function SettingsPage() {
     setRestoreError(null);
     try {
       const { data: { user } } = await client.auth.getUser();
-      if (!user) throw new Error("Sesión no válida");
+      if (!user) throw new Error(t("settings:restoreModal.sessionInvalid"));
       const uid = user.id;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tbl = (table: string) => client.from(table as never) as any;
@@ -617,7 +626,7 @@ export default function SettingsPage() {
       const [{ data: cats }, { data: exs }] = await Promise.all([repo.getCategories(), repo.getExercises()]);
       const plan = computeDefaultCatalogSeedPlan(cats ?? [], exs ?? []);
       if (plan.categoriesToCreateCount === 0 && plan.exercisesToCreateCount === 0) {
-        alert("Ya tienes todas las categorías y ejercicios del catálogo por defecto.");
+        alert(t("settings:catalogImport.alreadyDoneMessage"));
         return;
       }
       setCatalogDone(false);
@@ -639,7 +648,7 @@ export default function SettingsPage() {
     setCatalogError(null);
     try {
       const { data: { user } } = await client.auth.getUser();
-      if (!user) throw new Error("Sesión no válida");
+      if (!user) throw new Error(t("settings:restoreModal.sessionInvalid"));
       const repo = createExerciseRepository(client);
       const categoryIdByName = new Map(categories.map((c) => [c.name.trim().toLowerCase(), c.id]));
       let createdCategories = 0;
@@ -648,7 +657,7 @@ export default function SettingsPage() {
         const key = catPlan.name.trim().toLowerCase();
         let categoryId = categoryIdByName.get(key);
         if (!categoryId) {
-          setCatalogStep(`Creando categoría "${catPlan.name}"…`);
+          setCatalogStep(t("settings:catalogImport.creatingCategory", { name: catPlan.name }));
           const { data, error } = await repo.createCategory(
             { name: catPlan.name, order_index: categories.length + createdCategories },
             user.id
@@ -659,7 +668,7 @@ export default function SettingsPage() {
           createdCategories++;
         }
         for (const ex of catPlan.exercisesToCreate) {
-          setCatalogStep(`Creando "${ex.name}"…`);
+          setCatalogStep(t("settings:catalogImport.creatingExercise", { name: ex.name }));
           const { error } = await repo.createExercise(
             { name: ex.name, category_id: categoryId, type: ex.type, weight_unit: "kg", is_favorite: false },
             user.id
@@ -669,7 +678,7 @@ export default function SettingsPage() {
       }
 
       setCatalogDone(true);
-      setCatalogStep("¡Importación completada!");
+      setCatalogStep(t("settings:catalogImport.done"));
       const { data: refreshedCats } = await repo.getCategories();
       setCategories(refreshedCats ?? []);
     } catch (err) {
@@ -701,7 +710,7 @@ export default function SettingsPage() {
       setDeleteHistoryFrom("");
       setDeleteHistoryTo("");
       setDeleteHistoryExerciseId("");
-      alert(`${count} elemento(s) eliminado(s) del historial.`);
+      alert(t("settings:dangerZone.deleteHistoryDeletedMessage", { count }));
     } finally {
       setDeleteHistoryLoading(false);
     }
@@ -739,27 +748,32 @@ export default function SettingsPage() {
   }
 
   const themeOptions = [
-    { value: "light", label: "Claro" },
-    { value: "system", label: "Sistema" },
-    { value: "dark", label: "Oscuro" },
+    { value: "light", label: t("common:light") },
+    { value: "system", label: t("common:system") },
+    { value: "dark", label: t("common:dark") },
+  ] as const;
+
+  const languageOptions = [
+    { value: "es", label: t("settings:language.es") },
+    { value: "en", label: t("settings:language.en") },
   ] as const;
 
   return (
     <div className="space-y-8 max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
+      <h1 className="text-2xl font-bold tracking-tight">{t("settings:title")}</h1>
 
       {/* Profile */}
       <section className="rounded-2xl border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Perfil</h2>
+        <h2 className="font-semibold">{t("settings:sections.profile")}</h2>
         {email && <p className="text-sm text-muted-foreground">{email}</p>}
         <form onSubmit={handleSaveProfile} className="space-y-3">
           <div className="space-y-1">
-            <label htmlFor="display-name" className="text-xs font-medium text-muted-foreground">Nombre de usuario</label>
+            <label htmlFor="display-name" className="text-xs font-medium text-muted-foreground">{t("settings:profile.displayNameLabelWeb")}</label>
             <input
               id="display-name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Tu nombre"
+              placeholder={t("settings:profile.displayNamePlaceholder")}
               className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
             />
           </div>
@@ -769,35 +783,35 @@ export default function SettingsPage() {
             aria-live="polite"
             className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {saveStatus === "saving" ? "Guardando…" : saveStatus === "saved" ? "¡Guardado!" : saveStatus === "error" ? "Error — intentar de nuevo" : "Guardar cambios"}
+            {saveStatus === "saving" ? t("settings:profile.saving") : saveStatus === "saved" ? t("settings:profile.saved") : saveStatus === "error" ? t("settings:profile.saveError") : t("settings:profile.saveButton")}
           </button>
         </form>
       </section>
 
       {/* Preferences */}
       <section className="rounded-2xl border bg-card p-6 space-y-5">
-        <h2 className="font-semibold">Preferencias</h2>
+        <h2 className="font-semibold">{t("settings:sections.preferences")}</h2>
 
         {/* Weight unit */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Unidad de peso predeterminada</p>
-            <p className="text-xs text-muted-foreground">Usada en toda la app para mostrar el peso</p>
+            <p className="text-sm font-medium">{t("settings:weightUnit.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:weightUnit.descriptionWeb")}</p>
           </div>
-          <div role="group" aria-label="Unidad de peso" className="flex rounded-xl border overflow-hidden">
+          <div role="group" aria-label={t("settings:weightUnit.label")} className="flex rounded-xl border overflow-hidden">
             <button
               onClick={() => handleWeightUnit("kg")}
               aria-pressed={weightUnit === "kg"}
               className={`px-3 py-1.5 text-sm font-medium ${weightUnit === "kg" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
-              kg
+              {t("common:kg")}
             </button>
             <button
               onClick={() => handleWeightUnit("lb")}
               aria-pressed={weightUnit === "lb"}
               className={`px-3 py-1.5 text-sm font-medium ${weightUnit === "lb" ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
-              lb
+              {t("common:lb")}
             </button>
           </div>
         </div>
@@ -805,11 +819,11 @@ export default function SettingsPage() {
         {/* Theme */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Tema</p>
-            <p className="text-xs text-muted-foreground">Claro, oscuro o seguir preferencia del sistema</p>
+            <p className="text-sm font-medium">{t("settings:theme.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:theme.description")}</p>
           </div>
           {mounted && (
-            <div role="group" aria-label="Tema de la aplicación" className="flex rounded-xl border overflow-hidden">
+            <div role="group" aria-label={t("settings:theme.label")} className="flex rounded-xl border overflow-hidden">
               {themeOptions.map(({ value, label }) => (
                 <button
                   key={value}
@@ -823,40 +837,60 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+
+        {/* Language */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">{t("settings:language.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:language.description")}</p>
+          </div>
+          <div role="group" aria-label={t("settings:language.label")} className="flex rounded-xl border overflow-hidden">
+            {languageOptions.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => handleLanguageChange(value)}
+                aria-pressed={i18n.language === value}
+                className={`px-3 py-1.5 text-sm font-medium ${i18n.language === value ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Workout behaviour */}
       <section className="rounded-2xl border bg-card p-6 space-y-5">
-        <h2 className="font-semibold">Comportamiento del entrenamiento</h2>
+        <h2 className="font-semibold">{t("settings:sections.workoutBehaviour")}</h2>
 
         {/* Track PRs */}
         <ToggleRow
-          label="Registrar récords personales"
-          description="Muestra 🏆 cuando una serie iguala o supera tu récord personal"
+          label={t("settings:trackPRs.label")}
+          description={t("settings:trackPRs.descriptionWeb")}
           checked={trackPRs}
           onChange={() => handleToggle(SETTING_KEYS.TRACK_PRS, trackPRs, setTrackPRs)}
         />
 
         {/* Auto-complete set */}
         <ToggleRow
-          label="Marcar series como completadas automáticamente"
-          description="Al añadir una nueva serie, la anterior se marca como completada"
+          label={t("settings:autoComplete.label")}
+          description={t("settings:autoComplete.description")}
           checked={autoComplete}
           onChange={() => handleToggle(SETTING_KEYS.AUTO_COMPLETE, autoComplete, setAutoComplete)}
         />
 
         {/* Auto-next set */}
         <ToggleRow
-          label="Seleccionar siguiente serie automáticamente"
-          description="Tras completar una serie, el foco salta a la siguiente"
+          label={t("settings:autoNextSet.labelWeb")}
+          description={t("settings:autoNextSet.descriptionWeb")}
           checked={autoNextSet}
           onChange={() => handleToggle(SETTING_KEYS.AUTO_NEXT_SET, autoNextSet, setAutoNextSet)}
         />
 
         {/* Keep screen on */}
         <ToggleRow
-          label="Mantener pantalla encendida"
-          description="Evita que la pantalla se apague durante el entrenamiento (requiere permiso del navegador)"
+          label={t("settings:keepScreenOn.label")}
+          description={t("settings:keepScreenOn.description")}
           checked={keepScreenOn}
           onChange={() => handleToggle(SETTING_KEYS.KEEP_SCREEN_ON, keepScreenOn, setKeepScreenOn)}
         />
@@ -864,21 +898,21 @@ export default function SettingsPage() {
         {/* Week start */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Inicio de semana</p>
-            <p className="text-xs text-muted-foreground">Primer día mostrado en el calendario</p>
+            <p className="text-sm font-medium">{t("settings:weekStart.labelWeb")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:weekStart.descriptionWeb")}</p>
           </div>
           <div className="flex rounded-xl border overflow-hidden">
             <button
               onClick={() => handleWeekStart(1)}
               className={`px-3 py-1.5 text-sm font-medium ${weekStart === 1 ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
-              Lunes
+              {t("common:monday")}
             </button>
             <button
               onClick={() => handleWeekStart(0)}
               className={`px-3 py-1.5 text-sm font-medium ${weekStart === 0 ? "bg-primary text-primary-foreground" : "hover:bg-secondary"}`}
             >
-              Domingo
+              {t("common:sunday")}
             </button>
           </div>
         </div>
@@ -886,11 +920,11 @@ export default function SettingsPage() {
         {/* Default weight increment */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Incremento de peso predeterminado</p>
-            <p className="text-xs text-muted-foreground">Usado en los botones +/− cuando el ejercicio no define uno propio</p>
+            <p className="text-sm font-medium">{t("settings:defaultWeightIncrement.labelWeb")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:defaultWeightIncrement.descriptionWeb")}</p>
           </div>
           <div className="flex items-center gap-2">
-            <label htmlFor="default-weight-increment" className="sr-only">Incremento de peso predeterminado</label>
+            <label htmlFor="default-weight-increment" className="sr-only">{t("settings:defaultWeightIncrement.labelWeb")}</label>
             <input
               id="default-weight-increment"
               type="number"
@@ -907,48 +941,48 @@ export default function SettingsPage() {
         {/* Estimated records rep limit */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Límite de reps para récords estimados</p>
-            <p className="text-xs text-muted-foreground">Excluye series de muchas repeticiones del cálculo del 1RM estimado (recomendado: 10-12)</p>
+            <p className="text-sm font-medium">{t("settings:estimatedRecordsRepLimit.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:estimatedRecordsRepLimit.descriptionWeb")}</p>
           </div>
           <div className="flex items-center gap-2">
-            <label htmlFor="est-records-rep-limit" className="sr-only">Límite de reps para récords estimados</label>
+            <label htmlFor="est-records-rep-limit" className="sr-only">{t("settings:estimatedRecordsRepLimit.label")}</label>
             <input
               id="est-records-rep-limit"
               type="number"
               step="1"
               min="1"
-              placeholder="Sin límite"
+              placeholder={t("settings:estimatedRecordsRepLimit.placeholder")}
               value={estimatedRecordsRepLimit}
               onChange={(e) => handleEstimatedRecordsRepLimit(e.target.value)}
               className="w-24 rounded-xl border px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-ring bg-background"
             />
-            <span className="text-sm text-muted-foreground">reps</span>
+            <span className="text-sm text-muted-foreground">{t("settings:estimatedRecordsRepLimit.unit")}</span>
           </div>
         </div>
         {/* Recalculate PRs */}
         <div className="flex items-center justify-between pt-2 border-t">
           <div>
-            <p className="text-sm font-medium">Recalcular récords personales</p>
-            <p className="text-xs text-muted-foreground">Escanea todo el historial de series y recalcula tus PRs desde cero</p>
+            <p className="text-sm font-medium">{t("settings:recalcPRs.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:recalcPRs.description")}</p>
           </div>
           <button
             onClick={handleRecalcPRs}
             disabled={recalcPRs === "running"}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {recalcPRs === "running" ? "Calculando…" : recalcPRs === "done" ? "¡Listo!" : recalcPRs === "error" ? "Error — reintentar" : "Recalcular PRs"}
+            {recalcPRs === "running" ? t("settings:recalcPRs.running") : recalcPRs === "done" ? t("settings:recalcPRs.doneWeb") : recalcPRs === "error" ? t("settings:recalcPRs.error") : t("settings:recalcPRs.buttonWeb")}
           </button>
         </div>
       </section>
 
       {/* Home screen */}
       <section className="rounded-2xl border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Pantalla de inicio</h2>
+        <h2 className="font-semibold">{t("settings:sections.homeScreen")}</h2>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Mostrar contador de series</p>
-            <p className="text-xs text-muted-foreground">Muestra series completadas/totales en las pestañas de ejercicio del entrenamiento activo</p>
+            <p className="text-sm font-medium">{t("settings:showSetCount.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:showSetCount.descriptionWeb")}</p>
           </div>
           <button
             role="switch"
@@ -962,8 +996,8 @@ export default function SettingsPage() {
         </div>
 
         <div className="border-t pt-3">
-          <p className="text-sm font-medium mb-1">Categorías visibles</p>
-          <p className="text-xs text-muted-foreground mb-2">Las categorías desmarcadas se ocultan del selector de "+ Ejercicio" en Inicio</p>
+          <p className="text-sm font-medium mb-1">{t("settings:visibleCategories.label")}</p>
+          <p className="text-xs text-muted-foreground mb-2">{t("settings:visibleCategories.descriptionWeb")}</p>
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => {
               const visible = !hiddenCategoryIds.includes(cat.id);
@@ -985,34 +1019,38 @@ export default function SettingsPage() {
 
       {/* Data */}
       <section className="rounded-2xl border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Datos</h2>
+        <h2 className="font-semibold">{t("settings:sections.data")}</h2>
 
         {/* Backup */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Copia de seguridad completa</p>
-            <p className="text-xs text-muted-foreground">Descarga todos tus datos en un archivo <code className="text-xs">.fitnotes</code></p>
+            <p className="text-sm font-medium">{t("settings:fullBackup.label")}</p>
+            <p className="text-xs text-muted-foreground">
+              <Trans i18nKey="settings:fullBackup.descriptionWeb" components={[<code key="0" className="text-xs" />]} />
+            </p>
           </div>
           <button
             onClick={handleBackup}
             disabled={backingUp}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {backingUp ? "Exportando…" : "Exportar .fitnotes"}
+            {backingUp ? t("settings:fullBackup.exporting") : t("settings:fullBackup.buttonWeb")}
           </button>
         </div>
 
         {/* Restore */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Restaurar copia de seguridad</p>
-            <p className="text-xs text-muted-foreground">Reemplaza todos tus datos con los de un archivo <code className="text-xs">.fitnotes</code></p>
+            <p className="text-sm font-medium">{t("settings:restoreBackup.label")}</p>
+            <p className="text-xs text-muted-foreground">
+              <Trans i18nKey="settings:restoreBackup.descriptionWeb" components={[<code key="0" className="text-xs" />]} />
+            </p>
           </div>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
           >
-            Seleccionar archivo…
+            {t("settings:restoreBackup.buttonWeb")}
           </button>
           <input
             ref={fileInputRef}
@@ -1026,15 +1064,15 @@ export default function SettingsPage() {
         {/* Default catalog import */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Catálogo de ejercicios por defecto</p>
-            <p className="text-xs text-muted-foreground">Importa 8 categorías y 96 ejercicios habituales; salta los que ya tengas</p>
+            <p className="text-sm font-medium">{t("settings:catalogImport.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:catalogImport.descriptionWeb")}</p>
           </div>
           <button
             onClick={handleCheckCatalogImport}
             disabled={catalogChecking}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {catalogChecking ? "Comprobando…" : "Importar catálogo"}
+            {catalogChecking ? t("settings:catalogImport.buttonChecking") : t("settings:catalogImport.button")}
           </button>
         </div>
 
@@ -1046,31 +1084,31 @@ export default function SettingsPage() {
             <svg viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" aria-hidden="true">
               <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a15.92 15.92 0 0 0 2.1 8zm24.1-23.85-13.75-23.8a16.03 16.03 0 0 0-2.1 8v3.65L28.7 53h2zm32.9-3.65-13.75-23.8-13.75 23.8zm-8.05-27.45c-1.35-.8-2.9-1.25-4.5-1.25s-3.15.45-4.5 1.25L32.85 35.35h21.6l13.1-22.7zM73.05 53H56.3L70.05 76.8a16.42 16.42 0 0 0 3.3-3.3L87.3 45a15.96 15.96 0 0 0-2.1-8L73.05 53zm6.85 20.5-3.85-6.65a15.92 15.92 0 0 1-2.1 8l-13.75 23.8a15.92 15.92 0 0 0 3.3-3.3l13.75-23.85h2.65z" fill="#4285f4"/>
             </svg>
-            <p className="text-sm font-medium">Google Drive</p>
+            <p className="text-sm font-medium">{t("settings:googleDrive.title")}</p>
             {driveConnected && (
-              <span className="ml-auto text-xs text-green-600 font-medium">● Conectado</span>
+              <span className="ml-auto text-xs text-green-600 font-medium">{t("settings:googleDrive.connected")}</span>
             )}
           </div>
 
           {!driveConnected ? (
             <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Conecta tu Google Drive para hacer copias automáticas</p>
+              <p className="text-xs text-muted-foreground">{t("settings:googleDrive.connectDescription")}</p>
               <a
                 href="/api/google/auth"
                 className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
               >
-                Conectar Google Drive
+                {t("settings:googleDrive.connectButton")}
               </a>
             </div>
           ) : (
             <div className="space-y-3">
               {driveLastBackup && (
                 <p className="text-xs text-muted-foreground">
-                  Última copia:{" "}
+                  {t("settings:googleDrive.lastBackup")}{" "}
                   {new Date(driveLastBackup).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" })}
                   {driveLastBackupUrl && (
                     <a href={driveLastBackupUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline">
-                      Ver en Drive →
+                      {t("settings:googleDrive.viewInDrive")}
                     </a>
                   )}
                 </p>
@@ -1078,8 +1116,8 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium">Backup automático al finalizar entrenamiento</p>
-                  <p className="text-xs text-muted-foreground">Sube una copia a Drive cada vez que termines</p>
+                  <p className="text-xs font-medium">{t("settings:googleDrive.autoBackupLabel")}</p>
+                  <p className="text-xs text-muted-foreground">{t("settings:googleDrive.autoBackupDescription")}</p>
                 </div>
                 <button
                   role="switch"
@@ -1101,14 +1139,14 @@ export default function SettingsPage() {
                   disabled={driveBacking}
                   className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {driveBacking ? "Subiendo…" : "Hacer copia ahora"}
+                  {driveBacking ? t("settings:googleDrive.backingUp") : t("settings:googleDrive.backupNow")}
                 </button>
                 <button
                   onClick={handleDriveDisconnect}
                   disabled={driveDisconnecting}
                   className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
                 >
-                  {driveDisconnecting ? "Desconectando…" : "Desconectar"}
+                  {driveDisconnecting ? t("settings:googleDrive.disconnecting") : t("settings:googleDrive.disconnect")}
                 </button>
               </div>
             </div>
@@ -1119,43 +1157,43 @@ export default function SettingsPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Exportar entrenamientos</p>
-            <p className="text-xs text-muted-foreground">Descargar todos los entrenamientos en CSV</p>
+            <p className="text-sm font-medium">{t("settings:exportWorkouts.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:exportWorkouts.description")}</p>
           </div>
           <button
             onClick={handleExportWorkouts}
             disabled={exportingWorkouts}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {exportingWorkouts ? "Exportando…" : "Exportar CSV"}
+            {exportingWorkouts ? t("settings:fullBackup.exporting") : t("settings:bodyExport.button")}
           </button>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Exportar medidas corporales</p>
-            <p className="text-xs text-muted-foreground">Descargar todas las medidas en CSV</p>
+            <p className="text-sm font-medium">{t("settings:bodyExport.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:bodyExport.descriptionWeb")}</p>
           </div>
           <button
             onClick={handleExportBodyTracker}
             disabled={exportingBody}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {exportingBody ? "Exportando…" : "Exportar CSV"}
+            {exportingBody ? t("settings:bodyExport.exporting") : t("settings:bodyExport.button")}
           </button>
         </div>
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Cerrar sesión en todos los dispositivos</p>
-            <p className="text-xs text-muted-foreground">Invalida todas las sesiones activas</p>
+            <p className="text-sm font-medium">{t("settings:signOutAll.label")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:signOutAll.description")}</p>
           </div>
           <button
             onClick={handleSignOutAll}
             disabled={signOutLoading}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            Cerrar todas las sesiones
+            {t("settings:signOutAll.button")}
           </button>
         </div>
       </section>
@@ -1163,60 +1201,60 @@ export default function SettingsPage() {
       {/* Tools — mismo patrón que la app mobile (Herramientas ya no es una
           sección de primer nivel, se accede desde aquí) */}
       <section className="rounded-2xl border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Herramientas</h2>
+        <h2 className="font-semibold">{t("settings:sections.tools")}</h2>
         <Link
           href="/tools"
           className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium hover:bg-secondary"
         >
-          Calculadoras de entrenamiento
+          {t("settings:tools.calculators")}
           <ChevronRight size={16} aria-hidden="true" />
         </Link>
       </section>
 
       {/* Health — igual que la sección "Salud" de mobile */}
       <section className="rounded-2xl border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Salud</h2>
+        <h2 className="font-semibold">{t("settings:sections.health")}</h2>
         <Link
           href="/body-tracker"
           className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium hover:bg-secondary"
         >
-          Medidas corporales
+          {t("settings:health.bodyMeasurements")}
           <ChevronRight size={16} aria-hidden="true" />
         </Link>
       </section>
 
       {/* Account */}
       <section className="rounded-2xl border bg-card p-6 space-y-4">
-        <h2 className="font-semibold">Cuenta</h2>
+        <h2 className="font-semibold">{t("settings:sections.account")}</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Cerrar sesión</p>
-            <p className="text-xs text-muted-foreground">Cerrar sesión en este dispositivo</p>
+            <p className="text-sm font-medium">{t("settings:account.signOut")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:account.signOutDescription")}</p>
           </div>
           <button
             onClick={handleSignOut}
             disabled={signOutLoading}
             className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
-            {signOutLoading ? "Cerrando sesión…" : "Cerrar sesión"}
+            {signOutLoading ? t("settings:account.signingOut") : t("settings:account.signOut")}
           </button>
         </div>
       </section>
 
       {/* Danger Zone */}
       <section className="rounded-2xl border border-destructive/50 bg-card p-6 space-y-4">
-        <h2 className="font-semibold text-destructive">Zona de peligro</h2>
+        <h2 className="font-semibold text-destructive">{t("settings:sections.dangerZone")}</h2>
 
         {/* Delete workout history */}
         <div className="space-y-3">
           <div>
-            <p className="text-sm font-medium">Eliminar historial de entrenamientos</p>
-            <p className="text-xs text-muted-foreground">Deja los filtros vacíos para eliminar todo el historial, o acótalo por fecha y/o ejercicio. No se puede deshacer.</p>
+            <p className="text-sm font-medium">{t("settings:dangerZone.deleteHistoryLabel")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:dangerZone.deleteHistoryDescriptionWeb")}</p>
           </div>
           {deleteHistoryConfirm && (
             <div className="flex flex-wrap items-end gap-3">
               <div>
-                <label htmlFor="del-hist-from" className="block text-xs text-muted-foreground mb-1">Desde</label>
+                <label htmlFor="del-hist-from" className="block text-xs text-muted-foreground mb-1">{t("settings:dangerZone.deleteHistoryFrom")}</label>
                 <input
                   id="del-hist-from"
                   type="date"
@@ -1226,7 +1264,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="del-hist-to" className="block text-xs text-muted-foreground mb-1">Hasta</label>
+                <label htmlFor="del-hist-to" className="block text-xs text-muted-foreground mb-1">{t("settings:dangerZone.deleteHistoryTo")}</label>
                 <input
                   id="del-hist-to"
                   type="date"
@@ -1236,14 +1274,14 @@ export default function SettingsPage() {
                 />
               </div>
               <div>
-                <label htmlFor="del-hist-ex" className="block text-xs text-muted-foreground mb-1">Ejercicio</label>
+                <label htmlFor="del-hist-ex" className="block text-xs text-muted-foreground mb-1">{t("settings:dangerZone.deleteHistoryExercise")}</label>
                 <select
                   id="del-hist-ex"
                   value={deleteHistoryExerciseId}
                   onChange={(e) => setDeleteHistoryExerciseId(e.target.value)}
                   className="rounded-xl border px-2 py-1.5 text-sm bg-background"
                 >
-                  <option value="">Todos</option>
+                  <option value="">{t("settings:dangerZone.deleteHistoryAll")}</option>
                   {exerciseOptions.map((ex) => (
                     <option key={ex.id} value={ex.id}>{ex.name}</option>
                   ))}
@@ -1254,13 +1292,13 @@ export default function SettingsPage() {
           <div className="flex justify-end gap-2">
             {deleteHistoryConfirm ? (
               <>
-                <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
+                <button onClick={() => setDeleteHistoryConfirm(false)} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">{t("common:cancel")}</button>
                 <button
                   onClick={handleDeleteHistory}
                   disabled={deleteHistoryLoading}
                   className="rounded-xl bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground disabled:opacity-50"
                 >
-                  {deleteHistoryLoading ? "Eliminando…" : "Confirmar"}
+                  {deleteHistoryLoading ? t("settings:dangerZone.deleteHistoryDeleting") : t("common:confirm")}
                 </button>
               </>
             ) : (
@@ -1274,17 +1312,17 @@ export default function SettingsPage() {
         {/* Delete account */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Eliminar cuenta</p>
-            <p className="text-xs text-muted-foreground">Elimina permanentemente todos tus datos. No se puede deshacer.</p>
+            <p className="text-sm font-medium">{t("settings:dangerZone.deleteAccountLabel")}</p>
+            <p className="text-xs text-muted-foreground">{t("settings:dangerZone.deleteAccountDescription")}</p>
           </div>
           {deleteAccountConfirm ? (
             <div className="flex gap-2">
-              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">Cancelar</button>
-              <button onClick={handleDeleteAccount} className="rounded-xl bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">Confirmar eliminación</button>
+              <button onClick={() => setDeleteAccountConfirm(false)} className="rounded-xl border px-3 py-1.5 text-sm hover:bg-secondary">{t("common:cancel")}</button>
+              <button onClick={handleDeleteAccount} className="rounded-xl bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground">{t("settings:dangerZone.deleteAccountConfirmButton")}</button>
             </div>
           ) : (
             <button onClick={() => setDeleteAccountConfirm(true)} className="rounded-xl border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground">
-              Eliminar cuenta
+              {t("settings:dangerZone.deleteAccountLabel")}
             </button>
           )}
         </div>
@@ -1294,16 +1332,19 @@ export default function SettingsPage() {
       {catalogPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-xl border bg-card shadow-xl p-6 space-y-5">
-            <h3 className="text-lg font-semibold">Importar catálogo por defecto</h3>
+            <h3 className="text-lg font-semibold">{t("settings:catalogImport.confirmTitle")}</h3>
 
             <div className="rounded-2xl bg-secondary/50 p-4 space-y-2 text-sm">
               <p>
-                Se crearán <span className="font-semibold tabular-nums">{catalogPlan.categoriesToCreateCount}</span> categoría(s) y{" "}
-                <span className="font-semibold tabular-nums">{catalogPlan.exercisesToCreateCount}</span> ejercicio(s) nuevo(s).
+                <Trans
+                  i18nKey="settings:catalogImport.confirmMessage"
+                  values={{ categories: catalogPlan.categoriesToCreateCount, exercises: catalogPlan.exercisesToCreateCount }}
+                  components={[<span key="0" className="font-semibold tabular-nums" />, <span key="1" className="font-semibold tabular-nums" />]}
+                />
               </p>
               {(catalogPlan.categoriesSkippedCount > 0 || catalogPlan.exercisesSkippedCount > 0) && (
                 <p className="text-xs text-muted-foreground">
-                  {catalogPlan.categoriesSkippedCount} categoría(s) y {catalogPlan.exercisesSkippedCount} ejercicio(s) ya existen por nombre y se omitirán.
+                  {t("settings:catalogImport.skippedNote", { categories: catalogPlan.categoriesSkippedCount, exercises: catalogPlan.exercisesSkippedCount })}
                 </p>
               )}
             </div>
@@ -1319,12 +1360,12 @@ export default function SettingsPage() {
               </div>
             ) : catalogDone ? (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-green-600">¡Catálogo importado con éxito!</p>
+                <p className="text-sm font-medium text-green-600">{t("settings:catalogImport.done")}</p>
                 <button
                   onClick={() => setCatalogPlan(null)}
                   className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Cerrar
+                  {t("common:close")}
                 </button>
               </div>
             ) : (
@@ -1351,20 +1392,20 @@ export default function SettingsPage() {
       {restoreData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-xl border bg-card shadow-xl p-6 space-y-5">
-            <h3 className="text-lg font-semibold">Restaurar copia de seguridad</h3>
+            <h3 className="text-lg font-semibold">{t("settings:restoreModal.title")}</h3>
 
             <div className="rounded-2xl bg-secondary/50 p-4 space-y-2">
               <p className="text-xs text-muted-foreground">
-                Exportada: {new Date(restoreData.exported_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })}
+                {t("settings:restoreModal.exportedAt", { date: new Date(restoreData.exported_at).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" }) })}
               </p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-1 text-sm">
                 {([
-                  ["Categorías", restoreData.categories.length],
-                  ["Ejercicios", restoreData.exercises.length],
-                  ["Rutinas", restoreData.routines.length],
-                  ["Entrenamientos", restoreData.workouts.length],
-                  ["Series", restoreData.sets.length],
-                  ["Medidas corporales", restoreData.body_measurements.length],
+                  [t("settings:restoreModal.categories"), restoreData.categories.length],
+                  [t("settings:restoreModal.exercises"), restoreData.exercises.length],
+                  [t("settings:restoreModal.routines"), restoreData.routines.length],
+                  [t("settings:restoreModal.workouts"), restoreData.workouts.length],
+                  [t("settings:restoreModal.sets"), restoreData.sets.length],
+                  [t("settings:restoreModal.bodyMeasurements"), restoreData.body_measurements.length],
                 ] as [string, number][]).map(([label, count]) => (
                   <div key={label} className="flex items-baseline gap-1.5">
                     <span className="font-semibold tabular-nums">{count}</span>
@@ -1375,9 +1416,9 @@ export default function SettingsPage() {
             </div>
 
             <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm space-y-1">
-              <p className="font-medium text-destructive">Atención</p>
+              <p className="font-medium text-destructive">{t("settings:restoreModal.warningTitle")}</p>
               <p className="text-xs text-muted-foreground">
-                Esta acción eliminará todos tus datos actuales y los reemplazará con los del archivo. No se puede deshacer.
+                {t("settings:restoreModal.warningText")}
               </p>
             </div>
 
@@ -1392,12 +1433,12 @@ export default function SettingsPage() {
               </div>
             ) : restoreDone ? (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-green-600">¡Restauración completada con éxito!</p>
+                <p className="text-sm font-medium text-green-600">{t("settings:restoreModal.doneMessage")}</p>
                 <button
                   onClick={() => { setRestoreData(null); setRestoreDone(false); router.refresh(); }}
                   className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Cerrar y recargar
+                  {t("settings:restoreModal.closeAndReload")}
                 </button>
               </div>
             ) : (
@@ -1406,13 +1447,13 @@ export default function SettingsPage() {
                   onClick={() => { setRestoreData(null); setRestoreError(null); }}
                   className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
                 >
-                  Cancelar
+                  {t("common:cancel")}
                 </button>
                 <button
                   onClick={executeRestore}
                   className="rounded-xl bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Restaurar datos
+                  {t("settings:restoreModal.confirmButton")}
                 </button>
               </div>
             )}

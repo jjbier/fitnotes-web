@@ -22,6 +22,7 @@ export const SETTING_KEYS = {
   CALENDAR_SHOW_CATEGORY_DOTS: "fitnotes_calendar_show_category_dots",
   SHOW_SET_COUNT_HOME: "fitnotes_show_set_count_home",
   HIDDEN_CATEGORIES: "fitnotes_hidden_categories",
+  LANGUAGE: "fitnotes_language",
 } as const;
 
 /**
@@ -78,4 +79,15 @@ export function readHiddenCategories(): string[] {
 /** Persiste la lista de ids de categorías ocultas como JSON en `localStorage`. */
 export function writeHiddenCategories(ids: string[]) {
   localStorage.setItem(SETTING_KEYS.HIDDEN_CATEGORIES, JSON.stringify(ids));
+}
+
+/** Idioma de la interfaz configurado; `"es"` (por defecto) si no hay ajuste guardado o no es un idioma soportado. */
+export function readLanguage(): "es" | "en" {
+  if (typeof window === "undefined") return "es";
+  return localStorage.getItem(SETTING_KEYS.LANGUAGE) === "en" ? "en" : "es";
+}
+
+/** Persiste el idioma de la interfaz elegido en `localStorage`. */
+export function writeLanguage(lang: "es" | "en") {
+  localStorage.setItem(SETTING_KEYS.LANGUAGE, lang);
 }
