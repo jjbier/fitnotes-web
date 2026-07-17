@@ -15,7 +15,7 @@ import { readLanguage } from "./settings";
 if (!i18next.isInitialized) {
   void i18next.use(initReactI18next).init({
     resources: { es, en },
-    ns: ["common", "settings", "exercises"],
+    ns: ["common", "settings", "exercises", "exerciseCatalog"],
     defaultNS: "common",
     lng: readLanguage(),
     fallbackLng: "es",

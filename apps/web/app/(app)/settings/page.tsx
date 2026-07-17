@@ -16,7 +16,7 @@ import { useTheme } from "next-themes";
 import { useTranslation, Trans } from "react-i18next";
 import "@/lib/i18n";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
-import { computeDefaultCatalogSeedPlan, type DefaultCatalogSeedPlan } from "@fitnotes/core";
+import { computeDefaultCatalogSeedPlan, resolveDefaultExerciseCatalog, type DefaultCatalogSeedPlan } from "@fitnotes/core";
 import { SETTING_KEYS, readBool, writeBool, readWeekStart, readDefaultWeightIncrement, readEstimatedRecordsRepLimit, readHiddenCategories, writeHiddenCategories, readLanguage, writeLanguage } from "@/lib/settings";
 
 type BackupEntry = Record<string, unknown>;
@@ -624,7 +624,11 @@ export default function SettingsPage() {
     try {
       const repo = createExerciseRepository(client);
       const [{ data: cats }, { data: exs }] = await Promise.all([repo.getCategories(), repo.getExercises()]);
-      const plan = computeDefaultCatalogSeedPlan(cats ?? [], exs ?? []);
+      const catalog = resolveDefaultExerciseCatalog(
+        t("exerciseCatalog:categories", { returnObjects: true }) as Record<string, string>,
+        t("exerciseCatalog:exercises", { returnObjects: true }) as Record<string, string>
+      );
+      const plan = computeDefaultCatalogSeedPlan(cats ?? [], exs ?? [], catalog);
       if (plan.categoriesToCreateCount === 0 && plan.exercisesToCreateCount === 0) {
         alert(t("settings:catalogImport.alreadyDoneMessage"));
         return;
