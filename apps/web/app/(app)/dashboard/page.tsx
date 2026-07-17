@@ -175,10 +175,13 @@ export default function DashboardPage() {
 
   async function handleStartWorkout() {
     const uid = await resolveUserId();
-    const { data, error } = await repo.createWorkout({ date: currentDate, start_time: new Date().toISOString() }, uid);
-    if (error || !data) return;
+    const { data: existing } = await repo.getWorkoutByDate(currentDate);
+    if (!existing) {
+      const { data, error } = await repo.createWorkout({ date: currentDate, start_time: new Date().toISOString() }, uid);
+      if (error || !data) return;
+    }
     startWorkout(currentDate);
-    loadWorkout({ id: data.id, date: data.date, start_time: data.start_time ?? undefined }, [], {});
+    await loadWorkoutForDate(currentDate, uid);
   }
 
   async function handleAddExercise() {
