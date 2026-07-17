@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell, Clock, Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell, Clock, Layers, Plus } from "lucide-react";
 import WorkoutPickerModal from "@/components/workout/WorkoutPickerModal";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, todayISO, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
@@ -377,6 +377,14 @@ export default function DashboardPage() {
                 <Layers size={14} aria-hidden="true" /> Cambiar ({dayWorkouts.length})
               </button>
             )}
+            <button
+              onClick={handleCreateNewFromPicker}
+              disabled={creatingWorkout}
+              className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+              title="Crear un entrenamiento adicional para este día"
+            >
+              <Plus size={14} aria-hidden="true" /> {creatingWorkout ? "Creando…" : "Nuevo"}
+            </button>
             <button
               onClick={() => setShowShare(true)}
               className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"

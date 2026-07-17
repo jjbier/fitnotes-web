@@ -366,8 +366,9 @@ export default function RoutineDetailPage({ params }: Props) {
 
   /**
    * Registra de una vez todos los ejercicios (y sus series predefinidas) de un día de
-   * la rutina en el entrenamiento de hoy (resuelto vía `useWorkoutForDate` — pregunta a
-   * cuál si ya hay varios ese día): añade cada ejercicio a continuación de los existentes
+   * la rutina en el entrenamiento de hoy (resuelto vía `useWorkoutForDate` con
+   * `forceAskIfAny` — crea uno si no hay, y si ya hay alguno pregunta si añadir a ese
+   * o crear uno nuevo, Fase 5): añade cada ejercicio a continuación de los existentes
    * preservando `group_id`/`group_name`, y para las series predefinidas sin valores propios
    * copia los de la última sesión registrada del ejercicio. Navega a `/dashboard` al terminar.
    */
@@ -377,7 +378,7 @@ export default function RoutineDetailPage({ params }: Props) {
     try {
       const today = new Date().toISOString().split("T")[0]!;
 
-      const resolvedId = await resolveWorkoutForDate(today, userId);
+      const resolvedId = await resolveWorkoutForDate(today, userId, { forceAskIfAny: true });
       if (!resolvedId) return;
       const workoutId: string = resolvedId;
 
