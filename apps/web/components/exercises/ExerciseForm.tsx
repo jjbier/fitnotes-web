@@ -11,23 +11,10 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ExerciseType } from "@fitnotes/core";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { Category, Exercise } from "@fitnotes/core";
-
-/** Etiquetas en español para cada {@link ExerciseType}, usadas en el selector de tipo. */
-const TYPE_LABELS: Record<ExerciseType, string> = {
-  [ExerciseType.WEIGHT_REPS]: "Peso × Repeticiones",
-  [ExerciseType.DISTANCE_TIME]: "Distancia / Tiempo",
-  [ExerciseType.REPS_ONLY]: "Solo repeticiones",
-  [ExerciseType.WEIGHT_ONLY]: "Solo peso",
-  [ExerciseType.TIME_ONLY]: "Solo tiempo",
-  [ExerciseType.WEIGHT_DISTANCE]: "Peso + Distancia",
-  [ExerciseType.WEIGHT_TIME]: "Peso + Tiempo",
-  [ExerciseType.REPS_DISTANCE]: "Reps + Distancia",
-  [ExerciseType.REPS_TIME]: "Reps + Tiempo",
-  [ExerciseType.DISTANCE_ONLY]: "Solo distancia",
-};
 
 /** Paleta de colores sugeridos para la creación inline de categoría. */
 const PRESET_COLORS = [
@@ -70,7 +57,23 @@ interface Props {
  * cambios de tipo o unidad de peso que afecten al historial.
  */
 export default function ExerciseForm({ categories, initial, onSubmit, onCancel, onCreateCategory, onConvertWeights }: Props) {
+  const { t } = useTranslation();
   const confirm = useConfirm();
+
+  /** Etiquetas para cada {@link ExerciseType}, usadas en el selector de tipo. */
+  const TYPE_LABELS: Record<ExerciseType, string> = {
+    [ExerciseType.WEIGHT_REPS]: t("exercises:types.WEIGHT_REPS"),
+    [ExerciseType.DISTANCE_TIME]: t("exercises:types.DISTANCE_TIME"),
+    [ExerciseType.REPS_ONLY]: t("exercises:types.REPS_ONLY"),
+    [ExerciseType.WEIGHT_ONLY]: t("exercises:types.WEIGHT_ONLY"),
+    [ExerciseType.TIME_ONLY]: t("exercises:types.TIME_ONLY"),
+    [ExerciseType.WEIGHT_DISTANCE]: t("exercises:types.WEIGHT_DISTANCE"),
+    [ExerciseType.WEIGHT_TIME]: t("exercises:types.WEIGHT_TIME"),
+    [ExerciseType.REPS_DISTANCE]: t("exercises:types.REPS_DISTANCE"),
+    [ExerciseType.REPS_TIME]: t("exercises:types.REPS_TIME"),
+    [ExerciseType.DISTANCE_ONLY]: t("exercises:types.DISTANCE_ONLY"),
+  };
+
   const [form, setForm] = useState<FormData>({
     name: initial?.name ?? "",
     category_id: initial?.category_id ?? (categories[0]?.id ?? ""),
@@ -119,15 +122,15 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
    * después de que `onSubmit` haya guardado el ejercicio.
    */
   async function performSave() {
-    if (!form.name.trim()) { setError("El nombre es obligatorio"); return; }
-    if (!form.category_id) { setError("Selecciona o crea una categoría"); return; }
+    if (!form.name.trim()) { setError(t("exercises:nameRequired")); return; }
+    if (!form.category_id) { setError(t("exercises:categoryRequired")); return; }
 
     // Warn if type changed when editing
     if (initial?.id && form.type !== initial.type) {
       const ok = await confirm({
-        title: "Cambiar tipo de ejercicio",
-        message: "Cambiar el tipo eliminará los campos que no existen en el nuevo tipo del historial de este ejercicio. ¿Continuar?",
-        confirmLabel: "Continuar",
+        title: t("exercises:changeTypeTitleWeb"),
+        message: t("exercises:changeTypeMessageWeb"),
+        confirmLabel: t("exercises:changeTypeConfirmWeb"),
       });
       if (!ok) return;
     }
@@ -138,20 +141,21 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
     let shouldConvert = false;
     if (unitChanged) {
       const ok = await confirm({
-        title: "Cambiar unidad de peso",
-        message: `¿Cambiar la unidad de peso a ${form.weight_unit}?`,
-        confirmLabel: "Cambiar",
+        title: t("exercises:changeWeightUnitTitleWeb"),
+        message: t("exercises:changeWeightUnitMessageWeb", { unit: form.weight_unit }),
+        confirmLabel: t("exercises:changeWeightUnitConfirmWeb"),
         destructive: false,
       });
       if (!ok) return;
       shouldConvert = await confirm({
-        title: "Convertir historial",
-        message:
-          `¿Convertir los valores históricos automáticamente?\n\n` +
-          `Ejemplo: 100 ${initial.weight_unit} → ${Math.round(100 * (initial.weight_unit === "kg" ? 2.20462 : 0.453592) * 10) / 10} ${form.weight_unit}\n\n` +
-          `Acepta para convertir. Cancela para solo cambiar la etiqueta.`,
-        confirmLabel: "Convertir",
-        cancelLabel: "Solo cambiar etiqueta",
+        title: t("exercises:convertHistoryTitleWeb"),
+        message: t("exercises:convertHistoryMessageWeb", {
+          fromUnit: initial.weight_unit,
+          toValue: Math.round(100 * (initial.weight_unit === "kg" ? 2.20462 : 0.453592) * 10) / 10,
+          toUnit: form.weight_unit,
+        }),
+        confirmLabel: t("exercises:convertHistoryConfirmWeb"),
+        cancelLabel: t("exercises:convertHistoryCancelWeb"),
         destructive: false,
       });
     }
@@ -165,7 +169,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
         await onConvertWeights(factor);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Algo salió mal");
+      setError(err instanceof Error ? err.message : t("exercises:genericErrorWeb"));
     } finally {
       setLoading(false);
     }
@@ -180,12 +184,12 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Name */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium" htmlFor="ex-name">Nombre</label>
+        <label className="text-sm font-medium" htmlFor="ex-name">{t("exercises:nameLabel")}</label>
         <input
           id="ex-name"
           value={form.name}
           onChange={(e) => patch("name", e.target.value)}
-          placeholder="p.ej. Press de banca"
+          placeholder={t("exercises:namePlaceholderExercise")}
           className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />
@@ -193,7 +197,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
 
       {/* Category */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium" htmlFor="ex-category">Categoría</label>
+        <label className="text-sm font-medium" htmlFor="ex-category">{t("exercises:categoryLabel")}</label>
         <div className="flex gap-2">
           <select
             id="ex-category"
@@ -202,7 +206,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
             className="flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background"
           >
             {localCategories.length === 0 && (
-              <option value="" disabled>— sin categorías todavía —</option>
+              <option value="" disabled>{t("exercises:noCategoriesYetOption")}</option>
             )}
             {localCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -213,9 +217,9 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
               type="button"
               onClick={() => setShowNewCat((v) => !v)}
               className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-secondary"
-              title="Crear nueva categoría"
+              title={t("exercises:createNewCategoryTitle")}
             >
-              {showNewCat ? "✕" : "+ Nueva"}
+              {showNewCat ? t("exercises:closeNewCategoryToggle") : t("exercises:newCategoryToggleShort")}
             </button>
           )}
         </div>
@@ -223,13 +227,13 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
         {/* Inline new-category form */}
         {showNewCat && onCreateCategory && (
           <div className="rounded-xl border bg-secondary/20 p-3 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nueva categoría</p>
-            <label htmlFor="new-cat-name" className="sr-only">Nombre de la nueva categoría</label>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("exercises:newCategoryHeading")}</p>
+            <label htmlFor="new-cat-name" className="sr-only">{t("exercises:newCategoryNameSrLabel")}</label>
             <input
               id="new-cat-name"
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
-              placeholder="Nombre de categoría"
+              placeholder={t("exercises:newCategoryNamePlaceholder")}
               className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               autoFocus
             />
@@ -241,7 +245,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
                   onClick={() => setNewCatColor(c)}
                   className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
                   style={{ backgroundColor: c, borderColor: newCatColor === c ? "#0f172a" : "transparent" }}
-                  aria-label={`Color ${c}`}
+                  aria-label={t("exercises:colorSwatchLabel", { color: c })}
                   aria-pressed={newCatColor === c}
                 />
               ))}
@@ -252,7 +256,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
               disabled={catLoading || !newCatName.trim()}
               className="w-full rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {catLoading ? "Creando…" : "Crear categoría"}
+              {catLoading ? t("exercises:creatingButton") : t("exercises:createCategoryButton")}
             </button>
           </div>
         )}
@@ -260,20 +264,20 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
 
       {/* Type */}
       <div className="space-y-1.5">
-        <p id="ex-type-label" className="text-sm font-medium">Tipo</p>
+        <p id="ex-type-label" className="text-sm font-medium">{t("exercises:typeLabel")}</p>
         <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="ex-type-label">
-          {(Object.values(ExerciseType) as ExerciseType[]).map((t) => (
+          {(Object.values(ExerciseType) as ExerciseType[]).map((type) => (
             <button
-              key={t}
+              key={type}
               type="button"
-              onClick={() => patch("type", t)}
+              onClick={() => patch("type", type)}
               className={`rounded-xl border px-3 py-2 text-xs font-medium text-left transition-colors ${
-                form.type === t
+                form.type === type
                   ? "border-primary bg-primary text-primary-foreground"
                   : "hover:bg-secondary"
               }`}
             >
-              {TYPE_LABELS[t]}
+              {TYPE_LABELS[type]}
             </button>
           ))}
         </div>
@@ -282,7 +286,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
       {/* Weight unit */}
       {[ExerciseType.WEIGHT_REPS, ExerciseType.WEIGHT_ONLY, ExerciseType.WEIGHT_DISTANCE, ExerciseType.WEIGHT_TIME].includes(form.type) && (
         <div className="space-y-1.5">
-          <p id="ex-unit-label" className="text-sm font-medium">Unidad de peso</p>
+          <p id="ex-unit-label" className="text-sm font-medium">{t("exercises:weightUnitFieldLabel")}</p>
           <div className="flex gap-2" role="group" aria-labelledby="ex-unit-label">
             {(["kg", "lb"] as const).map((unit) => (
               <button
@@ -305,13 +309,13 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
       {/* Notes */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium" htmlFor="ex-notes">
-          Notas <span className="text-muted-foreground font-normal">(opcional)</span>
+          {t("exercises:notesLabel")} <span className="text-muted-foreground font-normal">{t("exercises:notesOptionalSuffix")}</span>
         </label>
         <textarea
           id="ex-notes"
           value={form.notes}
           onChange={(e) => patch("notes", e.target.value)}
-          placeholder="Indicaciones, tiempo de descanso, configuración de discos…"
+          placeholder={t("exercises:notesPlaceholderWeb")}
           rows={2}
           className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
@@ -325,14 +329,14 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
           onClick={onCancel}
           className="flex-1 rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
         >
-          Cancelar
+          {t("common:cancel")}
         </button>
         <button
           type="submit"
           disabled={loading}
           className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {loading ? "Guardando…" : initial?.id ? "Actualizar" : "Crear"}
+          {loading ? t("exercises:savingButton") : initial?.id ? t("exercises:updateButton") : t("exercises:createButton")}
         </button>
       </div>
     </form>

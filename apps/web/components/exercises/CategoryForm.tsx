@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Category } from "@fitnotes/core";
 
 /** Paleta de colores sugeridos para las categorías, mostrados como swatches. */
@@ -33,6 +34,7 @@ interface Props {
  * un estado de carga/error local mientras la promesa está en curso.
  */
 export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial?.name ?? "");
   const [color, setColor] = useState(initial?.color ?? PRESET_COLORS[0]!);
   const [loading, setLoading] = useState(false);
@@ -40,12 +42,12 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError("El nombre es obligatorio"); return; }
+    if (!name.trim()) { setError(t("exercises:nameRequired")); return; }
     setLoading(true);
     try {
       await onSubmit({ name: name.trim(), color });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Algo ha salido mal");
+      setError(err instanceof Error ? err.message : t("exercises:genericErrorWeb"));
     } finally {
       setLoading(false);
     }
@@ -54,19 +56,19 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <label className="text-sm font-medium" htmlFor="cat-name">Nombre</label>
+        <label className="text-sm font-medium" htmlFor="cat-name">{t("exercises:nameLabel")}</label>
         <input
           id="cat-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="p.ej. Pecho"
+          placeholder={t("exercises:namePlaceholderCategory")}
           className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           autoFocus
         />
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium">Color</label>
+        <label className="text-sm font-medium">{t("exercises:colorLabel")}</label>
         <div className="flex gap-2 flex-wrap">
           {PRESET_COLORS.map((c) => (
             <button
@@ -78,7 +80,7 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
                 backgroundColor: c,
                 borderColor: color === c ? "#0f172a" : "transparent",
               }}
-              aria-label={`Color ${c}`}
+              aria-label={t("exercises:colorSwatchLabel", { color: c })}
               aria-pressed={color === c}
             />
           ))}
@@ -89,7 +91,7 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
             value={color}
             onChange={(e) => setColor(e.target.value)}
             placeholder="#6366f1"
-            aria-label="Color personalizado (hex)"
+            aria-label={t("exercises:customColorLabel")}
             className="w-28 rounded-xl border px-2 py-1 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
@@ -103,14 +105,14 @@ export default function CategoryForm({ initial, onSubmit, onCancel }: Props) {
           onClick={onCancel}
           className="flex-1 rounded-xl border px-4 py-2 text-sm font-medium hover:bg-secondary"
         >
-          Cancelar
+          {t("common:cancel")}
         </button>
         <button
           type="submit"
           disabled={loading}
           className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {loading ? "Guardando…" : initial?.id ? "Actualizar" : "Crear"}
+          {loading ? t("exercises:savingButton") : initial?.id ? t("exercises:updateButton") : t("exercises:createButton")}
         </button>
       </div>
     </form>

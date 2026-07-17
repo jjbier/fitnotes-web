@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { History, Star, ChevronRight, GripVertical, Dumbbell } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 import EmptyState from "@/components/EmptyState";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useExerciseStore, ExerciseType, filterExercises } from "@fitnotes/core";
@@ -23,6 +25,7 @@ import type { Category } from "@fitnotes/core";
  * y marcar/desmarcar favoritos con rollback optimista si falla la persistencia.
  */
 export default function ExercisePage() {
+  const { t } = useTranslation();
   const categories = useExerciseStore((s) => s.categories);
   const exercises = useExerciseStore((s) => s.exercises);
   const isLoading = useExerciseStore((s) => s.isLoading);
@@ -146,7 +149,7 @@ export default function ExercisePage() {
   }
 
   async function handleDeleteCategory(id: string) {
-    if (!(await confirmDelete("¿Eliminar esta categoría y todos sus ejercicios?"))) return;
+    if (!(await confirmDelete(t("exercises:deleteCategoryConfirmWeb")))) return;
     const { error } = await repo.deleteCategory(id);
     if (error) return;
     deleteCategory(id);
@@ -164,7 +167,7 @@ export default function ExercisePage() {
 
   /** Elimina el ejercicio de forma optimista (tras confirmar); si la persistencia falla, lo restaura en el store. */
   async function handleDeleteExercise(id: string) {
-    if (!(await confirmDelete("¿Eliminar este ejercicio y todo su historial?"))) return;
+    if (!(await confirmDelete(t("exercises:deleteExerciseConfirmWeb")))) return;
     const saved = exercises.find((e) => e.id === id);
     deleteExercise(id);
     const { error } = await repo.deleteExercise(id);
@@ -211,12 +214,12 @@ export default function ExercisePage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Ejercicios</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("exercises:title")}</h1>
         <div className="flex items-center gap-2">
           <Link
             href="/search"
-            aria-label="Historial de búsqueda"
-            title="Historial de búsqueda"
+            aria-label={t("exercises:searchHistoryLabel")}
+            title={t("exercises:searchHistoryLabel")}
             className="rounded-xl border p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
           >
             <History className="h-4 w-4" aria-hidden="true" />
@@ -225,19 +228,19 @@ export default function ExercisePage() {
             onClick={() => { setShowExerciseForm(true); setShowCategoryForm(false); setEditingCategory(null); }}
             className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            + Nuevo ejercicio
+            {t("exercises:newExerciseButton")}
           </button>
         </div>
       </div>
 
       {/* Global search */}
-      <label htmlFor="exercise-search" className="sr-only">Buscar ejercicios</label>
+      <label htmlFor="exercise-search" className="sr-only">{t("exercises:searchLabelAll")}</label>
       <input
         id="exercise-search"
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder='Buscar en todos los ejercicios… (p. ej. "press manc")'
+        placeholder={t("exercises:searchPlaceholderAll")}
         className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
@@ -245,11 +248,11 @@ export default function ExercisePage() {
       {search.trim() && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {searchResults.length} resultado{searchResults.length !== 1 ? "s" : ""}
+            {t("exercises:resultsCount", { count: searchResults.length })}
           </p>
           {searchResults.length === 0 ? (
             <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground text-sm">
-              Sin ejercicios que coincidan con &ldquo;{search}&rdquo;
+              {t("exercises:noSearchResults", { search })}
             </div>
           ) : (
             <div ref={searchListRef} style={{ height: `${searchVirtualizer.getTotalSize()}px`, position: "relative" }}>
@@ -287,7 +290,7 @@ export default function ExercisePage() {
       {/* New exercise form */}
       {!search.trim() && showExerciseForm && (
         <div className="rounded-2xl border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">Nuevo ejercicio</h2>
+          <h2 className="text-sm font-semibold mb-4">{t("exercises:newExerciseHeading")}</h2>
           <ExerciseForm
             categories={categories}
             onSubmit={handleCreateExercise}
@@ -300,7 +303,7 @@ export default function ExercisePage() {
       {/* Edit category form */}
       {!search.trim() && editingCategory && (
         <div className="rounded-2xl border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">Editar categoría</h2>
+          <h2 className="text-sm font-semibold mb-4">{t("exercises:editCategoryHeading")}</h2>
           <CategoryForm
             initial={editingCategory}
             onSubmit={handleUpdateCategory}
@@ -317,8 +320,8 @@ export default function ExercisePage() {
         >
           <Star className="text-primary" size={20} fill="currentColor" aria-hidden="true" />
           <div className="flex-1">
-            <p className="font-medium text-sm">Favoritos</p>
-            <p className="text-xs text-muted-foreground">{favoritesCount} ejercicio{favoritesCount !== 1 ? "s" : ""}</p>
+            <p className="font-medium text-sm">{t("exercises:favoritesLabel")}</p>
+            <p className="text-xs text-muted-foreground">{t("exercises:exerciseCount", { count: favoritesCount })}</p>
           </div>
           <ChevronRight className="text-muted-foreground" size={16} aria-hidden="true" />
         </Link>
@@ -327,12 +330,12 @@ export default function ExercisePage() {
       {/* Category list — hidden during search */}
       {!search.trim() && <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categorías</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("exercises:categoriesLabel")}</p>
           <button
             onClick={() => { setShowCategoryForm((v) => !v); setShowExerciseForm(false); setEditingCategory(null); }}
             className="text-xs text-muted-foreground hover:text-foreground"
           >
-            {showCategoryForm ? "Cancelar" : "+ Nueva categoría"}
+            {showCategoryForm ? t("common:cancel") : t("exercises:newCategoryToggleOpen")}
           </button>
         </div>
 
@@ -354,9 +357,9 @@ export default function ExercisePage() {
         ) : categories.length === 0 ? (
           <EmptyState
             icon={Dumbbell}
-            title="Sin categorías aún"
-            description="Crea una categoría para organizar tus ejercicios, o añade un ejercicio y crea la categoría desde ahí."
-            action={{ label: "Nueva categoría", onClick: () => setShowCategoryForm(true) }}
+            title={t("exercises:emptyCategoriesTitle")}
+            description={t("exercises:emptyCategoriesDescriptionWeb")}
+            action={{ label: t("exercises:newCategoryHeading"), onClick: () => setShowCategoryForm(true) }}
           />
         ) : (
           categories.map((cat) => {
@@ -379,7 +382,7 @@ export default function ExercisePage() {
                   isDragOver ? "border-primary bg-primary/5" : "",
                 ].join(" ")}
               >
-                <span title="Arrastrar para reordenar">
+                <span title={t("exercises:dragToReorder")}>
                   <GripVertical className="text-muted-foreground select-none opacity-30 group-hover:opacity-70 transition-opacity" size={16} aria-hidden="true" />
                 </span>
                 <div
@@ -391,7 +394,7 @@ export default function ExercisePage() {
                 <Link href={`/exercise/${cat.id}`} className="flex-1 hover:underline" onClick={(e) => draggedId && e.preventDefault()}>
                   <p className="font-medium text-sm">{cat.name}</p>
                   {count > 0 && (
-                    <p className="text-xs text-muted-foreground">{count} ejercicio{count !== 1 ? "s" : ""}</p>
+                    <p className="text-xs text-muted-foreground">{t("exercises:exerciseCount", { count })}</p>
                   )}
                 </Link>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -399,13 +402,13 @@ export default function ExercisePage() {
                     onClick={() => { setEditingCategory(cat); setShowExerciseForm(false); setShowCategoryForm(false); }}
                     className="rounded px-2 py-1 text-xs hover:bg-secondary"
                   >
-                    Editar
+                    {t("exercises:edit")}
                   </button>
                   <button
                     onClick={() => handleDeleteCategory(cat.id)}
                     className="rounded px-2 py-1 text-xs text-destructive hover:bg-secondary"
                   >
-                    Eliminar
+                    {t("common:delete")}
                   </button>
                 </div>
                 <Link href={`/exercise/${cat.id}`} className="text-muted-foreground ml-1" onClick={(e) => draggedId && e.preventDefault()}><ChevronRight size={16} aria-hidden="true" /></Link>

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 import { useExerciseStore, filterExercises, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 import { Dumbbell } from "lucide-react";
@@ -34,6 +36,7 @@ function useDebounce<T>(value: T, delay = 300): T {
  * (scroll de ventana) para soportar catálogos grandes sin degradar el rendimiento.
  */
 export default function ExerciseCategoryPage() {
+  const { t } = useTranslation();
   const { id: categoryId } = useParams<{ id: string }>();
 
   const categories = useExerciseStore((s) => s.categories);
@@ -175,7 +178,7 @@ export default function ExerciseCategoryPage() {
 
   /** Elimina el ejercicio de forma optimista (tras confirmar); si la persistencia falla, lo restaura en el store. */
   async function handleDelete(id: string) {
-    if (!(await confirmDelete("¿Eliminar este ejercicio y todo su historial?"))) return;
+    if (!(await confirmDelete(t("exercises:deleteExerciseConfirmWeb")))) return;
     const saved = exercises.find((e) => e.id === id);
     deleteExercise(id);
     const { error } = await repo.deleteExercise(id);
@@ -192,13 +195,13 @@ export default function ExerciseCategoryPage() {
     }
   }
 
-  const pageTitle = isFavoritesView ? "★ Favoritos" : (category?.name ?? "Ejercicios");
+  const pageTitle = isFavoritesView ? t("exercises:favoritesTitleWeb") : (category?.name ?? t("exercises:title"));
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Link href="/exercise" className="text-muted-foreground hover:text-foreground text-sm">← Categorías</Link>
+        <Link href="/exercise" className="text-muted-foreground hover:text-foreground text-sm">{t("exercises:backToCategories")}</Link>
         <span className="text-muted-foreground">/</span>
         <div className="flex items-center gap-2 flex-1">
           {category?.color && (
@@ -211,26 +214,26 @@ export default function ExerciseCategoryPage() {
             onClick={() => setShowForm(true)}
             className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            + Nuevo ejercicio
+            {t("exercises:newExerciseButton")}
           </button>
         )}
       </div>
 
       {/* Search */}
-      <label htmlFor="category-search" className="sr-only">Buscar ejercicios en esta categoría</label>
+      <label htmlFor="category-search" className="sr-only">{t("exercises:searchLabelCategory")}</label>
       <input
         id="category-search"
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar ejercicios… (p. ej. &quot;press manc&quot;)"
+        placeholder={t("exercises:searchPlaceholderCategory")}
         className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
       {/* New form */}
       {showForm && (
         <div className="rounded-2xl border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">Nuevo ejercicio</h2>
+          <h2 className="text-sm font-semibold mb-4">{t("exercises:newExerciseHeading")}</h2>
           <ExerciseForm
             categories={categories}
             initial={{ category_id: isFavoritesView ? undefined : categoryId }}
@@ -244,7 +247,7 @@ export default function ExerciseCategoryPage() {
       {/* Edit form */}
       {editing && (
         <div className="rounded-2xl border bg-card p-5">
-          <h2 className="text-sm font-semibold mb-4">Editar ejercicio</h2>
+          <h2 className="text-sm font-semibold mb-4">{t("exercises:editExerciseHeading")}</h2>
           <ExerciseForm
             categories={categories}
             initial={editing}
@@ -266,14 +269,14 @@ export default function ExerciseCategoryPage() {
       ) : sorted.length === 0 ? (
         search ? (
           <div className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground text-sm">
-            {`Sin ejercicios que coincidan con "${search}"`}
+            {t("exercises:noSearchResults", { search })}
           </div>
         ) : (
           <EmptyState
             icon={Dumbbell}
-            title="Sin ejercicios aún"
-            description="Añade el primer ejercicio de esta categoría."
-            action={{ label: "Añadir ejercicio", onClick: () => setShowForm(true) }}
+            title={t("exercises:emptyExercisesTitle")}
+            description={t("exercises:emptyExercisesDescriptionWeb")}
+            action={{ label: t("exercises:emptyExercisesActionWeb"), onClick: () => setShowForm(true) }}
           />
         )
       ) : (

@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { Star, Dumbbell, MoreVertical } from "lucide-react";
 import { formatLastUsedLabel, EXERCISE_TYPE_LABELS } from "@fitnotes/core";
 import type { Exercise } from "@fitnotes/core";
@@ -30,6 +31,7 @@ interface Props {
  * al hacer scroll (para evitar que quede "flotando" en una posición obsoleta).
  */
 export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onToggleFavorite }: Props) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -98,7 +100,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
         )}
         {stats && (
           <p className="text-xs text-muted-foreground mt-1">
-            {stats.workout_count} {stats.workout_count === 1 ? "sesión" : "sesiones"}
+            {t("exercises:usageStats", { count: stats.workout_count })}
             {stats.last_used ? ` · ${formatLastUsedLabel(stats.last_used)}` : ""}
           </p>
         )}
@@ -110,7 +112,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
         <button
           onClick={() => onToggleFavorite(exercise.id, exercise.is_favorite)}
           className="p-1.5 rounded-xl hover:bg-secondary transition-colors"
-          aria-label={exercise.is_favorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+          aria-label={exercise.is_favorite ? t("exercises:favoriteRemove") : t("exercises:favoriteAdd")}
         >
           {exercise.is_favorite ? (
             <Star className="text-primary" size={16} fill="currentColor" aria-hidden="true" />
@@ -126,7 +128,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
             onClick={handleMenuToggle}
             data-testid={`exercise-options-${exercise.name}`}
             className="p-1.5 rounded-xl hover:bg-secondary transition-colors text-muted-foreground"
-            aria-label="Opciones"
+            aria-label={t("exercises:optionsMenuLabel")}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
@@ -143,7 +145,7 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
               <div
                 ref={menuRef}
                 role="menu"
-                aria-label={`Opciones para ${exercise.name}`}
+                aria-label={t("exercises:optionsMenuLabelFor", { name: exercise.name })}
                 style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 50 }}
                 className="w-40 rounded-xl border bg-card shadow-lg py-1"
               >
@@ -153,21 +155,21 @@ export default function ExerciseCard({ exercise, stats, onEdit, onDelete, onTogg
                   role="menuitem"
                   className="block w-full text-left px-4 py-2 text-sm hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
-                  Historial
+                  {t("exercises:historyMenuItem")}
                 </Link>
                 <button
                   onClick={() => { onEdit(exercise); closeMenu(); }}
                   role="menuitem"
                   className="w-full text-left px-4 py-2 text-sm hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
-                  Editar
+                  {t("exercises:edit")}
                 </button>
                 <button
                   onClick={() => { onDelete(exercise.id); closeMenu(); }}
                   role="menuitem"
                   className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary focus:bg-secondary focus:outline-none"
                 >
-                  Eliminar
+                  {t("common:delete")}
                 </button>
               </div>
             </>
