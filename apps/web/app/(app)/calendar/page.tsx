@@ -45,7 +45,7 @@ export default function CalendarPage() {
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set());
   const [categoryColors, setCategoryColors] = useState<Record<string, string[]>>({});
   const [categoryIds, setCategoryIds] = useState<Record<string, string[]>>({});
-  const [workouts, setWorkouts] = useState<{id: string; date: string; comment: string | null}[]>([]);
+  const [workouts, setWorkouts] = useState<{id: string; date: string; comment: string | null; start_time: string | null}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [listView, setListView] = useState(false);
@@ -176,8 +176,11 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (!selectedDate) return;
-    const workout = workouts.find((w) => w.date === selectedDate);
-    if (!workout) return;
+    const dayWorkouts = workouts.filter((w) => w.date === selectedDate);
+    // Con varios entrenamientos ese día, el picker (Fase 4) no muestra los
+    // ejercicios de cada uno inline — solo el detalle rápido cuando hay uno.
+    if (dayWorkouts.length !== 1) return;
+    const workout = dayWorkouts[0]!;
     if (dayExercises[selectedDate]) return;
     const date = selectedDate;
     const workoutId = workout.id;
@@ -272,7 +275,8 @@ export default function CalendarPage() {
     ? ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"]
     : ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"];
 
-  const selectedWorkout = workouts.find((w) => w.date === selectedDate);
+  const selectedDayWorkouts = workouts.filter((w) => w.date === selectedDate);
+  const selectedWorkout = selectedDayWorkouts.length === 1 ? selectedDayWorkouts[0] : undefined;
   const activeFilterCount = (selectedCatIds.size > 0 ? 1 : 0) + (filteredExDates !== null ? 1 : 0);
   const isFiltered = activeDates !== null;
 
@@ -553,10 +557,31 @@ export default function CalendarPage() {
                   </Link>
                 )}
               </div>
-              {selectedWorkout ? (
+              {selectedDayWorkouts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sin entrenamiento este día.</p>
+              ) : selectedDayWorkouts.length > 1 ? (
+                // Varios entrenamientos ese día (Fase 4): lista corta en vez del
+                // detalle de ejercicios de un único workout — ver docs/implementation-plan-multi-workout-per-day.md.
+                <div className="space-y-1.5">
+                  {selectedDayWorkouts.map((w) => (
+                    <Link
+                      key={w.id}
+                      href={`/workout/${w.id}`}
+                      className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm hover:bg-secondary"
+                    >
+                      <span className="font-medium">
+                        {w.start_time && !Number.isNaN(new Date(w.start_time).getTime())
+                          ? new Date(w.start_time).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+                          : "Sin hora"}
+                      </span>
+                      {w.comment && <span className="text-xs text-muted-foreground truncate max-w-[60%]">{w.comment}</span>}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
                 <>
-                  {selectedWorkout.comment && (
-                    <p className="text-xs text-muted-foreground">{selectedWorkout.comment}</p>
+                  {selectedWorkout!.comment && (
+                    <p className="text-xs text-muted-foreground">{selectedWorkout!.comment}</p>
                   )}
                   {dayExLoading === selectedDate ? (
                     <div className="flex gap-2 flex-wrap">
@@ -581,8 +606,6 @@ export default function CalendarPage() {
                     </div>
                   ) : null}
                 </>
-              ) : (
-                <p className="text-xs text-muted-foreground">Sin entrenamiento este día.</p>
               )}
             </div>
           )}

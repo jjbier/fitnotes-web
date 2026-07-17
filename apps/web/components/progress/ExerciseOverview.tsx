@@ -30,6 +30,7 @@ import ProgressChart from "./ProgressChart";
 import PersonalRecords from "./PersonalRecords";
 import PeriodStats from "./PeriodStats";
 import { readEstimatedRecordsRepLimit } from "@/lib/settings";
+import { useWorkoutForDate } from "@/hooks/useWorkoutForDate";
 
 /** Pestaña activa dentro del panel de detalle del ejercicio. */
 type Tab = "records" | "chart" | "history" | "stats" | "goals";
@@ -103,6 +104,7 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   const progressRepo = createProgressRepository(client);
   const workoutRepo = createWorkoutRepository(client);
   const goalsRepo = createGoalsRepository(client);
+  const { resolveWorkoutForDate, pickerModal } = useWorkoutForDate(workoutRepo);
 
   useEffect(() => {
     async function load() {
@@ -162,23 +164,21 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   }, [expandedDate, historySets, exercise.id]);
 
   /**
-   * Copia las series de `fromDate` al entrenamiento de hoy: crea el
-   * entrenamiento de hoy si no existe, reutiliza o crea la entrada del
-   * ejercicio dentro de él (si el entrenamiento de hoy ya no admite cambios
-   * por estar cerrado —`end_time` presente— aborta), y añade cada serie
-   * como una nueva serie sin completar. Marca la fecha como "copiada" para
-   * evitar duplicados accidentales desde la UI.
+   * Copia las series de `fromDate` al entrenamiento de hoy (resuelto vía
+   * `useWorkoutForDate` — pregunta a cuál si ya hay varios hoy): reutiliza o
+   * crea la entrada del ejercicio dentro de él (si el entrenamiento de hoy ya
+   * no admite cambios por estar cerrado —`end_time` presente— aborta), y
+   * añade cada serie como una nueva serie sin completar. Marca la fecha como
+   * "copiada" para evitar duplicados accidentales desde la UI.
    */
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
     if (!sets?.length || !userId) return;
     setCopyingDate(fromDate);
     try {
-      let { data: todayWorkout } = await workoutRepo.getWorkoutByDate(today);
-      if (!todayWorkout) {
-        const { data: created } = await workoutRepo.createWorkout({ date: today }, userId);
-        todayWorkout = created;
-      }
+      const todayWorkoutId = await resolveWorkoutForDate(today, userId);
+      if (!todayWorkoutId) return;
+      const { data: todayWorkout } = await workoutRepo.getWorkout(todayWorkoutId);
       if (!todayWorkout || todayWorkout.end_time) return;
 
       const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
@@ -603,6 +603,8 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
           )}
         </div>
       </div>
+
+      {pickerModal}
     </>
   );
 }

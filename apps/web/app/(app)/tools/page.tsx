@@ -17,6 +17,7 @@ import {
   DEFAULT_PLATES,
 } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository, createProgressRepository, createWorkoutRepository } from "@fitnotes/database";
+import { useWorkoutForDate } from "@/hooks/useWorkoutForDate";
 
 const PERCENTAGES = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
 
@@ -147,24 +148,19 @@ function PRSelector({ onSelect }: { onSelect: (weight: number, reps: number) => 
 }
 
 /**
- * Añade una serie con `weight`/`reps` al entrenamiento de hoy del usuario autenticado: crea el
- * entrenamiento del día si no existe, reutiliza o crea el `workout_exercise` para `exerciseId`, y
- * añade la serie al final. No hace nada (devuelve `false`) si no hay usuario, si el entrenamiento
- * de hoy ya está finalizado (`end_time` presente), o si falla la creación del set.
- * Devuelve `true` si la serie se creó correctamente.
+ * Añade una serie con `weight`/`reps` al entrenamiento `workoutId` ya resuelto (ver
+ * `useWorkoutForDate` — se encarga de decidir a cuál de los entrenamientos del día, si hay
+ * varios): reutiliza o crea el `workout_exercise` para `exerciseId` y añade la serie al final.
+ * No hace nada (devuelve `false`) si no hay usuario, si el entrenamiento ya está finalizado
+ * (`end_time` presente), o si falla la creación del set. Devuelve `true` si la serie se creó.
  */
-async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: number | undefined): Promise<boolean> {
+async function addSetToWorkout(workoutId: string, exerciseId: string, weight: number, reps: number | undefined): Promise<boolean> {
   const client = createBrowserClient();
   const { data: { user } } = await client.auth.getUser();
   if (!user) return false;
   const workoutRepo = createWorkoutRepository(client);
-  const today = new Date().toISOString().split("T")[0]!;
 
-  let workout = (await workoutRepo.getWorkoutByDate(today)).data;
-  if (!workout) {
-    const { data } = await workoutRepo.createWorkout({ date: today }, user.id);
-    workout = data ?? null;
-  }
+  const { data: workout } = await workoutRepo.getWorkout(workoutId);
   if (!workout || workout.end_time) return false;
 
   const { data: wes } = await workoutRepo.getWorkoutExercises(workout.id);
@@ -314,8 +310,8 @@ function OneRMCalculator() {
 /**
  * Calculadora de series: dado un peso base (habitualmente un 1RM o PR) y un incremento de
  * redondeo, calcula el peso de trabajo para cada porcentaje de `PERCENTAGES` (`calculateSetWeight`)
- * y permite añadir cualquiera de esos pesos como serie al entrenamiento de hoy mediante
- * `addSetToTodayWorkout`.
+ * y permite añadir cualquiera de esos pesos como serie al entrenamiento de hoy (o al que elija el
+ * usuario si hay varios, ver `useWorkoutForDate`) mediante `addSetToWorkout`.
  */
 function SetCalculator() {
   const [baseWeight, setBaseWeight] = useState("");
@@ -324,18 +320,28 @@ function SetCalculator() {
   const [addReps, setAddReps] = useState("5");
   const [addedPct, setAddedPct] = useState<number | null>(null);
 
+  const client = createBrowserClient();
+  const workoutRepo = createWorkoutRepository(client);
+  const { resolveWorkoutForDate, pickerModal } = useWorkoutForDate(workoutRepo);
+
   const base = parseFloat(baseWeight);
   const inc = parseFloat(increment) || 2.5;
 
   /**
    * Añade el peso calculado para el porcentaje `pct` como serie del ejercicio seleccionado en
-   * `AddToWorkoutPicker`. Si la inserción tiene éxito, marca brevemente (1.5s) ese porcentaje como
+   * `AddToWorkoutPicker`. Resuelve primero a qué entrenamiento de hoy añadirla (directo si hay 0 o
+   * 1, preguntando si hay varios) y, si tiene éxito, marca brevemente (1.5s) ese porcentaje como
    * "Añadido" en la UI.
    */
   async function handleAdd(pct: number, weight: number) {
     if (!addExerciseId) return;
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    const today = new Date().toISOString().split("T")[0]!;
+    const workoutId = await resolveWorkoutForDate(today, user.id);
+    if (!workoutId) return;
     const reps = parseInt(addReps, 10) || undefined;
-    const ok = await addSetToTodayWorkout(addExerciseId, weight, reps);
+    const ok = await addSetToWorkout(workoutId, addExerciseId, weight, reps);
     if (ok) {
       setAddedPct(pct);
       setTimeout(() => setAddedPct((p) => (p === pct ? null : p)), 1500);
@@ -416,6 +422,7 @@ function SetCalculator() {
           </div>
         </>
       )}
+      {pickerModal}
     </div>
   );
 }
