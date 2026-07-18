@@ -16,7 +16,6 @@ import DaySection from "@/components/routines/DaySection";
 import PredefinedSetsModal from "@/components/routines/PredefinedSetsModal";
 import EmptyState from "@/components/EmptyState";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { useWorkoutForDate } from "@/hooks/useWorkoutForDate";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -85,7 +84,6 @@ export default function RoutineDetailPage({ params }: Props) {
   const repo = createRoutineRepository(client);
   const exRepo = createExerciseRepository(client);
   const workoutRepo = createWorkoutRepository(client);
-  const { resolveWorkoutForDate, pickerModal } = useWorkoutForDate(workoutRepo);
 
   const routine = routines.find((r) => r.id === routineId);
   const days = (routineDays[routineId] ?? []).slice().sort((a, b) => a.order_index - b.order_index);
@@ -366,11 +364,11 @@ export default function RoutineDetailPage({ params }: Props) {
 
   /**
    * Registra de una vez todos los ejercicios (y sus series predefinidas) de un día de
-   * la rutina en el entrenamiento de hoy (resuelto vía `useWorkoutForDate` con
-   * `forceAskIfAny` — crea uno si no hay, y si ya hay alguno pregunta si añadir a ese
-   * o crear uno nuevo, Fase 5): añade cada ejercicio a continuación de los existentes
-   * preservando `group_id`/`group_name`, y para las series predefinidas sin valores propios
-   * copia los de la última sesión registrada del ejercicio. Navega a `/dashboard` al terminar.
+   * la rutina en un entrenamiento nuevo de hoy (siempre crea uno, sin preguntar ni
+   * reutilizar — "Registrar todo" es una acción explícita de "empezar esto ahora"):
+   * añade cada ejercicio preservando `group_id`/`group_name`, y para las series
+   * predefinidas sin valores propios copia los de la última sesión registrada del
+   * ejercicio. Navega a `/dashboard` al terminar.
    */
   async function handleLogAll(dayId: string) {
     setLoggingDayId(dayId);
@@ -378,13 +376,16 @@ export default function RoutineDetailPage({ params }: Props) {
     try {
       const today = new Date().toISOString().split("T")[0]!;
 
-      const resolvedId = await resolveWorkoutForDate(today, userId, { forceAskIfAny: true });
-      if (!resolvedId) return;
-      const workoutId: string = resolvedId;
-
-      // Get current exercise count in workout to continue order
-      const { data: existingWEs } = await workoutRepo.getWorkoutExercises(workoutId);
-      let exOrderBase = existingWEs?.length ?? 0;
+      const { data: created, error: createErr } = await workoutRepo.createWorkout(
+        { date: today, start_time: new Date().toISOString() },
+        userId
+      );
+      if (createErr || !created) {
+        setLogError("No se pudo crear el entrenamiento.");
+        return;
+      }
+      const workoutId = created.id;
+      let exOrderBase = 0;
 
       const dayExercises = (routineDayExercises[dayId] ?? [])
         .slice()
@@ -582,8 +583,6 @@ export default function RoutineDetailPage({ params }: Props) {
           onClose={() => setSetsModalRde(null)}
         />
       )}
-
-      {pickerModal}
     </div>
   );
 }

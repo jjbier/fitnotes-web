@@ -7,7 +7,6 @@ import { ChevronLeft, Dumbbell } from "lucide-react";
 import { formatWorkoutDate } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository } from "@fitnotes/database";
 import EmptyState from "@/components/EmptyState";
-import WorkoutPickerModal, { type PickableWorkout } from "@/components/workout/WorkoutPickerModal";
 
 interface WorkoutDatePageProps {
   params: Promise<{ date: string }>;
@@ -22,18 +21,17 @@ interface WorkoutDatePageProps {
  * una fecha en mano, no un id concreto (ver `/workout/[id]/page.tsx`, Fase 3
  * de docs/implementation-plan-multi-workout-per-day.md).
  *
- * Resuelve `getWorkoutsByDate(date)` y redirige a `/workout/{id}`: directo si
- * hay exactamente uno; si hay varios, muestra `<WorkoutPickerModal>` (Fase 4
- * de docs/implementation-plan-multi-workout-per-day.md) para elegir a cuál.
- * Si no existe ninguno, ofrece crearlo (mismo comportamiento que tenía antes
- * esta ruta) y redirige al nuevo id.
+ * Resuelve `getWorkoutByDate(date)` (el más antiguo si hubiera varios, sin
+ * preguntar — ver un día con varios entrenamientos se hace desde el
+ * Calendario, que lista cada uno y navega directo por id) y redirige a
+ * `/workout/{id}`. Si no existe ninguno, ofrece crearlo (mismo comportamiento
+ * que tenía antes esta ruta) y redirige al nuevo id.
  */
 export default function WorkoutDateRedirectPage({ params }: WorkoutDatePageProps) {
   const { date } = use(params);
   const router = useRouter();
   const [notFound, setNotFound] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [pickerWorkouts, setPickerWorkouts] = useState<PickableWorkout[] | null>(null);
 
   const client = createBrowserClient();
   const repo = createWorkoutRepository(client);
@@ -41,16 +39,12 @@ export default function WorkoutDateRedirectPage({ params }: WorkoutDatePageProps
   useEffect(() => {
     let cancelled = false;
     setNotFound(false);
-    setPickerWorkouts(null);
-    repo.getWorkoutsByDate(date).then(({ data }) => {
+    repo.getWorkoutByDate(date).then(({ data }) => {
       if (cancelled) return;
-      const workouts = data ?? [];
-      if (workouts.length === 0) {
-        setNotFound(true);
-      } else if (workouts.length === 1) {
-        router.replace(`/workout/${workouts[0]!.id}`);
+      if (data) {
+        router.replace(`/workout/${data.id}`);
       } else {
-        setPickerWorkouts(workouts);
+        setNotFound(true);
       }
     });
     return () => { cancelled = true; };
@@ -97,16 +91,6 @@ export default function WorkoutDateRedirectPage({ params }: WorkoutDatePageProps
             <div key={i} className="h-16 rounded-2xl border bg-secondary/30 animate-pulse" />
           ))}
         </div>
-      )}
-
-      {pickerWorkouts && (
-        <WorkoutPickerModal
-          workouts={pickerWorkouts}
-          creating={creating}
-          onChoose={(id) => router.replace(`/workout/${id}`)}
-          onCreateNew={handleStartWorkout}
-          onClose={() => router.back()}
-        />
       )}
     </div>
   );

@@ -18,7 +18,6 @@ import PersonalRecords from "@/components/progress/PersonalRecords";
 import ExerciseOverview from "@/components/progress/ExerciseOverview";
 import PeriodStats from "@/components/progress/PeriodStats";
 import { readEstimatedRecordsRepLimit } from "@/lib/settings";
-import { useWorkoutForDate } from "@/hooks/useWorkoutForDate";
 
 type Tab = "records" | "chart" | "history" | "stats" | "goals";
 
@@ -78,7 +77,6 @@ export default function ProgressPage() {
   const exRepo = createExerciseRepository(client);
   const goalsRepo = createGoalsRepository(client);
   const workoutRepo = createWorkoutRepository(client);
-  const { resolveWorkoutForDate, pickerModal } = useWorkoutForDate(workoutRepo);
 
   useEffect(() => {
     setEstimatedRepLimit(readEstimatedRecordsRepLimit());
@@ -245,9 +243,10 @@ export default function ProgressPage() {
   }
 
   /**
-   * Copia las series de `fromDate` al entrenamiento de hoy (resuelto vía `useWorkoutForDate` —
-   * pregunta a cuál si ya hay varios hoy): crea el ejercicio de hoy si no existe y añade cada
-   * serie histórica como una nueva serie sin completar.
+   * Copia las series de `fromDate` al entrenamiento de hoy: reutiliza en silencio el
+   * entrenamiento del día si ya existe (el primero, sin preguntar), o lo crea si no
+   * hay ninguno; crea el ejercicio de hoy si no existe y añade cada serie histórica
+   * como una nueva serie sin completar.
    */
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
@@ -256,9 +255,11 @@ export default function ProgressPage() {
     if (!uid) return;
     setCopyingDate(fromDate);
     try {
-      const todayWorkoutId = await resolveWorkoutForDate(today, uid);
-      if (!todayWorkoutId) return;
-      const { data: todayWorkout } = await workoutRepo.getWorkout(todayWorkoutId);
+      let todayWorkout = (await workoutRepo.getWorkoutByDate(today)).data;
+      if (!todayWorkout) {
+        const { data: created } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, uid);
+        todayWorkout = created;
+      }
       if (!todayWorkout || todayWorkout.end_time) return;
 
       const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
@@ -747,8 +748,6 @@ export default function ProgressPage() {
           onClose={() => setOverviewExercise(null)}
         />
       )}
-
-      {pickerModal}
     </>
   );
 }

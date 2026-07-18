@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell, Clock, Layers, Plus } from "lucide-react";
-import WorkoutPickerModal from "@/components/workout/WorkoutPickerModal";
+import { ChevronLeft, ChevronRight, Share2, CalendarDays, CheckSquare, Dumbbell, Clock, Plus } from "lucide-react";
 import { useWorkoutStore, useExerciseStore, formatWorkoutDate, todayISO, ExerciseType } from "@fitnotes/core";
 import { createBrowserClient, createWorkoutRepository, createExerciseRepository } from "@fitnotes/database";
 import TrainingScreen from "@/components/workout/TrainingScreen";
@@ -73,10 +72,6 @@ export default function DashboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [summaryStats, setSummaryStats] = useState<{ duration: number; exercises: number; sets: number; volume: number } | null>(null);
   const elapsedRef = useRef(0);
-  // Todos los entrenamientos de `currentDate` (puede haber más de uno, ver
-  // docs/implementation-plan-multi-workout-per-day.md) y si el picker está abierto.
-  const [dayWorkouts, setDayWorkouts] = useState<{ id: string; start_time: string | null; comment: string | null }[]>([]);
-  const [showWorkoutPicker, setShowWorkoutPicker] = useState(false);
   const [creatingWorkout, setCreatingWorkout] = useState(false);
 
   const client = createBrowserClient();
@@ -109,17 +104,16 @@ export default function DashboardPage() {
   }, []);
 
   /**
-   * Resuelve y carga el entrenamiento de una fecha dada: si no hay ninguno,
-   * reinicia el store con un workout vacío (ver comentario interno) para que
-   * aparezca la opción de iniciar uno; si hay exactamente uno, lo carga
-   * directo (sin cambio de UX); si hay varios (Fase 4 de
-   * docs/implementation-plan-multi-workout-per-day.md), muestra el picker —
-   * al elegir o cancelar carga el elegido o, si cancela, el primero por hora.
+   * Resuelve y carga el entrenamiento de una fecha dada, sin preguntar nunca: si
+   * no hay ninguno, reinicia el store con un workout vacío (ver comentario
+   * interno) para que aparezca la opción de iniciar uno; si hay alguno, carga
+   * el primero (por hora) directo — ver un día con varios entrenamientos se
+   * hace desde el Calendario (lista cada uno y navega directo por id), no
+   * desde esta pantalla.
    */
   const loadWorkoutForDate = useCallback(async (date: string) => {
     const { data } = await repo.getWorkoutsByDate(date);
     const dayWorkouts = data ?? [];
-    setDayWorkouts(dayWorkouts);
     if (dayWorkouts.length === 0) {
       // Sin esto, navegar a un día sin entrenamiento deja visible el
       // workout del día anterior (activeWorkout no se limpia).
@@ -127,34 +121,18 @@ export default function DashboardPage() {
       setActiveWEId(null);
       return;
     }
-    if (dayWorkouts.length === 1) {
-      await loadWorkoutById(dayWorkouts[0]!.id);
-      return;
-    }
-    setShowWorkoutPicker(true);
+    await loadWorkoutById(dayWorkouts[0]!.id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadWorkoutById]);
 
-  async function handleChoosePickerWorkout(workoutId: string) {
-    setShowWorkoutPicker(false);
-    await loadWorkoutById(workoutId);
-  }
-
-  async function handleCreateNewFromPicker() {
+  /** "+ Nuevo": crea siempre un entrenamiento adicional para `currentDate`, sin preguntar, y lo muestra. */
+  async function handleCreateNewWorkout() {
     const uid = await resolveUserId();
     setCreatingWorkout(true);
     const { data, error } = await repo.createWorkout({ date: currentDate, start_time: new Date().toISOString() }, uid);
     setCreatingWorkout(false);
     if (error || !data) return;
-    setDayWorkouts((prev) => [...prev, { id: data.id, start_time: data.start_time ?? null, comment: data.comment ?? null }]);
-    setShowWorkoutPicker(false);
     await loadWorkoutById(data.id);
-  }
-
-  /** Al cancelar el picker sin elegir, se mantiene el comportamiento de siempre: cargar el primero. */
-  async function handleClosePickerWithoutChoosing() {
-    setShowWorkoutPicker(false);
-    if (dayWorkouts[0]) await loadWorkoutById(dayWorkouts[0].id);
   }
 
   useEffect(() => {
@@ -368,19 +346,10 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2">
-            {dayWorkouts.length > 1 && (
-              <button
-                onClick={() => setShowWorkoutPicker(true)}
-                className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
-                title="Este día tiene varios entrenamientos"
-              >
-                <Layers size={14} aria-hidden="true" /> Cambiar ({dayWorkouts.length})
-              </button>
-            )}
             {/* Solo tiene sentido añadir un entrenamiento nuevo cuando el activo ya ha finalizado. */}
             {activeWorkout.end_time && (
               <button
-                onClick={handleCreateNewFromPicker}
+                onClick={handleCreateNewWorkout}
                 disabled={creatingWorkout}
                 className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
                 title="Crear un entrenamiento adicional para este día"
@@ -568,16 +537,6 @@ export default function DashboardPage() {
 
       {summaryStats && (
         <FinishSummaryModal stats={summaryStats} onClose={() => setSummaryStats(null)} />
-      )}
-
-      {showWorkoutPicker && (
-        <WorkoutPickerModal
-          workouts={dayWorkouts}
-          creating={creatingWorkout}
-          onChoose={handleChoosePickerWorkout}
-          onCreateNew={handleCreateNewFromPicker}
-          onClose={handleClosePickerWithoutChoosing}
-        />
       )}
 
       {/* Recent workouts */}
