@@ -1,5 +1,7 @@
 # FitNotes Web
 
+[![CI](https://github.com/jjbier/fitnotes-web/actions/workflows/ci.yml/badge.svg)](https://github.com/jjbier/fitnotes-web/actions/workflows/ci.yml)
+
 App de seguimiento de fitness con registro de entrenamientos, PRs, rutinas, body tracker y calculadoras. Next.js 15 App Router. Todo el producto está en español. Siempre requiere cuenta.
 
 ## Índice
