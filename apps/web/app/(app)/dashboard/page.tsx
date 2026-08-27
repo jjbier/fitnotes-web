@@ -539,12 +539,12 @@ export default function DashboardPage() {
         <FinishSummaryModal stats={summaryStats} onClose={() => setSummaryStats(null)} />
       )}
 
-      {/* Recent workouts */}
-      {workouts.length > 0 && (
+      {/* Recent workouts — solo los del día que se está viendo */}
+      {workouts.filter((w) => w.date === currentDate).length > 0 && (
         <section>
           <h2 className="text-lg font-semibold mb-3">Entrenamientos recientes</h2>
           <div className="space-y-2">
-            {workouts.slice(0, 5).map((w) => (
+            {workouts.filter((w) => w.date === currentDate).map((w) => (
               <Link
                 key={w.id}
                 href={`/workout/${w.id}`}

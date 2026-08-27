@@ -162,36 +162,23 @@ export default function ExerciseOverview({ exercise, exercises, userId, onClose 
   }, [expandedDate, historySets, exercise.id]);
 
   /**
-   * Copia las series de `fromDate` al entrenamiento de hoy: reutiliza en
-   * silencio el entrenamiento del día si ya existe (el primero, sin
-   * preguntar), o lo crea si no hay ninguno; reutiliza o crea la entrada del
-   * ejercicio dentro de él (si el entrenamiento de hoy ya no admite cambios
-   * por estar cerrado —`end_time` presente— aborta), y añade cada serie como
-   * una nueva serie sin completar. Marca la fecha como "copiada" para evitar
-   * duplicados accidentales desde la UI.
+   * Copia las series de `fromDate` a un entrenamiento NUEVO de hoy: cada copia crea
+   * su propio entrenamiento, nunca reutiliza uno existente. Marca la fecha como
+   * "copiada" para evitar duplicados accidentales desde la UI.
    */
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
     if (!sets?.length || !userId) return;
     setCopyingDate(fromDate);
     try {
-      let todayWorkout = (await workoutRepo.getWorkoutByDate(today)).data;
-      if (!todayWorkout) {
-        const { data: created } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, userId);
-        todayWorkout = created;
-      }
-      if (!todayWorkout || todayWorkout.end_time) return;
+      const { data: todayWorkout } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, userId);
+      if (!todayWorkout) return;
 
-      const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
-      let targetWE = (todayWEs ?? []).find((w) => w.exercise_id === exercise.id);
-      if (!targetWE) {
-        const { data: newWE } = await workoutRepo.addExercise({
-          workout_id: todayWorkout.id,
-          exercise_id: exercise.id,
-          order_index: (todayWEs ?? []).length,
-        }, userId);
-        targetWE = newWE ?? undefined;
-      }
+      const { data: targetWE } = await workoutRepo.addExercise({
+        workout_id: todayWorkout.id,
+        exercise_id: exercise.id,
+        order_index: 0,
+      }, userId);
       if (!targetWE) return;
 
       for (let i = 0; i < sets.length; i++) {

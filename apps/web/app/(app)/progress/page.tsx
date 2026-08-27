@@ -243,10 +243,8 @@ export default function ProgressPage() {
   }
 
   /**
-   * Copia las series de `fromDate` al entrenamiento de hoy: reutiliza en silencio el
-   * entrenamiento del día si ya existe (el primero, sin preguntar), o lo crea si no
-   * hay ninguno; crea el ejercicio de hoy si no existe y añade cada serie histórica
-   * como una nueva serie sin completar.
+   * Copia las series de `fromDate` a un entrenamiento NUEVO de hoy: cada copia crea su
+   * propio entrenamiento, nunca reutiliza uno existente.
    */
   async function handleCopySets(fromDate: string) {
     const sets = historySets[fromDate];
@@ -255,23 +253,14 @@ export default function ProgressPage() {
     if (!uid) return;
     setCopyingDate(fromDate);
     try {
-      let todayWorkout = (await workoutRepo.getWorkoutByDate(today)).data;
-      if (!todayWorkout) {
-        const { data: created } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, uid);
-        todayWorkout = created;
-      }
-      if (!todayWorkout || todayWorkout.end_time) return;
+      const { data: todayWorkout } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, uid);
+      if (!todayWorkout) return;
 
-      const { data: todayWEs } = await workoutRepo.getWorkoutExercises(todayWorkout.id);
-      let targetWE = (todayWEs ?? []).find((w) => w.exercise_id === selectedExId);
-      if (!targetWE) {
-        const { data: newWE } = await workoutRepo.addExercise({
-          workout_id: todayWorkout.id,
-          exercise_id: selectedExId,
-          order_index: (todayWEs ?? []).length,
-        }, uid);
-        targetWE = newWE ?? undefined;
-      }
+      const { data: targetWE } = await workoutRepo.addExercise({
+        workout_id: todayWorkout.id,
+        exercise_id: selectedExId,
+        order_index: 0,
+      }, uid);
       if (!targetWE) return;
 
       for (let i = 0; i < sets.length; i++) {

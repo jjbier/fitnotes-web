@@ -147,13 +147,10 @@ function PRSelector({ onSelect }: { onSelect: (weight: number, reps: number) => 
 }
 
 /**
- * Añade una serie con `weight`/`reps` al entrenamiento de hoy del usuario autenticado:
- * reutiliza en silencio el entrenamiento del día si ya existe (el primero, sin
- * preguntar — ver un día con varios entrenamientos se hace desde el Calendario), o lo
- * crea si no hay ninguno; reutiliza o crea el `workout_exercise` para `exerciseId` y
- * añade la serie al final. No hace nada (devuelve `false`) si no hay usuario, si el
- * entrenamiento ya está finalizado (`end_time` presente), o si falla la creación del
- * set. Devuelve `true` si la serie se creó correctamente.
+ * Añade una serie con `weight`/`reps` a un entrenamiento NUEVO de hoy del usuario
+ * autenticado: cada llamada crea su propio entrenamiento, nunca reutiliza uno
+ * existente. No hace nada (devuelve `false`) si no hay usuario o si falla la
+ * creación. Devuelve `true` si la serie se creó correctamente.
  */
 async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: number | undefined): Promise<boolean> {
   const client = createBrowserClient();
@@ -162,27 +159,17 @@ async function addSetToTodayWorkout(exerciseId: string, weight: number, reps: nu
   const workoutRepo = createWorkoutRepository(client);
   const today = new Date().toISOString().split("T")[0]!;
 
-  let workout = (await workoutRepo.getWorkoutByDate(today)).data;
-  if (!workout) {
-    const { data } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, user.id);
-    workout = data ?? null;
-  }
-  if (!workout || workout.end_time) return false;
+  const { data: workout } = await workoutRepo.createWorkout({ date: today, start_time: new Date().toISOString() }, user.id);
+  if (!workout) return false;
 
-  const { data: wes } = await workoutRepo.getWorkoutExercises(workout.id);
-  let we = wes?.find((w) => w.exercise_id === exerciseId);
-  if (!we) {
-    const { data } = await workoutRepo.addExercise(
-      { workout_id: workout.id, exercise_id: exerciseId, order_index: wes?.length ?? 0 },
-      user.id
-    );
-    we = data ?? undefined;
-  }
+  const { data: we } = await workoutRepo.addExercise(
+    { workout_id: workout.id, exercise_id: exerciseId, order_index: 0 },
+    user.id
+  );
   if (!we) return false;
 
-  const { data: existingSets } = await workoutRepo.getSets(we.id);
   const { error } = await workoutRepo.createSet(
-    { workout_exercise_id: we.id, weight, reps, order_index: existingSets?.length ?? 0 },
+    { workout_exercise_id: we.id, weight, reps, order_index: 0 },
     user.id
   );
   return !error;
