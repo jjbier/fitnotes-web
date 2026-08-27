@@ -1,7 +1,7 @@
 /**
  * Formulario de creación/edición de ejercicios: nombre, categoría (con
  * creación inline de categoría nueva), tipo de ejercicio y unidad de peso
- * cuando aplica, más notas opcionales.
+ * cuando aplica, más notas y URL de imagen/vídeo de demostración opcionales.
  *
  * Al editar, si el usuario cambia el tipo o la unidad de peso, se apoya en
  * `useConfirm()` para advertir del impacto sobre el historial ya registrado
@@ -30,6 +30,7 @@ interface FormData {
   type: ExerciseType;
   weight_unit: "kg" | "lb";
   notes: string;
+  demo_url: string;
 }
 
 /** Props de {@link ExerciseForm}. */
@@ -80,6 +81,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
     type: initial?.type ?? ExerciseType.WEIGHT_REPS,
     weight_unit: initial?.weight_unit ?? "kg",
     notes: initial?.notes ?? "",
+    demo_url: initial?.demo_url ?? "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -124,6 +126,14 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
   async function performSave() {
     if (!form.name.trim()) { setError(t("exercises:nameRequired")); return; }
     if (!form.category_id) { setError(t("exercises:categoryRequired")); return; }
+    if (form.demo_url.trim()) {
+      try {
+        new URL(form.demo_url.trim());
+      } catch {
+        setError(t("exercises:demoUrlInvalid"));
+        return;
+      }
+    }
 
     // Warn if type changed when editing
     if (initial?.id && form.type !== initial.type) {
@@ -163,7 +173,7 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
     setLoading(true);
     setError("");
     try {
-      await onSubmit({ ...form, name: form.name.trim() });
+      await onSubmit({ ...form, name: form.name.trim(), demo_url: form.demo_url.trim() });
       if (shouldConvert && onConvertWeights && initial?.weight_unit) {
         const factor = initial.weight_unit === "kg" ? 2.20462 : 0.453592;
         await onConvertWeights(factor);
@@ -318,6 +328,21 @@ export default function ExerciseForm({ categories, initial, onSubmit, onCancel, 
           placeholder={t("exercises:notesPlaceholderWeb")}
           rows={2}
           className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+        />
+      </div>
+
+      {/* Demo URL */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium" htmlFor="ex-demo-url">
+          {t("exercises:demoUrlLabel")} <span className="text-muted-foreground font-normal">{t("exercises:demoUrlOptionalSuffix")}</span>
+        </label>
+        <input
+          id="ex-demo-url"
+          type="url"
+          value={form.demo_url}
+          onChange={(e) => patch("demo_url", e.target.value)}
+          placeholder={t("exercises:demoUrlPlaceholder")}
+          className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 

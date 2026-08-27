@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { History } from "lucide-react";
-import { useExerciseStore, ExerciseType, formatFullDate, formatSetDisplay } from "@fitnotes/core";
+import { useTranslation } from "react-i18next";
+import { useExerciseStore, ExerciseType, formatFullDate, formatSetDisplay, isImageUrl } from "@fitnotes/core";
 import { createBrowserClient, createExerciseRepository } from "@fitnotes/database";
 
 type SetRow = {
@@ -38,6 +39,7 @@ type Session = {
  * largos sin degradar el rendimiento.
  */
 export default function ExerciseHistoryPage() {
+  const { t } = useTranslation();
   const { exerciseId } = useParams<{ exerciseId: string }>();
   const exercises = useExerciseStore((s) => s.exercises);
 
@@ -112,6 +114,31 @@ export default function ExerciseHistoryPage() {
           </Link>
         )}
       </div>
+
+      {/* Demo image/video */}
+      {exercise?.demo_url && (
+        <div className="rounded-2xl border bg-card overflow-hidden">
+          <p className="px-5 pt-4 text-sm font-semibold">{t("exercises:demoUrlSectionHeading")}</p>
+          {isImageUrl(exercise.demo_url) ? (
+            <img
+              src={exercise.demo_url}
+              alt={t("exercises:demoUrlImageAlt", { name: exercise.name })}
+              className="mt-3 max-h-96 w-full object-contain bg-secondary/20"
+            />
+          ) : (
+            <div className="px-5 pb-4 pt-3">
+              <a
+                href={exercise.demo_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary hover:underline"
+              >
+                {t("exercises:demoUrlOpenLink")}
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (

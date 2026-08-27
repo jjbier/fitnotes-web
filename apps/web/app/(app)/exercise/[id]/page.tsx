@@ -86,6 +86,7 @@ export default function ExerciseCategoryPage() {
             notes: ex.notes ?? undefined,
             is_favorite: ex.is_favorite,
             created_at: ex.created_at,
+            demo_url: ex.demo_url ?? undefined,
           }))
         );
       }
@@ -119,9 +120,12 @@ export default function ExerciseCategoryPage() {
    * `handleCreate` para que `ExerciseForm` pueda reutilizarlo (p. ej. "crear y añadir otro").
    */
   const doCreate = useCallback(async (data: {
-    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string; demo_url?: string;
   }) => {
-    const { data: created, error } = await repo.createExercise(data, userId);
+    const { data: created, error } = await repo.createExercise(
+      { ...data, demo_url: data.demo_url || null },
+      userId
+    );
     if (error) throw new Error(error.message);
     addExercise({
       id: created.id,
@@ -132,12 +136,13 @@ export default function ExerciseCategoryPage() {
       notes: created.notes ?? undefined,
       is_favorite: created.is_favorite,
       created_at: created.created_at,
+      demo_url: created.demo_url ?? undefined,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const handleCreate = useCallback(async (data: {
-    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string; demo_url?: string;
   }) => {
     await doCreate(data);
     setShowForm(false);
@@ -154,10 +159,13 @@ export default function ExerciseCategoryPage() {
   }, [userId]);
 
   const handleUpdate = useCallback(async (data: {
-    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string;
+    name: string; category_id: string; type: ExerciseType; weight_unit: "kg" | "lb"; notes: string; demo_url?: string;
   }) => {
     if (!editing) return;
-    const { data: updated, error } = await repo.updateExercise(editing.id, data);
+    const { data: updated, error } = await repo.updateExercise(editing.id, {
+      ...data,
+      demo_url: data.demo_url || null,
+    });
     if (error) throw new Error(error.message);
     updateExercise(editing.id, {
       name: updated.name,
@@ -165,6 +173,7 @@ export default function ExerciseCategoryPage() {
       type: updated.type as ExerciseType,
       weight_unit: updated.weight_unit as "kg" | "lb",
       notes: updated.notes ?? undefined,
+      demo_url: updated.demo_url ?? undefined,
     });
     setEditing(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
