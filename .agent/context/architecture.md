@@ -1,20 +1,19 @@
-# Architecture — FitNotes App
+# Architecture — FitNotes Web
 
-_Last updated: 2026-07-03_
+_Last updated: 2026-07-03. Nota: este documento viene de un monorepo compartido con la app mobile (ahora separada en su propio repositorio) — algunas decisiones de abajo son historia de esa época y ya no aplican directamente a este repo (offline-first, Expo/React Native, etc.), pero se conservan como contexto de por qué `packages/core`/`packages/database` están diseñados como están._
 
-## Monorepo layout
+## Layout
 
 ```
-fitnotes-app/
-├── .npmrc                  public-hoist-pattern para Babel (requerido para Android build)
+fitnotes-web/
+├── .npmrc
 ├── apps/
-│   ├── web/                Next.js 15 App Router — puerto 3000
-│   └── mobile/             Expo SDK 52 — Metro bundler
+│   └── web/                Next.js 15 App Router — puerto 3000
 └── packages/
-    ├── core/               Lógica pura. SIN react/next/expo.
+    ├── core/               Lógica pura. SIN react/next.
     ├── database/           Cliente Supabase + tipos generados + repositorios
     ├── ui/                 Vacío
-    └── tsconfig/           base.json / nextjs.json / expo.json
+    └── tsconfig/           base.json / nextjs.json
 ```
 
 ## Decisiones clave
@@ -84,8 +83,4 @@ Tablas: `categories`, `exercises`, `workouts`, `workout_exercises`, `sets`,
 4. default_chart en exercises
 5. group_name en routine_day_exercises
 6. order_index en body_measurements (backfill vía ROW_NUMBER)
-7. Documenta el drift real del schema (`is_warmup` en sets, tabla `exercise_goals`) que existía en `types.ts` pero no en ninguna migración committeada — necesario para escribir el schema SQLite local contra el esquema real
-
-## Mobile: base de datos local (SQLite, offline)
-
-Espejo de 13 tablas remotas (las 9 de siempre + `personal_records`, `body_measurements`, `body_measurement_entries`, `exercise_goals`, antes excluidas del sync). Detalle completo, incluida la tabla de cascadas FK que hay que replicar a mano por tabla: **ver `.agent/context/offline-sync.md`**.
+7. Documenta el drift real del schema (`is_warmup` en sets, tabla `exercise_goals`) que existía en `types.ts` pero no en ninguna migración committeada
